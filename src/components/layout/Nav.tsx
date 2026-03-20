@@ -20,8 +20,8 @@ export default function Nav() {
       <Image
         src="/logo-update.svg"
         alt="Joe Siconolfi"
-        width={20}
-        height={24}
+        width={26}
+        height={26}
         style={{ opacity: 0.9 }}
       />
       <div className="w-px h-4 bg-white/20" />

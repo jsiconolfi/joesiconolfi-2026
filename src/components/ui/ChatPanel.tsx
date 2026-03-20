@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import Image from 'next/image'
 import SwirlDotGrid from '@/components/ui/SwirlDotGrid'
 
 interface Message {
@@ -24,25 +25,13 @@ const AssistantAvatar = () => (
     className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
     style={{ border: '1px solid rgba(255,255,255,0.2)', backgroundColor: 'rgba(255,255,255,0.05)' }}
   >
-    <svg
-      viewBox="19 23 207 249"
-      width="14"
-      height="14"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-      style={{ opacity: 0.8 }}
-    >
-      <rect x="19.2" y="245.8" width="206.6" height="25.8" stroke="white" strokeWidth="8.61" strokeLinejoin="round"/>
-      <line x1="19.5" y1="219.5" x2="19.5" y2="49.1" stroke="white" strokeWidth="8.61" strokeLinejoin="round"/>
-      <circle cx="19.5" cy="36.2" r="12.9" stroke="white" strokeWidth="8.61" strokeLinejoin="round"/>
-      <line x1="161.2" y1="73.2" x2="118.2" y2="155" stroke="white" strokeWidth="8.61" strokeLinecap="round" strokeLinejoin="round"/>
-      <line x1="225.8" y1="180.8" x2="122.5" y2="180.8" stroke="white" strokeWidth="8.61" strokeLinejoin="round"/>
-      <circle cx="122.5" cy="167.9" r="12.9" stroke="white" strokeWidth="8.61" strokeLinejoin="round"/>
-      <path d="M19.2,219.5h206.6v-51.7c0-57.1-46.2-103.3-103.3-103.3S19.2,110.8,19.2,167.9V219.5L19.2,219.5z" stroke="white" strokeWidth="8.61" strokeLinejoin="round"/>
-      <line x1="37.8" y1="222.9" x2="37.8" y2="245.8" stroke="white" strokeWidth="8.61" strokeLinejoin="round"/>
-      <line x1="207.2" y1="222.9" x2="207.2" y2="245.8" stroke="white" strokeWidth="8.61" strokeLinejoin="round"/>
-    </svg>
+    <Image
+      src="/logo-update.svg"
+      alt="Assistant"
+      width={18}
+      height={18}
+      style={{ opacity: 0.9 }}
+    />
   </div>
 )
 

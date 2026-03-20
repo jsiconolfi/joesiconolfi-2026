@@ -1,20 +1,11 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Generator: Adobe Illustrator 27.8.1, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
-<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
-	 viewBox="0 0 241 289.5" style="enable-background:new 0 0 241 289.5;" xml:space="preserve">
-<style type="text/css">
-	.st0{fill:none;stroke:#FFFFFF;stroke-width:8.61;stroke-linejoin:round;}
-	.st1{fill:none;stroke:#FFFFFF;stroke-width:8.61;stroke-linecap:round;stroke-linejoin:round;}
-</style>
-<g id="_14_space_helmet_00000173870489604586149900000013800688012338428825_">
-	<rect x="19.2" y="245.8" class="st0" width="206.6" height="25.8"/>
-	<line class="st0" x1="19.5" y1="219.5" x2="19.5" y2="49.1"/>
-	<circle class="st0" cx="19.5" cy="36.2" r="12.9"/>
-	<line class="st1" x1="161.2" y1="73.2" x2="118.2" y2="155"/>
-	<line class="st0" x1="225.8" y1="180.8" x2="122.5" y2="180.8"/>
-	<circle class="st0" cx="122.5" cy="167.9" r="12.9"/>
-	<path class="st0" d="M19.2,219.5h206.6v-51.7c0-57.1-46.2-103.3-103.3-103.3S19.2,110.8,19.2,167.9V219.5L19.2,219.5z"/>
-	<line class="st0" x1="37.8" y1="222.9" x2="37.8" y2="245.8"/>
-	<line class="st0" x1="207.2" y1="222.9" x2="207.2" y2="245.8"/>
-</g>
+<svg width="558" height="558" viewBox="0 0 558 558" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M442.8 416.25H132.9V454.95H442.8V416.25Z" stroke="#00FF9F" stroke-width="12.915" stroke-linejoin="round"/>
+<path d="M133.35 376.8V121.2" stroke="#00FF9F" stroke-width="12.915" stroke-linejoin="round"/>
+<path d="M133.35 121.2C144.037 121.2 152.7 112.537 152.7 101.85C152.7 91.1633 144.037 82.5 133.35 82.5C122.663 82.5 114 91.1633 114 101.85C114 112.537 122.663 121.2 133.35 121.2Z" stroke="#00FF9F" stroke-width="12.915" stroke-linejoin="round"/>
+<path d="M345.9 157.35L281.4 280.05" stroke="#00FF9F" stroke-width="12.915" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M442.8 318.75H287.85" stroke="#00FF9F" stroke-width="12.915" stroke-linejoin="round"/>
+<path d="M287.85 318.75C298.537 318.75 307.2 310.087 307.2 299.4C307.2 288.713 298.537 280.05 287.85 280.05C277.163 280.05 268.5 288.713 268.5 299.4C268.5 310.087 277.163 318.75 287.85 318.75Z" stroke="#00FF9F" stroke-width="12.915" stroke-linejoin="round"/>
+<path d="M132.9 376.8H442.8V299.25C442.8 213.6 373.5 144.3 287.85 144.3C202.2 144.3 132.9 213.75 132.9 299.4V376.8Z" stroke="#00FF9F" stroke-width="12.915" stroke-linejoin="round"/>
+<path d="M160.8 381.9V416.25" stroke="#00FF9F" stroke-width="12.915" stroke-linejoin="round"/>
+<path d="M414.9 381.9V416.25" stroke="#00FF9F" stroke-width="12.915" stroke-linejoin="round"/>
 </svg>

@@ -13,13 +13,13 @@ const ibmPlexMono = IBM_Plex_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Joe Siconolfi — Staff Design Engineer',
+  title: 'Joe Siconolfi — Design + Engineering',
   description:
-    'Building the interfaces where humans and AI figure out how to work together.',
+    'Design engineer by trade and a creative cosmonaut by nature',
   openGraph: {
-    title: 'Joe Siconolfi — Staff Design Engineer',
+    title: 'Joe Siconolfi — Design + Engineering',
     description:
-      'Building the interfaces where humans and AI figure out how to work together.',
+      'Design engineer by trade and a creative cosmonaut by nature',
     type: 'website',
   },
 }
