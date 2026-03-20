@@ -3,6 +3,17 @@
 import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import SwirlDotGrid from '@/components/ui/SwirlDotGrid'
+import { PROJECTS } from '@/content/projects'
+
+function detectProjectMention(text: string): string | null {
+  const lower = text.toLowerCase()
+  for (const project of PROJECTS) {
+    if (project.keywords.some(kw => lower.includes(kw))) {
+      return project.id
+    }
+  }
+  return null
+}
 
 interface Message {
   id: string
@@ -125,6 +136,15 @@ export default function ChatPanel() {
     setMessages((prev) => [...prev, userMessage])
     setInput('')
     setIsResponseLoading(true)
+
+    const projectId = detectProjectMention(content)
+    if (projectId) {
+      window.dispatchEvent(
+        new CustomEvent('portfolio:project-active', {
+          detail: { projectId },
+        })
+      )
+    }
 
     setTimeout(() => {
       const response: Message = {

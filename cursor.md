@@ -190,11 +190,33 @@ CSS:
 - `@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }` defined in `globals.css` (above `@layer utilities`)
 - Cursor animation: `animation: 'blink 0.8s step-end infinite'` — sharp on/off, not a fade
 
-## Page layout (Session 7)
+## Orbital project cards (Session 14)
 
-Homepage is now a fixed overlay composition — no scrollable hero section:
-- `src/app/page.tsx` — assembles `Swirl`, `Nav`, name block, `ChatPanel` directly (no `Hero` section)
+Eight project cards orbit the chat panel in slow elliptical arcs:
+- `src/content/projects.ts` — `Project` interface + `PROJECTS` array (8 projects)
+- `src/components/ui/OrbitalCard.tsx` — individual orbiting card, listens for `portfolio:project-active` CustomEvent
+- `src/components/ui/OrbitalSystem.tsx` — mounts all 8 cards, tracks viewport center; `z-10`
+
+Z-index stack: Swirl `z-0` → OrbitalSystem `z-10` → ChatPanel `z-20` → Nav `z-30`
+
+Card idle: `opacity: 0.22`, drift speed 0.012–0.022 rad/s
+Card active (triggered by `portfolio:project-active` CustomEvent):
+- `opacity: 1` over `0.6s`
+- Border → `rgba(0,255,159,0.3)`, pulsing `#00ff9f` beacon dot top-right
+- Radius multiplier `0.85` (drifts inward)
+- Deactivates after 4000ms
+
+`detectProjectMention(text)` in `ChatPanel.tsx` scans user input against `project.keywords`; dispatches `portfolio:project-active` on match immediately on send.
+`@keyframes pulse` defined in `globals.css`.
+Glass: `rgba(22,26,34,0.75)` + `blur(5px)` — same as nav and chat panel.
+Do NOT modify `Swirl.tsx`, `SwirlDotGrid.tsx`, or `HiDotGrid.tsx`.
+
+## Page layout (Session 7 — updated Session 14)
+
+Homepage is a fixed overlay composition — no scrollable hero section:
+- `src/app/page.tsx` — assembles `Swirl`, `OrbitalSystem`, `Nav`, name block, `ChatPanel` directly
 - Swirl: `fixed inset-0 z-0`
+- OrbitalSystem: `fixed inset-0 z-10 pointer-events-none overflow-hidden`
 - Nav: `fixed top-4 z-30`, pill-shaped frosted glass (inline styles for glass effect)
 - Name block: `fixed bottom-8 left-8 z-10 pointer-events-none`
 - ChatPanel: `fixed inset-0 flex items-center justify-center z-20`

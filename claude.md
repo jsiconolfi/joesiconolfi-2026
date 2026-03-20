@@ -61,13 +61,49 @@ Two separate loading states:
 - `isLoading` — initial page load thinking phase only
 - `isResponseLoading` — subsequent AI response loading; used for send button `disabled` prop and `AssistantAvatar thinking={true}`
 
+Project mention detection (Session 14):
+- `detectProjectMention(text)` scans user input against each project's `keywords` array
+- On match, dispatches `portfolio:project-active` CustomEvent with `{ projectId }` detail
+- Fired immediately after the user sends a message (before the placeholder response timeout)
+- Same CustomEvent pattern as `swirl:keypress`
+
 Suggestion chips — persistent bar only:
 - Chips appear ONLY in the persistent bar above the input. Never inside message bubbles.
 - The `Message` interface has no `chips` field — do not add one.
 - The bar always shows the fixed set: `my work`, `my experience`, `about me`, `my resume`, `contact`.
 - When wiring real AI responses, do not pass chips through message data — the bar handles all navigation shortcuts.
 
-The Nav (`src/components/layout/Nav.tsx`) includes a "Chat with me" button (Session 10):
+### Orbital project cards (Session 14)
+
+Eight project cards orbit the chat panel in slow elliptical arcs. The system consists of:
+
+- `src/content/projects.ts` — typed `Project` interface + `PROJECTS` array (8 entries: Waypoint, Sherpa, waypoint-sync, Channel AI, Statespace, Mushroom, Seudo AI, Statespace × Kernel)
+- `src/components/ui/OrbitalCard.tsx` — individual card; listens for `portfolio:project-active` CustomEvent; drifts inward and brightens on activation
+- `src/components/ui/OrbitalSystem.tsx` — mounts all 8 cards; tracks viewport center on resize; `z-10` (between Swirl at `z-0` and ChatPanel at `z-20`)
+
+Z-index stack:
+- Swirl: `z-0`
+- OrbitalSystem: `z-10`
+- ChatPanel: `z-20`
+- Nav: `z-30`
+
+Card idle state: `opacity: 0.22`, slow elliptical orbit (speeds 0.012–0.022 rad/s)
+Card active state (triggered by `portfolio:project-active`):
+- `opacity: 1` over `0.6s`
+- Border shifts to `rgba(0,255,159,0.3)` terminal green
+- `#00ff9f` beacon dot pulses in top-right corner (`animation: pulse 1.5s ease-in-out infinite`)
+- Radius multiplier drops to `0.85` (drifts inward)
+- Deactivates after 4000ms
+
+`@keyframes pulse` defined in `globals.css` (alongside `@keyframes blink`).
+
+Glass treatment on cards: `rgba(22,26,34,0.75)` + `blur(5px)` — matches nav and chat panel glass.
+
+Orbital config (per card): `radiusX`, `radiusY`, `speed`, `offset` — values defined as a fixed array in `OrbitalSystem.tsx`. Offsets spaced ~0.785 rad apart (2π/8) with minor variation.
+
+Do not modify `Swirl.tsx`, `SwirlDotGrid.tsx`, or `HiDotGrid.tsx`.
+
+### The Nav (`src/components/layout/Nav.tsx`) includes a "Chat with me" button (Session 10):
 - Warm amber pill button at the right of the nav
 - Contains `HiDotGrid` (5×5, dotSize 4, gap 2.5, speed 1.2) spelling "HI" with a left-to-right shimmer
 - Grid animates continuously from mount — no hover trigger
