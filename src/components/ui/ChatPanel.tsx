@@ -86,6 +86,7 @@ export default function ChatPanel() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const idCounter = useRef(100)
+  const sendMessageRef = useRef<(content: string) => void>(() => {})
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -124,6 +125,15 @@ export default function ChatPanel() {
     return () => clearTimeout(thinkingTimer)
   }, [])
 
+  useEffect(() => {
+    function handleCardClick(e: Event) {
+      const event = e as CustomEvent<{ query: string }>
+      sendMessageRef.current(event.detail.query)
+    }
+    window.addEventListener('portfolio:query', handleCardClick)
+    return () => window.removeEventListener('portfolio:query', handleCardClick)
+  }, [])
+
   const sendMessage = (content: string) => {
     if (!content.trim() || isResponseLoading) return
 
@@ -156,6 +166,9 @@ export default function ChatPanel() {
       setIsResponseLoading(false)
     }, 800)
   }
+
+  // Keep ref current so the portfolio:query event handler always calls the latest version
+  sendMessageRef.current = sendMessage
 
   const handleSubmit = () => sendMessage(input)
 
@@ -255,7 +268,6 @@ export default function ChatPanel() {
                 <div
                   className="font-mono text-sm font-light text-white max-w-xs px-4 py-2"
                   style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
                     border: '1px solid rgba(255, 255, 255, 0.1)',
                     borderRadius: '16px 16px 4px 16px',
                   }}

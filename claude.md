@@ -27,7 +27,7 @@ Every section uses the same interaction grammar: glance → expand → immerse. 
 
 ## Site sections and their purpose
 
-### Hero / Homepage (Session 11 — current state)
+### Hero / Homepage (Sessions 11–20 — current state)
 
 The homepage is a fixed overlay composition — not a scrollable section:
 - **Swirl**: `fixed inset-0 z-0`, fills entire viewport, bleeds through the glass panel
@@ -66,6 +66,7 @@ Project mention detection (Session 14):
 - On match, dispatches `portfolio:project-active` CustomEvent with `{ projectId }` detail
 - Fired immediately after the user sends a message (before the placeholder response timeout)
 - Same CustomEvent pattern as `swirl:keypress`
+- Card picks its staging side (left or right) based on current orbital x vs viewport centerX at the moment of activation
 
 Suggestion chips — persistent bar only:
 - Chips appear ONLY in the persistent bar above the input. Never inside message bubbles.
@@ -73,35 +74,86 @@ Suggestion chips — persistent bar only:
 - The bar always shows the fixed set: `my work`, `my experience`, `about me`, `my resume`, `contact`.
 - When wiring real AI responses, do not pass chips through message data — the bar handles all navigation shortcuts.
 
-### Orbital project cards (Session 14)
+### Floating project cards (Sessions 14–23 — current state)
 
-Eight project cards orbit the chat panel in slow elliptical arcs. The system consists of:
+Ten project cards orbit the chat panel in slow elliptical arcs and dock to staging zones when activated by chat.
 
-- `src/content/projects.ts` — typed `Project` interface + `PROJECTS` array (8 entries: Waypoint, Sherpa, waypoint-sync, Channel AI, Statespace, Mushroom, Seudo AI, Statespace × Kernel)
-- `src/components/ui/OrbitalCard.tsx` — individual card; listens for `portfolio:project-active` CustomEvent; drifts inward and brightens on activation
-- `src/components/ui/OrbitalSystem.tsx` — mounts all 8 cards; tracks viewport center on resize; `z-10` (between Swirl at `z-0` and ChatPanel at `z-20`)
+**Files:**
+- `src/content/projects.ts` — typed `Project` interface + `PROJECTS` array (10 entries)
+- `src/components/ui/OrbitalCard.tsx` — floating card with sine-wave drift + staging lerp
+- `src/components/ui/OrbitalSystem.tsx` — mounts 10 cards, computes home positions + staging zones
 
-Z-index stack:
+**Project interface (Session 20):**
+```ts
+interface Project {
+  id: string
+  name: string
+  role: string        // one line — your role or what you built
+  image?: string      // path in /public/projects/ — optional
+  keywords: string[]
+}
+```
+
+**Z-index stack:**
 - Swirl: `z-0`
 - OrbitalSystem: `z-10`
 - ChatPanel: `z-20`
 - Nav: `z-30`
 
-Card idle state: `opacity: 0.22`, slow elliptical orbit (speeds 0.012–0.022 rad/s)
-Card active state (triggered by `portfolio:project-active`):
-- `opacity: 1` over `0.6s`
-- Border shifts to `rgba(0,255,159,0.3)` terminal green
-- `#00ff9f` beacon dot pulses in top-right corner (`animation: pulse 1.5s ease-in-out infinite`)
-- Radius multiplier drops to `0.85` (drifts inward)
-- Deactivates after 4000ms
+**Card visual design (Session 20):**
+- Terminal chrome header: macOS traffic lights `#ff5f57` / `#febc2e` / `#28c840`, dark bg `rgba(14,16,21,0.9)`, `[id].exe` title
+- 120px image/video area: placeholder `20×20px` grid line pattern + project id label when no asset or load error
+- One line of copy: `project.role` — `rgba(255,255,255,0.5)` idle → `rgba(255,255,255,0.85)` active
+- Glass body: `rgba(22,26,34,0.92)` + `blur(5px)`, `borderRadius: 8px`, `220px` wide
+- NO data visualizations, NO `rgba(196,174,145,*)` warm amber
+- Active beacon: static `#00ff9f` dot + `boxShadow: 0 0 8px rgba(0,255,159,0.5)` — no pulse
+- Idle `opacity: 0.6`, active `opacity: 1`
 
-`@keyframes pulse` defined in `globals.css` (alongside `@keyframes blink`).
+**Media rendering (Session 23):**
+- `.mp4` → `<video autoPlay muted loop playsInline>` — no controls, no sound
+- Static formats → raw `<img>` (not `next/image` — optimization pipeline caused silent `onError` failures for these fixed-size thumbnails). Both have `onError` → placeholder fallback.
+- Detection: `project.image?.endsWith('.mp4')`
+- `eslint-disable-next-line @next/next/no-img-element` comment justifies the raw `<img>` exception
 
-Glass treatment on cards: `rgba(22,26,34,0.75)` + `blur(5px)` — matches nav and chat panel glass.
+**Current assets in `/public/projects/`:**
+- MP4: `waypoint.mp4`, `sherpa.mp4`, `waypoint-sync.mp4`, `channelai.mp4`, `statespace.mp4`, `seudo.mp4`, `kernel.mp4`, `cohere-labs.mp4`
+- Static: `mushroom.jpg`, `wafer.png`
+- Unused: `north.mp4` (no matching project entry)
 
-Orbital config (per card): `radiusX`, `radiusY`, `speed`, `offset` — values defined as a fixed array in `OrbitalSystem.tsx`. Offsets spaced ~0.785 rad apart (2π/8) with minor variation.
+**Position system (Session 22 — replaces all elliptical orbital math):**
+- `HOME_POSITIONS` — 10 fixed positions as `{ xPct, yPct }` viewport fractions. Layout: 3 left, 3 right, 2 top strip, 2 bottom strip. All within viewport, none overlap the chat panel.
+- `DRIFT_CONFIGS` — per-card `{ xAmp, yAmp, xSpeed, ySpeed, phase }`. Gentle sine drift: `sin(elapsed * xSpeed + phase) * xAmp` / `cos(elapsed * ySpeed + phase * 1.3) * yAmp`. Amplitudes ±14–24px.
+- No elliptical math, no radius calculations, no convergence problems.
 
-Do not modify `Swirl.tsx`, `SwirlDotGrid.tsx`, or `HiDotGrid.tsx`.
+**Viewport clamping (Session 23):**
+- `clampHome(xPct, yPct, vw, vh)` in `OrbitalSystem.tsx` — ensures every home position keeps the full 220×160 card footprint on screen. `EDGE_PAD = 12`. Re-applied on every resize.
+
+**Soft collision repulsion (Session 23):**
+- `positionsRef` — shared `useRef<Array<{x,y}>>` in `OrbitalSystem`, passed to every card. Updated each RAF frame via `onPositionUpdate` callback. Never triggers re-renders.
+- Each card reads `positionsRef` in its RAF loop: if distance to another card < `MIN_DIST = 240`, applies a gentle push proportional to overlap. `REPULSE_STRENGTH = 0.4`.
+- Repulsion + viewport clamping only apply when card is idle (`activeRef.current === false`). Staged cards are fully exempt.
+- `startTimeRef` uses lazy initialization on first RAF frame (not `performance.now()` at render time) to satisfy `react-hooks/purity`.
+
+**Activation flow:**
+1. Type → `detectProjectMention` → `portfolio:project-active` dispatched on send
+2. Click card → `portfolio:query` dispatched → `ChatPanel` auto-submits via `sendMessageRef.current`
+3. Side picked by `homeX < window.innerWidth / 2` (home position determines side, not current drift position)
+4. `lerpRef` `0 → 1` at `0.06`/frame → card lerps from drift position toward staging slot
+5. After 4000ms: `active` false, `chosenSlotRef` cleared → lerpRef drains → card returns to drift
+
+**Staging zones (Session 22):**
+- 5 slots per side, `CARD_H = 160`, `STAGE_GAP = 12`, `16px` gap from panel edge
+- `id="chat-panel"` on `ChatPanel` root div — NOT the centering wrapper in `page.tsx`
+
+**Do NOT reintroduce elliptical orbital math.** Home positions are fixed viewport percentages.
+**Do NOT change `lerpRef` factor (`0.06`), traffic light colors, or card visual design.**
+**Do NOT reduce `MIN_DIST` below 220** (card width). Current value: 240.
+**`positionsRef` must remain a `useRef`** — never convert to `useState`.
+
+**Do NOT modify:** `Swirl.tsx`, `SwirlDotGrid.tsx`, `HiDotGrid.tsx`
+**Do NOT change:** `lerpRef` factor (`0.06`), traffic light colors, card visual design
+**Do NOT reintroduce:** elliptical orbital math, `next/image` in OrbitalCard (intentional exception)
+**`@keyframes pulse`** remains in `globals.css` (not used by cards currently)
 
 ### The Nav (`src/components/layout/Nav.tsx`) includes a "Chat with me" button (Session 10):
 - Warm amber pill button at the right of the nav

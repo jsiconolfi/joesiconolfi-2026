@@ -1,115 +1,156 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import OrbitalCard from './OrbitalCard'
 import { PROJECTS } from '@/content/projects'
 
+// Home positions as percentage of viewport (vw%, vh%)
+// These are carefully chosen to surround the centered chat panel
+// without overlapping it. Panel is roughly 45% wide, centered.
+// Left edge of panel ≈ 27.5vw, right edge ≈ 72.5vw
+const HOME_POSITIONS = [
+  // Left column — 3 cards staggered vertically
+  { xPct: 0.08, yPct: 0.18 },  // Waypoint       — top left
+  { xPct: 0.06, yPct: 0.50 },  // Sherpa         — mid left
+  { xPct: 0.10, yPct: 0.80 },  // waypoint-sync  — bottom left
+
+  // Right column — 3 cards staggered vertically
+  { xPct: 0.88, yPct: 0.18 },  // Channel        — top right
+  { xPct: 0.90, yPct: 0.50 },  // Statespace     — mid right
+  { xPct: 0.86, yPct: 0.80 },  // Mushroom       — bottom right
+
+  // Top strip — 2 cards above the panel
+  { xPct: 0.25, yPct: 0.06 },  // Seudo          — top center-left
+  { xPct: 0.72, yPct: 0.06 },  // Kernel         — top center-right
+
+  // Bottom strip — 2 cards below the panel
+  { xPct: 0.25, yPct: 0.92 },  // Wafer          — bottom center-left
+  { xPct: 0.72, yPct: 0.92 },  // Cohere Labs    — bottom center-right
+]
+
+// Drift parameters — each card drifts with unique phase and amplitude
+// Drift is purely visual, small enough that cards never leave their quadrant
+const DRIFT_CONFIGS = [
+  { xAmp: 18, yAmp: 22, xSpeed: 0.0008, ySpeed: 0.0006, phase: 0.0 },
+  { xAmp: 22, yAmp: 16, xSpeed: 0.0007, ySpeed: 0.0009, phase: 1.1 },
+  { xAmp: 14, yAmp: 20, xSpeed: 0.0009, ySpeed: 0.0007, phase: 2.2 },
+  { xAmp: 20, yAmp: 18, xSpeed: 0.0006, ySpeed: 0.0008, phase: 3.3 },
+  { xAmp: 16, yAmp: 24, xSpeed: 0.0010, ySpeed: 0.0006, phase: 4.4 },
+  { xAmp: 24, yAmp: 14, xSpeed: 0.0007, ySpeed: 0.0010, phase: 5.5 },
+  { xAmp: 20, yAmp: 18, xSpeed: 0.0008, ySpeed: 0.0007, phase: 0.7 },
+  { xAmp: 16, yAmp: 22, xSpeed: 0.0009, ySpeed: 0.0008, phase: 1.8 },
+  { xAmp: 22, yAmp: 16, xSpeed: 0.0007, ySpeed: 0.0009, phase: 2.9 },
+  { xAmp: 18, yAmp: 20, xSpeed: 0.0008, ySpeed: 0.0007, phase: 4.0 },
+]
+
+const CARD_W = 220
+const CARD_H = 160
+const STAGE_GAP = 12
+const EDGE_PAD = 12
+
+// Clamp a percentage-based position so the card stays fully on screen
+function clampHome(xPct: number, yPct: number, vw: number, vh: number) {
+  const rawX = xPct * vw
+  const rawY = yPct * vh
+  const minX = CARD_W / 2 + EDGE_PAD
+  const maxX = vw - CARD_W / 2 - EDGE_PAD
+  const minY = CARD_H / 2 + EDGE_PAD
+  const maxY = vh - CARD_H / 2 - EDGE_PAD
+  return {
+    x: Math.max(minX, Math.min(maxX, rawX)),
+    y: Math.max(minY, Math.min(maxY, rawY)),
+  }
+}
+
 export default function OrbitalSystem() {
-  const [center, setCenter] = useState({ x: 0, y: 0 })
-  const [safeRadii, setSafeRadii] = useState({ x: 580, y: 300 })
+  const [viewport, setViewport] = useState({ w: 0, h: 0 })
   const [leftSlots, setLeftSlots] = useState<Array<{ x: number; y: number }>>([])
   const [rightSlots, setRightSlots] = useState<Array<{ x: number; y: number }>>([])
-  const [stagingReady, setStagingReady] = useState(false)
+  const [ready, setReady] = useState(false)
+
+  // Shared mutable ref — updated every frame by each card.
+  // Using a ref (not state) so updates never trigger re-renders.
+  const positionsRef = useRef<Array<{ x: number; y: number }>>(
+    Array(10).fill({ x: 0, y: 0 })
+  )
+
+  const handlePositionUpdate = useCallback((index: number, x: number, y: number) => {
+    positionsRef.current[index] = { x, y }
+  }, [])
 
   useEffect(() => {
     function measure() {
-      const panel = document.getElementById('chat-panel')
       const vw = window.innerWidth
       const vh = window.innerHeight
+      setViewport({ w: vw, h: vh })
 
-      setCenter({ x: vw / 2, y: vh / 2 })
-
+      const panel = document.getElementById('chat-panel')
       if (panel) {
         const rect = panel.getBoundingClientRect()
-
-        const CARD_W = 220
-        const CARD_H = 130
-        const GAP = 24
-        const SLOT_GAP = 10
-
-        const cardSlotHeight = CARD_H + SLOT_GAP
-        const totalHeight = 4 * cardSlotHeight
         const panelMidY = rect.top + rect.height / 2
-        const startY = panelMidY - totalHeight / 2
+        const slotH = CARD_H + STAGE_GAP
+        const totalH = 5 * slotH
+        const startY = panelMidY - totalH / 2
 
-        const leftX = rect.left - CARD_W / 2 - GAP
-        const left = Array.from({ length: 4 }, (_, i) => ({
-          x: leftX,
-          y: startY + i * cardSlotHeight + CARD_H / 2,
-        }))
+        const lx = rect.left - CARD_W / 2 - 16
+        const rx = rect.right + CARD_W / 2 + 16
 
-        const rightX = rect.right + CARD_W / 2 + GAP
-        const right = Array.from({ length: 4 }, (_, i) => ({
-          x: rightX,
-          y: startY + i * cardSlotHeight + CARD_H / 2,
-        }))
-
-        setLeftSlots(left)
-        setRightSlots(right)
-
-        const minRadiusX = rect.width / 2 + CARD_W / 2 + 40
-        const minRadiusY = rect.height / 2 + CARD_H / 2 + 40
-        const maxRadiusX = vw / 2 - CARD_W / 2 - 16
-        const maxRadiusY = vh / 2 - CARD_H / 2 - 16
-
-        setSafeRadii({
-          x: Math.min(maxRadiusX, Math.max(minRadiusX, minRadiusX * 1.2)),
-          y: Math.min(maxRadiusY, Math.max(minRadiusY, minRadiusY * 1.2)),
-        })
-
-        setStagingReady(true)
+        setLeftSlots(
+          Array.from({ length: 5 }, (_, i) => ({
+            x: lx,
+            y: startY + i * slotH + CARD_H / 2,
+          }))
+        )
+        setRightSlots(
+          Array.from({ length: 5 }, (_, i) => ({
+            x: rx,
+            y: startY + i * slotH + CARD_H / 2,
+          }))
+        )
+        setReady(true)
       }
     }
 
     measure()
 
-    let timeout: ReturnType<typeof setTimeout>
+    let t: ReturnType<typeof setTimeout>
     function handleResize() {
-      clearTimeout(timeout)
-      timeout = setTimeout(measure, 200)
+      clearTimeout(t)
+      t = setTimeout(measure, 200)
     }
 
     window.addEventListener('resize', handleResize)
     return () => {
       window.removeEventListener('resize', handleResize)
-      clearTimeout(timeout)
+      clearTimeout(t)
     }
   }, [])
 
-  // Variance added on top of the safe minimum — never subtracts
-  const orbitalVariance = [
-    { xVar: 20,  yVar: 10,  speed: 0.032, offset: 0 },
-    { xVar: 35,  yVar: 0,   speed: 0.026, offset: 0.79 },
-    { xVar: 10,  yVar: 20,  speed: 0.038, offset: 1.57 },
-    { xVar: 25,  yVar: 5,   speed: 0.029, offset: 2.36 },
-    { xVar: 20,  yVar: 15,  speed: 0.035, offset: 3.14 },
-    { xVar: 30,  yVar: 5,   speed: 0.028, offset: 3.93 },
-    { xVar: 15,  yVar: 10,  speed: 0.031, offset: 4.71 },
-    { xVar: 28,  yVar: 8,   speed: 0.024, offset: 5.50 },
-  ]
-
-  if (center.x === 0 || !stagingReady) return null
-
-  const vw = typeof window !== 'undefined' ? window.innerWidth : 1440
+  if (!ready || viewport.w === 0) return null
 
   return (
-    <div className="fixed inset-0 pointer-events-none z-10 overflow-hidden">
+    <div className="fixed inset-0 pointer-events-none z-10">
       {PROJECTS.map((project, i) => {
-        const v = orbitalVariance[i]
-        const slotIndex = i % 4
+        const raw = HOME_POSITIONS[i]
+        const home = clampHome(raw.xPct, raw.yPct, viewport.w, viewport.h)
+        const drift = DRIFT_CONFIGS[i]
+        const slotIndex = i % 5
         return (
           <OrbitalCard
             key={project.id}
             project={project}
-            orbitAngle={0}
-            orbitRadiusX={safeRadii.x + v.xVar}
-            orbitRadiusY={safeRadii.y + v.yVar}
-            orbitSpeed={v.speed}
-            orbitOffset={v.offset}
-            centerX={center.x}
-            centerY={center.y}
-            leftSlot={leftSlots[slotIndex] ?? { x: 120, y: center.y }}
-            rightSlot={rightSlots[slotIndex] ?? { x: vw - 120, y: center.y }}
+            homeX={home.x}
+            homeY={home.y}
+            driftXAmp={drift.xAmp}
+            driftYAmp={drift.yAmp}
+            driftXSpeed={drift.xSpeed}
+            driftYSpeed={drift.ySpeed}
+            driftPhase={drift.phase}
+            leftSlot={leftSlots[slotIndex] ?? { x: 140, y: viewport.h / 2 }}
+            rightSlot={rightSlots[slotIndex] ?? { x: viewport.w - 140, y: viewport.h / 2 }}
+            cardIndex={i}
+            onPositionUpdate={handlePositionUpdate}
+            positionsRef={positionsRef}
           />
         )
       })}
