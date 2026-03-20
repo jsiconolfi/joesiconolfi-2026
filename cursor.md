@@ -128,8 +128,8 @@ Two RAF-loop dot grid components live in `src/components/ui/`:
 - Configurable cols×rows grid with rotating sweep arm mimicking the main swirl
 - Pre-computes angle/radius for each dot; sweep trail is `TRAIL = 1.8` radians
 - Trail dots colorize with hue offset; off-trail dots fade to `rgba(196,174,145,0.06)`
-- Used as AI thinking state in ChatPanel: `cols={6} rows={4} dotSize={4} gap={3} speed={0.055}`
-- Shows when `isLoading` is true, paired with `thinking...` label below
+- Used inside `AssistantAvatar` when `thinking={true}`: `cols={4} rows={4} dotSize={3} gap={2} speed={0.055}`
+- Rendered inside the avatar circle — `overflow-hidden` on the circle clips it
 - Props: `cols`, `rows`, `dotSize`, `gap`, `speed`, `className`
 
 ### Shared rules for both
@@ -138,7 +138,7 @@ Two RAF-loop dot grid components live in `src/components/ui/`:
 - `rafRef` typed as `useRef<number | undefined>(undefined)` — cleanup on unmount
 - `prefers-reduced-motion`: static snapshot state, no animation
 
-## AI / chat panel (Session 7)
+## AI / chat panel (Session 7 — updated Session 11)
 
 The prompt bar has been replaced by a full `ChatPanel` component — the primary interface of the homepage. Rules:
 - `src/components/ui/ChatPanel.tsx` — the main deliverable, centered in the viewport
@@ -148,12 +148,47 @@ The prompt bar has been replaced by a full `ChatPanel` component — the primary
   - Header / input bar: `backgroundColor: rgba(14,16,21,0.8)`, `borderBottom/Top: 1px solid rgba(255,255,255,0.06)`
   - User message bubble: `rgba(255,255,255,0.08)` bg, `rgba(255,255,255,0.1)` border, `borderRadius: 16px 16px 4px 16px`
   - Suggestion chips: `rgba(255,255,255,0.04)` bg, `rgba(255,255,255,0.12)` border, `borderRadius: 20px`
-- Terminal chrome header: macOS traffic-light dots (`#ff5f57`, `#febc2e`, `#28c840`) + `portfolio.navigator — joe@joesiconolfi.com`
-- AI avatar: `>_` typographic symbol in a small circle — no images
-- Input bar: `>` prompt prefix in `accent.warm`, free-form input, up-arrow send button
-- Opens with INITIAL_MESSAGES — greeting already visible, no empty state
-- Placeholder AI response (setTimeout 800ms) — real Anthropic integration next session
+- Terminal chrome header: macOS traffic-light dots (white/15 placeholder) + `portfolio.navigator`
+- AI avatar: logo image in a small circle (`/logo-update.svg`)
+- Input bar: `>` prompt prefix in `#00ff9f` (terminal green), free-form input, up-arrow send button
 - ID generation: use `useRef` counter (not `Date.now()`) — react-hooks/purity rule is strict
+
+### Animated greeting stream on load (Session 11–13)
+
+Three-phase load sequence on every page visit:
+1. **Thinking** (1500ms) — `AssistantAvatar thinking={true}` (SwirlDotGrid animates inside the circle) + `"thinking..."` label inline to the right, vertically centered. `isLoading: true`.
+2. **Streaming** — `isLoading` flips false; avatar crossfades to icon (`opacity 0.4s ease`); `GREETING` streams character by character at `STREAM_SPEED = 28` ms/char; a `2px × 13px` `#00ff9f` cursor blinks at `0.8s step-end`.
+3. **Complete** — 300ms after last character: `streamingContent` clears, full message lands in `messages`.
+
+State shape:
+- `isLoading` — controls initial thinking phase (starts `true`, becomes `false` after 1500ms)
+- `streamingContent` — string being built during phase 2
+- `isResponseLoading` — separate state for subsequent AI response loading (does NOT interfere with initial load)
+
+Color rules:
+- `#00ff9f` (`accent.terminal`) appears ONLY on: blinking cursor, `>` prompt prefix, chip hover states
+- Do not use `accent.warm` for interactive terminal states — that color is for nav/link hovers only
+
+### AssistantAvatar (Session 13)
+
+`AssistantAvatar` accepts a `thinking` prop and crossfades between two layers inside the same `w-9 h-9` circle:
+- `thinking={true}`: SwirlDotGrid (`4×4`, `dotSize={3}`, `gap={2}`, `speed={0.055}`) fades in; avatar icon fades out
+- `thinking={false}`: avatar icon fades in; SwirlDotGrid fades out
+- Both layers use `opacity` + `transition: opacity 0.4s ease` — CSS only, no Framer Motion
+- Circle is `overflow-hidden` — the grid is clipped by the circle boundary, no explicit sizing needed
+- Circle size is fixed at `w-9 h-9` (36×36px) — never resize it
+- The avatar icon itself (`/logo-update.svg`, `18×18`) is unchanged
+
+### Suggestion chips — persistent bar only (Session 12)
+
+Chips appear exclusively in the persistent bar directly above the input field. They do NOT appear inline inside message bubbles.
+- `Message` interface has no `chips` field — chips are not message-level data
+- The persistent bar always shows the same fixed set: `my work`, `my experience`, `about me`, `my resume`, `contact`
+- Do not add chips to assistant messages when implementing AI responses — the bar handles navigation, messages handle conversation
+
+CSS:
+- `@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }` defined in `globals.css` (above `@layer utilities`)
+- Cursor animation: `animation: 'blink 0.8s step-end infinite'` — sharp on/off, not a fade
 
 ## Page layout (Session 7)
 
@@ -201,7 +236,7 @@ These files are retained as valid TypeScript stubs (return null, no props) to ke
 - No heavy 3D libraries (Three.js, react-three-fiber) — wrong signal for this role
 - No template-looking layouts — every section should feel custom-designed
 - No emoji in production UI
-- No "creative cosmonaut" or similar bio-speak copy — the site demonstrates, it does not describe
+- Never update copy or content strings unless explicitly asked — preserve exact wording even if it conflicts with other style rules
 - No lorem ipsum in any commit — use real content stubs from `content/`
 - No inline styles except for truly dynamic values
 - No `useEffect` for things that can be server-side

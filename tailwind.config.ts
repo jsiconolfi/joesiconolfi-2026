@@ -26,9 +26,10 @@ const config: Config = {
           faint:     '#555555',
         },
         accent: {
-          warm:      '#c4ae91',
+          warm:       '#c4ae91',
           'warm-dim': '#a8906e',
-          neon:      '#00ff9f',
+          neon:       '#00ff9f',
+          terminal:   '#00ff9f',   // neon terminal green — interactive states
         },
       },
       fontFamily: {

@@ -92,25 +92,20 @@ export default function SwirlDotGrid({
         const distFade = Math.max(0.2, 1 - radii[i] / (maxRadius + 0.5))
 
         let alpha: number
-        let hue: number
-        let sat: number
 
         if (inTrail) {
           const intensity = Math.max(0, 1 - (diff + TRAIL) / TRAIL * 0.4)
           alpha = 0.12 + intensity * 0.88 * distFade
-          hue = ((angles[i] / (Math.PI * 2)) * 240 + tickRef.current * 30) % 360
-          sat = 55
+
+          const hue = ((angles[i] / (Math.PI * 2)) * 240 + tickRef.current * 30) % 360
+          dots[i].style.background = `hsla(${hue | 0},55%,68%,${alpha.toFixed(2)})`
           dots[i].style.transform = intensity > 0.6
             ? `scale(${(0.95 + intensity * 0.35).toFixed(3)})`
             : 'scale(1)'
         } else {
-          alpha = 0.06
-          hue = 0
-          sat = 0
+          dots[i].style.background = 'rgba(196,174,145,0.06)'
           dots[i].style.transform = 'scale(1)'
         }
-
-        dots[i].style.background = `hsla(${hue | 0},${sat}%,68%,${alpha.toFixed(2)})`
       }
     }
 

@@ -27,7 +27,7 @@ Every section uses the same interaction grammar: glance → expand → immerse. 
 
 ## Site sections and their purpose
 
-### Hero / Homepage (Session 10 — current state)
+### Hero / Homepage (Session 11 — current state)
 
 The homepage is a fixed overlay composition — not a scrollable section:
 - **Swirl**: `fixed inset-0 z-0`, fills entire viewport, bleeds through the glass panel
@@ -37,12 +37,35 @@ The homepage is a fixed overlay composition — not a scrollable section:
 
 The ChatPanel (`src/components/ui/ChatPanel.tsx`) is a terminal-aesthetic frosted glass chat interface:
 - macOS traffic-light header chrome
-- AI greeter message with suggestion chips visible on load (no empty state)
-- `>_` typographic avatar for the assistant
-- `>` prompt prefix in the input bar
+- Animated greeting stream on load — three phases: thinking → streaming → chips (Session 11)
+- AI avatar: `/logo-update.svg` in a small circle
+- `>` prompt prefix in `#00ff9f` terminal green
 - Placeholder AI responses (800ms timeout) — Anthropic integration next session
 - Glass treatment uses inline styles matching the site's existing glass variables
-- Thinking state: `SwirlDotGrid` (6×4, speed 0.055) + "thinking..." label replaces the pulse-dot loader
+- Thinking state: `SwirlDotGrid` (6×4, speed 0.055) + "thinking..." label
+
+Load sequence (Session 11–13):
+1. **Phase 1 — Thinking** (1.5s): `isLoading: true`. `AssistantAvatar thinking={true}` — SwirlDotGrid sweeps inside the avatar circle. `"thinking..."` label sits inline to the right, vertically centered on the same row.
+2. **Phase 2 — Streaming**: `isLoading` flips false. Avatar crossfades to icon (`opacity 0.4s ease`). Greeting text builds character by character at 28ms/char; `#00ff9f` cursor blinks at trailing edge.
+3. **Phase 3 — Complete**: 300ms after last char, `streamingContent` clears, full message lands in `messages`.
+
+AssistantAvatar (Session 13):
+- `thinking` prop (boolean, default `false`) controls a crossfade between two absolutely-positioned layers inside a fixed `w-9 h-9` circle
+- `thinking={true}`: SwirlDotGrid (`4×4`, dotSize 3, gap 2, speed 0.055) fades in; icon fades out
+- `thinking={false}`: icon (`/logo-update.svg`, 18×18) fades in; grid fades out
+- Transition: CSS `opacity 0.4s ease` only — no Framer Motion
+- Circle has `overflow-hidden` — grid is naturally clipped, no manual sizing
+- Circle size is fixed at `w-9 h-9` (36×36px) — do not change it
+
+Two separate loading states:
+- `isLoading` — initial page load thinking phase only
+- `isResponseLoading` — subsequent AI response loading; used for send button `disabled` prop and `AssistantAvatar thinking={true}`
+
+Suggestion chips — persistent bar only:
+- Chips appear ONLY in the persistent bar above the input. Never inside message bubbles.
+- The `Message` interface has no `chips` field — do not add one.
+- The bar always shows the fixed set: `my work`, `my experience`, `about me`, `my resume`, `contact`.
+- When wiring real AI responses, do not pass chips through message data — the bar handles all navigation shortcuts.
 
 The Nav (`src/components/layout/Nav.tsx`) includes a "Chat with me" button (Session 10):
 - Warm amber pill button at the right of the nav
@@ -116,12 +139,12 @@ text.muted:    #aaaaaa  — supporting body copy
 text.hint:     #999999  — section titles, captions
 text.faint:    #555555  — decorative lines, scroll indicators
 
-accent.warm:   #c4ae91  — the site's one warm accent (link hovers)
-                          This is the only accent on the current site.
-                          Preserve it as the primary interactive color.
+accent.warm:     #c4ae91  — the site's warm accent (nav/link hovers)
+accent.terminal: #00ff9f  — neon terminal green — streaming cursor, > prompt, chip hovers
+                            Added Session 11. Use precisely: only these three contexts.
 ```
 
-No purple gradients on white. No generic AI aesthetics. Do not invent new accent colors without explicit instruction — extend from `#c4ae91` if a second accent is ever needed.
+No purple gradients on white. No generic AI aesthetics. Two accents are now defined — `#c4ae91` for nav/link interactions, `#00ff9f` for terminal/chat interactions. Do not add a third without explicit instruction.
 
 ### Motion
 - Swirl: slow, considered. Speed should feel deliberate, not decorative.
@@ -132,7 +155,7 @@ No purple gradients on white. No generic AI aesthetics. Do not invent new accent
 ## What to never do
 
 - Never write emoji into production UI components
-- Never write "creative cosmonaut" or similar descriptor copy
+- Never update copy or content strings unless explicitly asked — preserve exact wording even if it conflicts with other rules
 - Never generate lorem ipsum — use real content stubs from the content defined above
 - Never add Three.js or heavy 3D — wrong signal for the role
 - Never make the prompt bar look like a ChatGPT clone
