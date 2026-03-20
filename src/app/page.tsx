@@ -11,7 +11,7 @@ export default function Home() {
       <Nav />
 
       {/* Chat panel — always visible on homepage, centered */}
-      <div id="chat-panel" className="fixed inset-0 flex items-center justify-center z-20 px-4 py-20">
+      <div className="fixed inset-0 flex items-center justify-center z-20 px-4 py-20">
         <ChatPanel />
       </div>
 

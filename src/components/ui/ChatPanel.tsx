@@ -168,6 +168,7 @@ export default function ChatPanel() {
 
   return (
     <div
+      id="chat-panel"
       className="w-full max-w-2xl h-[75vh] flex flex-col rounded-lg overflow-hidden"
       style={{
         backgroundColor: 'rgba(22, 26, 34, 0.7)',
