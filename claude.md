@@ -83,31 +83,37 @@ Ten project cards orbit the chat panel in slow elliptical arcs and dock to stagi
 - `src/components/ui/OrbitalCard.tsx` — floating card with sine-wave drift + staging lerp
 - `src/components/ui/OrbitalSystem.tsx` — mounts 10 cards, computes home positions + staging zones
 
-**Project interface (Session 20):**
+**Project interface (Session 20, updated Session 25):**
 ```ts
 interface Project {
   id: string
   name: string
-  role: string        // one line — your role or what you built
-  image?: string      // path in /public/projects/ — optional
+  role: string      // one line — your role or what you built
+  image?: string    // path in /public/projects/ — optional
   keywords: string[]
+  url?: string      // case study URL — internal path or external. undefined = not yet built
 }
 ```
+`url` is `undefined` for all projects until a case study is ready. Never set a placeholder string — `undefined` is the correct "not ready" state. Internal routes use `router.push()`, external URLs (start with `http`) use `window.open(..., '_blank', 'noopener noreferrer')`.
 
 **Z-index stack:**
 - Swirl: `z-0`
 - OrbitalSystem: `z-10`
-- ChatPanel: `z-20`
+- ChatPanel wrapper (centering div): `z-20`, `pointer-events-none` — must stay `pointer-events-none` or it blocks all card interaction
+- ChatPanel root div: `pointer-events-auto` — explicitly re-enables interaction (inherited `pointer-events-none` from wrapper)
 - Nav: `z-30`
 
-**Card visual design (Session 20):**
+**Card visual design (Session 20, updated Session 25):**
 - Terminal chrome header: macOS traffic lights `#ff5f57` / `#febc2e` / `#28c840`, dark bg `rgba(14,16,21,0.9)`, `[id].exe` title
 - 120px image/video area: placeholder `20×20px` grid line pattern + project id label when no asset or load error
 - One line of copy: `project.role` — `rgba(255,255,255,0.5)` idle → `rgba(255,255,255,0.85)` active
+- Footer label: `case study coming soon` at rest → `ask me about this →` on hover (no URL); `view case study →` in `#00ff9f` on hover (with URL). 9px mono, uppercase.
 - Glass body: `rgba(22,26,34,0.92)` + `blur(5px)`, `borderRadius: 8px`, `220px` wide
 - NO data visualizations, NO `rgba(196,174,145,*)` warm amber
 - Active beacon: static `#00ff9f` dot + `boxShadow: 0 0 8px rgba(0,255,159,0.5)` — no pulse
-- Idle `opacity: 0.6`, active `opacity: 1`
+- Idle `opacity: 0.6`, hovered `opacity: 0.85`, active `opacity: 1`
+- Hover: border → `rgba(255,255,255,0.2)`, `scale(1.02)` (suppressed when active), `zIndex: 12`
+- Active always overrides hover — active state takes full visual control
 
 **Media rendering (Session 23):**
 - `.mp4` → `<video autoPlay muted loop playsInline>` — no controls, no sound
@@ -144,11 +150,14 @@ interface Project {
 **Staging zones (Session 22):**
 - 5 slots per side, `CARD_H = 160`, `STAGE_GAP = 12`, `16px` gap from panel edge
 - `id="chat-panel"` on `ChatPanel` root div — NOT the centering wrapper in `page.tsx`
+- **Critical:** centering wrapper in `page.tsx` must have `pointer-events-none`. `ChatPanel` root div must have `pointer-events-auto`. Without this pair, the `fixed inset-0` wrapper at `z-20` silently blocks all pointer events to the cards at `z-10`.
 
 **Do NOT reintroduce elliptical orbital math.** Home positions are fixed viewport percentages.
 **Do NOT change `lerpRef` factor (`0.06`), traffic light colors, or card visual design.**
 **Do NOT reduce `MIN_DIST` below 220** (card width). Current value: 240.
 **`positionsRef` must remain a `useRef`** — never convert to `useState`.
+
+**Project shuffle (Session 24):** `shuffleArray<T>()` (Fisher-Yates, module scope in `OrbitalSystem.tsx`) is called once via `useMemo(() => shuffleArray(PROJECTS), [])`. The render iterates `shuffledProjects`. Each page load gets a different layout; positions are stable within a session. `PROJECTS` in `projects.ts` is never mutated. Must use `useMemo` — `useState` or `useEffect` would cause a visible flash of the unshuffled order.
 
 **Do NOT modify:** `Swirl.tsx`, `SwirlDotGrid.tsx`, `HiDotGrid.tsx`
 **Do NOT change:** `lerpRef` factor (`0.06`), traffic light colors, card visual design

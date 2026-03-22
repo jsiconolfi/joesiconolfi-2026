@@ -14,7 +14,7 @@ interface HiDotGridProps {
 // I: col 4 — col 3 is the gap
 const HI_PATTERN = [
   1, 0, 1, 0, 1,
-  1, 0, 1, 0, 1,
+  1, 0, 1, 0, 0,
   1, 1, 1, 0, 1,
   1, 0, 1, 0, 1,
   1, 0, 1, 0, 1,

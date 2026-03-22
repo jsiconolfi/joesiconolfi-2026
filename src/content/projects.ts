@@ -9,6 +9,7 @@ export interface Project {
   role: string
   image?: string
   keywords: string[]
+  url?: string  // case study URL — internal path or external. undefined = not yet built
 }
 
 export const PROJECTS: Project[] = [

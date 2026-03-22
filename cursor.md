@@ -201,9 +201,15 @@ Ten project cards float around the chat panel with gentle sine-wave drift, and d
 
 Z-index stack: Swirl `z-0` → OrbitalSystem `z-10` → ChatPanel `z-20` → Nav `z-30`
 
-**Project interface (Session 20):** `id`, `name`, `role`, `keywords` (required) + optional `image?: string` (path in `/public/projects/`)
+**Project interface (Session 20, updated Session 25):** `id`, `name`, `role`, `keywords` (required) + optional `image?: string` (path in `/public/projects/`) + optional `url?: string` (case study URL — internal path or external). `url` is `undefined` until a case study is ready — never set a placeholder string.
 
-**Card visual (Session 20):** terminal window — traffic lights `#ff5f57`/`#febc2e`/`#28c840`, dark chrome header (`rgba(14,16,21,0.9)`), `[id].exe` title, 120px image area (placeholder grid when no asset), one line of copy (`project.role`). Idle `opacity: 0.6`, active `opacity: 1`. Static `#00ff9f` beacon on active.
+**Card visual (Session 20, updated Session 25):** terminal window — traffic lights `#ff5f57`/`#febc2e`/`#28c840`, dark chrome header (`rgba(14,16,21,0.9)`), `[id].exe` title, 120px image area (placeholder grid when no asset), one line of copy (`project.role`), footer label. Idle `opacity: 0.6`, hovered `opacity: 0.85`, active `opacity: 1`. Static `#00ff9f` beacon on active.
+
+**Hover state (Session 25):** `hovered` boolean state. On hover: `opacity: 0.85`, `zIndex: 12`, border brightens to `rgba(255,255,255,0.2)`, card scales `1.02x` (suppressed when `active`). Active state always overrides hover visually.
+
+**Click handling (Session 25):** `handleClick` uses `useRouter` from `next/navigation`. If `project.url` exists: internal paths → `router.push()`, external URLs (start with `http`) → `window.open(..., '_blank', 'noopener noreferrer')`. If no URL: fires `portfolio:query` CustomEvent (chat fallback — every card is always interactive).
+
+**Card footer (Session 25):** small label below `project.role`. No URL: `case study coming soon` at rest → `ask me about this →` on hover. With URL: `view case study →` in `#00ff9f` on hover, dim at rest. Font: 9px mono, uppercase, `0.08em` tracking.
 
 **Media rendering (Session 23):** `.mp4` → raw `<video autoPlay muted loop playsInline>`. Static formats (`.jpg`, `.png`, `.webp`, `.gif`) → raw `<img>` (not `next/image` — optimization pipeline caused silent failures for these fixed-size decorative thumbnails). `onError` on both falls back to placeholder grid. Detection: `project.image?.endsWith('.mp4')`.
 
@@ -236,6 +242,8 @@ Z-index stack: Swirl `z-0` → OrbitalSystem `z-10` → ChatPanel `z-20` → Nav
 
 **OrbitalCard props (Session 23 additions):** `cardIndex: number`, `onPositionUpdate: (index, x, y) => void`, `positionsRef: React.MutableRefObject<Array<{x,y}>>`. Both `CARD_W = 220` and `CARD_H = 160` are defined as module-level constants in `OrbitalCard.tsx`.
 
+**Project shuffle (Session 24):** `shuffleArray<T>()` (Fisher-Yates, module scope) shuffles `PROJECTS` once via `useMemo(() => shuffleArray(PROJECTS), [])` inside `OrbitalSystem`. The render iterates `shuffledProjects` — different order on every page load, stable for the session. `PROJECTS` in `projects.ts` is never mutated. Do not replace `useMemo` with `useState` or `useEffect` — that would cause a flash of unshuffled content.
+
 **Do NOT reintroduce elliptical orbital math.** Home positions are fixed viewport percentages.
 **Do NOT change `lerpRef` factor (`0.06`), traffic light colors, or card visual design.**
 
@@ -255,8 +263,8 @@ Homepage is a fixed overlay composition — no scrollable hero section:
 - OrbitalSystem: `fixed inset-0 z-10 pointer-events-none overflow-hidden`
 - Nav: `fixed top-4 z-30`, pill-shaped frosted glass (inline styles for glass effect)
 - Name block: `fixed bottom-8 left-8 z-10 pointer-events-none`
-- ChatPanel wrapper: `fixed inset-0 flex items-center justify-center z-20 px-4 py-20` — no `id` on this div
-- ChatPanel root div has `id="chat-panel"` — this is what `OrbitalSystem` measures via `getBoundingClientRect()`
+- ChatPanel wrapper: `fixed inset-0 flex items-center justify-center z-20 px-4 py-20 pointer-events-none` — no `id` on this div. Must have `pointer-events-none` so cards behind it remain clickable.
+- ChatPanel root div has `id="chat-panel"` and `pointer-events-auto` (re-enables pointer events since the wrapper inherits `pointer-events-none`). This is what `OrbitalSystem` measures via `getBoundingClientRect()`.
 
 ## Nav (Session 7 — updated Session 10)
 

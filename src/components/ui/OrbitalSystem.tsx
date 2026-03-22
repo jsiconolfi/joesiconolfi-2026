@@ -1,8 +1,18 @@
 'use client'
 
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import OrbitalCard from './OrbitalCard'
 import { PROJECTS } from '@/content/projects'
+
+// Fisher-Yates shuffle — runs once, result is stable for the session
+function shuffleArray<T>(arr: T[]): T[] {
+  const shuffled = [...arr]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  return shuffled
+}
 
 // Home positions as percentage of viewport (vw%, vh%)
 // These are carefully chosen to surround the centered chat panel
@@ -63,6 +73,7 @@ function clampHome(xPct: number, yPct: number, vw: number, vh: number) {
 }
 
 export default function OrbitalSystem() {
+  const shuffledProjects = useMemo(() => shuffleArray(PROJECTS), [])
   const [viewport, setViewport] = useState({ w: 0, h: 0 })
   const [leftSlots, setLeftSlots] = useState<Array<{ x: number; y: number }>>([])
   const [rightSlots, setRightSlots] = useState<Array<{ x: number; y: number }>>([])
@@ -130,7 +141,7 @@ export default function OrbitalSystem() {
 
   return (
     <div className="fixed inset-0 pointer-events-none z-10">
-      {PROJECTS.map((project, i) => {
+      {shuffledProjects.map((project, i) => {
         const raw = HOME_POSITIONS[i]
         const home = clampHome(raw.xPct, raw.yPct, viewport.w, viewport.h)
         const drift = DRIFT_CONFIGS[i]

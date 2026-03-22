@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import type { Project } from '@/content/projects'
 
 const CARD_W = 220
@@ -37,7 +38,9 @@ export default function OrbitalCard({
   onPositionUpdate,
   positionsRef,
 }: OrbitalCardProps) {
+  const router = useRouter()
   const [active, setActive] = useState(false)
+  const [hovered, setHovered] = useState(false)
   const [displayPos, setDisplayPos] = useState({ x: homeX, y: homeY })
   const [imgError, setImgError] = useState(false)
   const rafRef = useRef<number | undefined>(undefined)
@@ -136,6 +139,22 @@ export default function OrbitalCard({
     }
   }, [homeX, homeY, driftXAmp, driftYAmp, driftXSpeed, driftYSpeed, driftPhase, cardIndex, onPositionUpdate, positionsRef])
 
+  function handleClick() {
+    if (project.url) {
+      if (project.url.startsWith('http')) {
+        window.open(project.url, '_blank', 'noopener noreferrer')
+      } else {
+        router.push(project.url)
+      }
+    } else {
+      window.dispatchEvent(
+        new CustomEvent('portfolio:query', {
+          detail: { query: `tell me about ${project.name}` },
+        })
+      )
+    }
+  }
+
   const isVideo = project.image?.endsWith('.mp4')
   const showMedia = project.image && !imgError
 
@@ -147,10 +166,12 @@ export default function OrbitalCard({
         top: displayPos.y,
         transform: 'translate(-50%, -50%)',
         width: '220px',
-        opacity: active ? 1 : 0.6,
-        transition: 'opacity 0.5s ease',
-        zIndex: active ? 15 : 5,
+        opacity: active ? 1 : hovered ? 0.85 : 0.6,
+        transition: 'opacity 0.3s ease',
+        zIndex: active ? 15 : hovered ? 12 : 5,
       }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
       {/* Active beacon — static dot, no animation */}
       {active && (
@@ -165,19 +186,15 @@ export default function OrbitalCard({
 
       {/* Terminal window */}
       <div
-        onClick={() => {
-          window.dispatchEvent(
-            new CustomEvent('portfolio:query', {
-              detail: { query: `tell me about ${project.name}` },
-            })
-          )
-        }}
+        onClick={handleClick}
         style={{
           backgroundColor: 'rgba(22, 26, 34, 0.92)',
           backdropFilter: 'blur(5px)',
           WebkitBackdropFilter: 'blur(5px)',
           border: active
             ? '1px solid rgba(0,255,159,0.3)'
+            : hovered
+            ? '1px solid rgba(255,255,255,0.2)'
             : '1px solid rgba(255,255,255,0.08)',
           borderRadius: '8px',
           overflow: 'hidden',
@@ -185,7 +202,8 @@ export default function OrbitalCard({
           boxShadow: active
             ? '0 12px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,255,159,0.1)'
             : '0 8px 32px rgba(0,0,0,0.4)',
-          transition: 'border 0.5s ease, box-shadow 0.5s ease',
+          transform: hovered && !active ? 'scale(1.02)' : 'scale(1)',
+          transition: 'border 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease',
           width: '220px',
         }}
       >
@@ -294,7 +312,7 @@ export default function OrbitalCard({
         </div>
 
         {/* One line of copy */}
-        <div style={{ padding: '8px 10px 10px' }}>
+        <div style={{ padding: '8px 10px 4px' }}>
           <p
             style={{
               fontFamily: 'var(--font-mono, monospace)',
@@ -311,6 +329,44 @@ export default function OrbitalCard({
           >
             {project.role}
           </p>
+        </div>
+
+        {/* Footer — click affordance */}
+        <div
+          style={{
+            padding: '0 10px 8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          {project.url ? (
+            <span
+              style={{
+                fontFamily: 'var(--font-mono, monospace)',
+                fontSize: '9px',
+                color: hovered ? '#00ff9f' : 'rgba(255,255,255,0.25)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                transition: 'color 0.2s ease',
+              }}
+            >
+              view case study →
+            </span>
+          ) : (
+            <span
+              style={{
+                fontFamily: 'var(--font-mono, monospace)',
+                fontSize: '9px',
+                color: hovered ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.15)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                transition: 'color 0.2s ease',
+              }}
+            >
+              {hovered ? 'ask me about this →' : 'case study coming soon'}
+            </span>
+          )}
         </div>
       </div>
     </div>
