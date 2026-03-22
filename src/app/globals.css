@@ -36,6 +36,15 @@ body {
   }
 }
 
+#chat-panel .chip-button {
+  color: rgba(255, 255, 255, 0.75);
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+#chat-panel .chip-button:hover {
+  color: #00ff9f;
+  border-color: rgba(0, 255, 159, 0.3);
+}
+
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0; }

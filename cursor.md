@@ -201,7 +201,7 @@ Ten project cards float around the chat panel with gentle sine-wave drift, and d
 
 Z-index stack: Swirl `z-0` → OrbitalSystem `z-10` → ChatPanel `z-20` → Nav `z-30`
 
-**Project interface (Session 20, updated Session 25):** `id`, `name`, `role`, `keywords` (required) + optional `image?: string` (path in `/public/projects/`) + optional `url?: string` (case study URL — internal path or external). `url` is `undefined` until a case study is ready — never set a placeholder string.
+**Project interface (Session 20, updated Session 27):** `id`, `name`, `role`, `keywords` (required) + optional `image?: string` (static thumbnail path in `/public/projects/`) + optional `video?: string` (mp4 path — lazy video, plays on hover/active) + optional `url?: string` (case study URL). `url` is `undefined` until a case study is ready — never set a placeholder string. Three projects have `video` set: `waypoint`, `channel`, `seudo`.
 
 **Card visual (Session 20, updated Session 25):** terminal window — traffic lights `#ff5f57`/`#febc2e`/`#28c840`, dark chrome header (`rgba(14,16,21,0.9)`), `[id].exe` title, 120px image area (placeholder grid when no asset), one line of copy (`project.role`), footer label. Idle `opacity: 0.6`, hovered `opacity: 0.85`, active `opacity: 1`. Static `#00ff9f` beacon on active.
 
@@ -211,7 +211,7 @@ Z-index stack: Swirl `z-0` → OrbitalSystem `z-10` → ChatPanel `z-20` → Nav
 
 **Card footer (Session 25):** small label below `project.role`. No URL: `case study coming soon` at rest → `ask me about this →` on hover. With URL: `view case study →` in `#00ff9f` on hover, dim at rest. Font: 9px mono, uppercase, `0.08em` tracking.
 
-**Media rendering (Session 23):** `.mp4` → raw `<video autoPlay muted loop playsInline>`. Static formats (`.jpg`, `.png`, `.webp`, `.gif`) → raw `<img>` (not `next/image` — optimization pipeline caused silent failures for these fixed-size decorative thumbnails). `onError` on both falls back to placeholder grid. Detection: `project.image?.endsWith('.mp4')`.
+**Media rendering (Session 23, updated Session 27):** `project.image` → raw `<img>` at rest (static thumbnail). `project.video` → `<video preload="none">` — lazy, plays on hover or chat activation (`hovered || active`), pauses and resets on leave. Image and video are separate fields. `onError` on `<img>` falls back to placeholder grid. `preload="none"` required on all videos. Old autoPlay `isVideo` detection removed. Raw `<img>` (not `next/image`) is intentional — documented with `eslint-disable` comment.
 
 **Position system (Session 22 — replaces elliptical orbital math):**
 - `HOME_POSITIONS` array — 10 fixed positions as `{ xPct, yPct }` viewport fractions. Converted to px as `xPct * viewport.w` / `yPct * viewport.h`. Layout: 3 left, 3 right, 2 top, 2 bottom — none overlap the chat panel.
@@ -266,13 +266,37 @@ Homepage is a fixed overlay composition — no scrollable hero section:
 - ChatPanel wrapper: `fixed inset-0 flex items-center justify-center z-20 px-4 py-20 pointer-events-none` — no `id` on this div. Must have `pointer-events-none` so cards behind it remain clickable.
 - ChatPanel root div has `id="chat-panel"` and `pointer-events-auto` (re-enables pointer events since the wrapper inherits `pointer-events-none`). This is what `OrbitalSystem` measures via `getBoundingClientRect()`.
 
-## Nav (Session 7 — updated Session 10)
+## Nav (Session 7 — updated Session 27)
 
 `src/components/layout/Nav.tsx` — pill nav, frosted glass, centered top, `'use client'`:
-- Links: work, lab, timeline, contact
+- Links: `case studies` (dropdown) / `lab` / `timeline` / "Chat with me" button
+- The `work` link was replaced in Session 27 with `<CaseStudiesDropdown />` — a button that opens a `320px` frosted-glass dropdown with 4 featured projects + hover-play video thumbnails
 - Glass: inline styles (`backdropFilter: blur(12px)`, `backgroundColor: rgba(255,255,255,0.05)`, `border: 1px solid rgba(255,255,255,0.1)`)
 - All type: `font-mono text-xs font-light`, hover → `accent.warm`
 - "Chat with me" button at the right: warm amber pill containing `<HiDotGrid dotSize={4} gap={2.5} speed={1.2} />`, border brightens on hover — grid animates continuously regardless of hover
+
+**CaseStudiesDropdown (`src/components/ui/CaseStudiesDropdown.tsx`, Session 27, updated Session 29):**
+- Opens on **hover**, not click. `onMouseEnter` on the wrapper div sets `open: true`; `onMouseLeave` starts a 120ms `closeTimer` before setting `open: false`. Moving cursor from trigger into the panel clears the timer, keeping it open.
+- `closeTimer` typed as `useRef<ReturnType<typeof setTimeout> | undefined>(undefined)`
+- Button trigger is a non-interactive label (`cursor: 'default'`, no `onClick`)
+- Chevron: SVG path draws an upward chevron (∧). At rest: `rotate(180deg)` → points down (∨). Open: `rotate(0deg)` → points up (∧).
+- Panel: `320px` wide, `rgba(14,16,21,0.97)` + `blur(12px)`, `borderRadius: 12px`, `zIndex: 50`
+- Panel positioning: `top: calc(100% + 20px)`, `left: 0` — left-aligns to trigger left edge, 20px gap below nav
+- Rows: `CaseStudyThumbnail` (64×48px) + name + description + arrow (when URL present)
+- "Browse / See all case studies" footer row
+- No outside-click or Escape handlers — hover-only open/close
+
+**CaseStudyThumbnail (`src/components/ui/CaseStudyThumbnail.tsx`, Session 27, updated Session 29):**
+- 64×48px container with `overflow: hidden`
+- Single `<video preload="metadata">` element — no `<img>` layer. `onLoadedMetadata` seeks to `currentTime = 0` to paint first frame at rest.
+- `mouseenter` → `currentTime = 0`, `play()`. `mouseleave` → `pause()`, `currentTime = 0`.
+- No opacity crossfade — video is always fully visible; first frame serves as the static poster.
+
+**Featured projects content (`src/content/featured-projects.ts`, Session 27, updated Session 29):**
+- `FeaturedProject` interface: `id`, `name`, `description`, `video` (required mp4 path), `url?`
+- `image` field removed — all assets are mp4, no separate static thumbnail needed
+- 4 entries: Waypoint (`waypoint.mp4`), Wafer (`wafer.mp4`), Channel AI (`channelai.mp4`), Seudo AI (`seudo.mp4`)
+- `url: undefined` for all — never set placeholder strings
 
 ## Scrollbar utilities
 
@@ -294,7 +318,8 @@ These files are retained as valid TypeScript stubs (return null, no props) to ke
 - Run `tsc --noEmit` before considering any task complete. Zero type errors.
 - ESLint must pass with no warnings.
 - No `console.log` left in committed code — use a `logger` utility if needed.
-- Images: use `next/image` for standard page content. **Exception:** `OrbitalCard.tsx` uses raw `<img>` and `<video>` for project thumbnails — fixed-size decorative media where `next/image` optimization caused silent failures. This exception is intentional and documented with `eslint-disable` comments.
+- Images: use `next/image` for standard page content. **Exception:** `OrbitalCard.tsx` and `CaseStudyThumbnail.tsx` use raw `<img>` and `<video>` for project thumbnails — fixed-size decorative media where `next/image` optimization caused silent failures. This exception is intentional and documented with `eslint-disable` comments.
+- All `<video>` elements in the project must have `preload="none"`, `muted`, `playsInline`, and `loop`. Never use `autoPlay` or `preload="auto"` — video only loads on user interaction.
 - Links: use `next/link` for internal navigation. Never raw `<a>` for internal routes.
 - Accessibility: all interactive elements must have accessible labels. `aria-label` on icon buttons. Semantic HTML throughout.
 

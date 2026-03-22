@@ -31,9 +31,14 @@ export default function ChatOverlay() {
       role="dialog"
       className="fixed inset-0 z-50 flex items-center justify-center px-4 py-20"
       style={{
-        pointerEvents: isOpen ? 'auto' : 'none',
         opacity: isOpen ? 1 : 0,
-        transition: 'opacity 0.2s ease',
+        // visibility: hidden blocks pointer events on the entire subtree,
+        // including children that re-declare pointer-events: auto.
+        // Delay visibility on close so the opacity fade-out is visible first.
+        visibility: isOpen ? 'visible' : 'hidden',
+        transition: isOpen
+          ? 'opacity 0.2s ease, visibility 0s linear 0s'
+          : 'opacity 0.2s ease, visibility 0s linear 0.2s',
       }}
     >
       {/* Backdrop — click to close */}

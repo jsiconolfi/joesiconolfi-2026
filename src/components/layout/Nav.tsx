@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import HiDotGrid from '@/components/ui/HiDotGrid'
+import CaseStudiesDropdown from '@/components/ui/CaseStudiesDropdown'
 import { useChatContext } from '@/context/ChatContext'
 
 export default function Nav() {
@@ -25,9 +26,7 @@ export default function Nav() {
         style={{ opacity: 0.9 }}
       />
       <div className="w-px h-4 bg-white/20" />
-      <a href="#work" className="font-mono text-xs font-light text-text-secondary hover:text-accent-neon transition-colors">
-        work
-      </a>
+      <CaseStudiesDropdown />
       <a href="#lab" className="font-mono text-xs font-light text-text-secondary hover:text-accent-neon transition-colors">
         lab
       </a>

@@ -44,6 +44,7 @@ export default function OrbitalCard({
   const [displayPos, setDisplayPos] = useState({ x: homeX, y: homeY })
   const [imgError, setImgError] = useState(false)
   const rafRef = useRef<number | undefined>(undefined)
+  const videoRef = useRef<HTMLVideoElement>(null)
   const deactivateTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const lerpRef = useRef(0)
   const activeRef = useRef(false)
@@ -139,6 +140,18 @@ export default function OrbitalCard({
     }
   }, [homeX, homeY, driftXAmp, driftYAmp, driftXSpeed, driftYSpeed, driftPhase, cardIndex, onPositionUpdate, positionsRef])
 
+  useEffect(() => {
+    const video = videoRef.current
+    const hasVideo = project.video || project.image?.endsWith('.mp4')
+    if (!video || !hasVideo) return
+    if (hovered || active) {
+      video.play().catch(() => {})
+    } else {
+      video.pause()
+      video.currentTime = 0
+    }
+  }, [hovered, active, project.video, project.image])
+
   function handleClick() {
     if (project.url) {
       if (project.url.startsWith('http')) {
@@ -154,9 +167,6 @@ export default function OrbitalCard({
       )
     }
   }
-
-  const isVideo = project.image?.endsWith('.mp4')
-  const showMedia = project.image && !imgError
 
   return (
     <div
@@ -218,9 +228,9 @@ export default function OrbitalCard({
             borderBottom: '1px solid rgba(255,255,255,0.06)',
           }}
         >
-          <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#ff5f57', display: 'block', flexShrink: 0 }} />
-          <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#febc2e', display: 'block', flexShrink: 0 }} />
-          <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#28c840', display: 'block', flexShrink: 0 }} />
+          <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', display: 'block', flexShrink: 0 }} />
+          <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', display: 'block', flexShrink: 0 }} />
+          <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', display: 'block', flexShrink: 0 }} />
           <span
             style={{
               fontFamily: 'var(--font-mono, monospace)',
@@ -239,77 +249,87 @@ export default function OrbitalCard({
         </div>
 
         {/* Image area */}
-        <div
-          style={{
-            width: '100%',
-            height: '120px',
-            backgroundColor: 'rgba(255,255,255,0.03)',
-            overflow: 'hidden',
-            position: 'relative',
-          }}
-        >
-          {showMedia && isVideo ? (
-            <video
-              src={project.image}
-              autoPlay
-              muted
-              loop
-              playsInline
-              onError={() => setImgError(true)}
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                opacity: active ? 1 : 0.7,
-                transition: 'opacity 0.5s ease',
-                display: 'block',
-              }}
-            />
-          ) : showMedia ? (
-            // Raw <img> intentional — fixed-size decorative thumbnail, same context as <video> above
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={project.image}
-              alt={project.name}
-              onError={() => setImgError(true)}
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                opacity: active ? 1 : 0.7,
-                transition: 'opacity 0.5s ease',
-                display: 'block',
-              }}
-            />
-          ) : (
+        {/* videoSrc: prefer project.video, fall back to project.image if it's an mp4 */}
+        {(() => {
+          const isVideoAsset = project.image?.endsWith('.mp4')
+          const videoSrc = project.video ?? (isVideoAsset ? project.image : undefined)
+          const staticSrc = !isVideoAsset ? project.image : undefined
+          const showStatic = staticSrc && !imgError
+
+          return (
             <div
               style={{
                 width: '100%',
-                height: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundImage: `
-                  linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-                  linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)
-                `,
-                backgroundSize: '20px 20px',
+                height: '120px',
+                backgroundColor: 'rgba(255,255,255,0.03)',
+                overflow: 'hidden',
+                position: 'relative',
               }}
             >
-              <span
-                style={{
-                  fontFamily: 'var(--font-mono, monospace)',
-                  fontSize: '9px',
-                  color: 'rgba(255,255,255,0.15)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.1em',
-                }}
-              >
-                {project.id}
-              </span>
+              {videoSrc ? (
+                // preload="metadata" loads first frame for display at rest; play() fires on hover/active
+                <video
+                  ref={videoRef}
+                  src={videoSrc}
+                  muted
+                  playsInline
+                  loop
+                  preload="metadata"
+                  onLoadedMetadata={() => {
+                    if (videoRef.current) videoRef.current.currentTime = 0
+                  }}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    display: 'block',
+                  }}
+                />
+              ) : showStatic ? (
+                // Raw <img> intentional — fixed-size decorative thumbnail; next/image caused silent failures
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={staticSrc}
+                  alt={project.name}
+                  onError={() => setImgError(true)}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    display: 'block',
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundImage: `
+                      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)
+                    `,
+                    backgroundSize: '20px 20px',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-mono, monospace)',
+                      fontSize: '9px',
+                      color: 'rgba(255,255,255,0.15)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.1em',
+                    }}
+                  >
+                    {project.id}
+                  </span>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          )
+        })()}
 
         {/* One line of copy */}
         <div style={{ padding: '8px 10px 4px' }}>

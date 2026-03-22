@@ -83,18 +83,21 @@ Ten project cards orbit the chat panel in slow elliptical arcs and dock to stagi
 - `src/components/ui/OrbitalCard.tsx` — floating card with sine-wave drift + staging lerp
 - `src/components/ui/OrbitalSystem.tsx` — mounts 10 cards, computes home positions + staging zones
 
-**Project interface (Session 20, updated Session 25):**
+**Project interface (Session 20, updated Session 27):**
 ```ts
 interface Project {
   id: string
   name: string
   role: string      // one line — your role or what you built
-  image?: string    // path in /public/projects/ — optional
+  image?: string    // path in /public/projects/ — static thumbnail (optional)
+  video?: string    // mp4 in /public/projects/ — plays lazily on hover/active. undefined = no video
   keywords: string[]
   url?: string      // case study URL — internal path or external. undefined = not yet built
 }
 ```
 `url` is `undefined` for all projects until a case study is ready. Never set a placeholder string — `undefined` is the correct "not ready" state. Internal routes use `router.push()`, external URLs (start with `http`) use `window.open(..., '_blank', 'noopener noreferrer')`.
+
+`video` is separate from `image`. Three projects have `video` set: `waypoint`, `channel`, `seudo`. All others leave `video` unset.
 
 **Z-index stack:**
 - Swirl: `z-0`
@@ -115,11 +118,13 @@ interface Project {
 - Hover: border → `rgba(255,255,255,0.2)`, `scale(1.02)` (suppressed when active), `zIndex: 12`
 - Active always overrides hover — active state takes full visual control
 
-**Media rendering (Session 23):**
-- `.mp4` → `<video autoPlay muted loop playsInline>` — no controls, no sound
-- Static formats → raw `<img>` (not `next/image` — optimization pipeline caused silent `onError` failures for these fixed-size thumbnails). Both have `onError` → placeholder fallback.
-- Detection: `project.image?.endsWith('.mp4')`
+**Media rendering (Session 23, updated Session 27):**
+- `project.image` → raw `<img>` at rest (not `next/image` — optimization pipeline caused silent failures). `onError` → placeholder fallback.
+- `project.video` → `<video ref={videoRef} muted playsInline loop preload="none">` — lazy, no autoPlay. Plays on hover or chat activation (`hovered || active`), pauses and resets on leave.
+- Both layers overlap in the image area. Image crossfades to opacity 0 when video is playing; video crossfades to opacity 1. Transition: `opacity 0.2s ease`.
+- `preload="none"` required — no network request until first hover.
 - `eslint-disable-next-line @next/next/no-img-element` comment justifies the raw `<img>` exception
+- Old autoPlay detection (`isVideo = project.image?.endsWith('.mp4')`) removed — `image` and `video` are now separate fields.
 
 **Current assets in `/public/projects/`:**
 - MP4: `waypoint.mp4`, `sherpa.mp4`, `waypoint-sync.mp4`, `channelai.mp4`, `statespace.mp4`, `seudo.mp4`, `kernel.mp4`, `cohere-labs.mp4`
@@ -164,7 +169,35 @@ interface Project {
 **Do NOT reintroduce:** elliptical orbital math, `next/image` in OrbitalCard (intentional exception)
 **`@keyframes pulse`** remains in `globals.css` (not used by cards currently)
 
-### The Nav (`src/components/layout/Nav.tsx`) includes a "Chat with me" button (Session 10):
+### The Nav (`src/components/layout/Nav.tsx`) — updated Session 27
+
+Nav links: `case studies` (dropdown) / `lab` / `timeline` / "Chat with me" button.
+
+The `work` link is replaced by `<CaseStudiesDropdown />` — a hover-triggered frosted glass dropdown with 4 featured projects. `z-index: 50` on the panel — above orbital cards at `z-10`.
+
+**CaseStudiesDropdown (`src/components/ui/CaseStudiesDropdown.tsx`, Session 27, updated Session 29):**
+- Opens on **hover**, not click. `onMouseEnter` / `onMouseLeave` on the wrapper div. 120ms close delay prevents accidental close when cursor moves from trigger to panel.
+- `closeTimer` typed as `useRef<ReturnType<typeof setTimeout> | undefined>(undefined)`
+- Button trigger is a non-interactive label (`cursor: 'default'`, no `onClick`). No outside-click or Escape handlers.
+- Chevron: path draws upward ∧. At rest: `rotate(180deg)` → ∨. Open: `rotate(0deg)` → ∧.
+- Panel: `320px` wide, `rgba(14,16,21,0.97)` + `blur(12px)`, `borderRadius: 12px`, `zIndex: 50`
+- Panel: `top: calc(100% + 20px)`, `left: 0` — left-aligns to trigger, 20px gap below nav
+- Each row: `CaseStudyThumbnail` (64×48px) + name + description + arrow icon (when URL present)
+- "Browse / See all case studies" footer row
+
+**CaseStudyThumbnail (`src/components/ui/CaseStudyThumbnail.tsx`, Session 27, updated Session 29):**
+- 64×48px rounded container, `overflow: hidden`
+- Single `<video preload="metadata">` — no `<img>` layer. `onLoadedMetadata` seeks to `currentTime = 0` to paint first frame as the resting state.
+- `mouseenter` → `currentTime = 0`, `play()`. `mouseleave` → `pause()`, `currentTime = 0`.
+- No opacity crossfade — video always visible at full opacity; first frame is the poster.
+
+**Featured projects data (`src/content/featured-projects.ts`, Session 27, updated Session 29):**
+- `FeaturedProject` interface: `id`, `name`, `description`, `video` (required mp4), `url?`
+- `image` field removed — all 4 assets are mp4
+- Assets: `waypoint.mp4`, `wafer.mp4`, `channelai.mp4`, `seudo.mp4`
+- `url: undefined` for all — never set placeholder strings
+
+**Nav "Chat with me" button (Session 10, unchanged):**
 - Warm amber pill button at the right of the nav
 - Contains `HiDotGrid` (5×5, dotSize 4, gap 2.5, speed 1.2) spelling "HI" with a left-to-right shimmer
 - Grid animates continuously from mount — no hover trigger

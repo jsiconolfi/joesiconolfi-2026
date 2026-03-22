@@ -8,6 +8,7 @@ export interface Project {
   name: string
   role: string
   image?: string
+  video?: string   // mp4 in /public/projects/ — plays lazily on hover/active. undefined = no video
   keywords: string[]
   url?: string  // case study URL — internal path or external. undefined = not yet built
 }
@@ -18,6 +19,7 @@ export const PROJECTS: Project[] = [
     name: 'Waypoint',
     role: 'Design system for Cohere — built from zero',
     image: '/projects/waypoint.mp4',
+    video: '/projects/waypoint.mp4',
     keywords: ['waypoint', 'design system', 'cohere', 'tokens', 'components'],
   },
   {
@@ -39,6 +41,7 @@ export const PROJECTS: Project[] = [
     name: 'Channel AI',
     role: 'AI-native creative tools for content teams',
     image: '/projects/channelai.mp4',
+    video: '/projects/channelai.mp4',
     keywords: ['channel', 'channel ai', 'creative', 'writing'],
   },
   {
@@ -60,6 +63,7 @@ export const PROJECTS: Project[] = [
     name: 'Seudo AI',
     role: 'Voice-first brainstorming with AI clustering',
     image: '/projects/seudo.mp4',
+    video: '/projects/seudo.mp4',
     keywords: ['seudo', 'brainstorm', 'voice', 'nlp', 'ideas'],
   },
   {
@@ -73,7 +77,7 @@ export const PROJECTS: Project[] = [
     id: 'wafer',
     name: 'Wafer Systems',
     role: 'AI-native OS — product, visual and UX design',
-    image: '/projects/wafer.png',
+    image: '/projects/wafer.mp4',
     keywords: ['wafer', 'operating system', 'android', 'ai os'],
   },
   {

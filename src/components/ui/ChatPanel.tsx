@@ -305,11 +305,10 @@ export default function ChatPanel() {
               key={chip}
               type="button"
               onClick={() => sendMessage(chip)}
-              className="font-mono text-xs font-light text-text-secondary hover:text-accent-neon transition-colors duration-200 px-3 py-1.5"
+              className="chip-button font-mono text-xs font-light px-3 py-1.5 rounded-full"
               style={{
                 backgroundColor: 'transparent',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                borderRadius: '20px',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
               }}
             >
               {chip}
