@@ -329,11 +329,12 @@ Persistent browser-like tab bar visible on all `/work/*` routes.
 - Tab `z-index: 50` — same level as ChatOverlay but renders behind it (ChatOverlay is rendered after in DOM order).
 - Background: `rgba(10,12,16,0.98)` — slightly darker than panel overlays.
 
-**Nav changes (Session 39, updated Session 42):**
+**Nav changes (Session 39, updated Session 44):**
 - `Nav.tsx` no longer has `fixed` positioning — `NavWrapper` owns all positioning.
 - `NavWrapper` wraps Nav in a `position: fixed` div, shifting `top` by `TAB_BAR_HEIGHT` on all `/work` pages.
-- **Session 42:** `hasChrome = pathname.startsWith('/work')` — covers both `/work` index (sticky WorkGrid chrome) and `/work/[slug]` (tab bar). Previously only matched `/work/` (with trailing slash), missing the index page.
 - **Session 42:** Transition updated from `'top 0.3s ease'` to `'top 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)'` — matches the ease-out-quart used in page transitions. Nav slides smoothly rather than snapping.
+- **Session 44:** `hasChrome = pathname.startsWith('/work') || pathname === '/about'` — `/about` also has a sticky terminal chrome header so the nav must shift down there too.
+- **Session 46:** `top` is now driven by `useState(0)` + `useEffect`. The nav always mounts at `top: 0` and animates to `TAB_BAR_HEIGHT` after a 60ms delay. Without this, `pathname`-derived `top` renders synchronously on mount so the CSS transition has no prior value to animate from. `useState(0)` initial value is intentional — do NOT initialize to `hasChrome ? TAB_BAR_HEIGHT : 0`. The `setTimeout` delay must stay in the 50–100ms range.
 
 **Do NOT:**
 - Store tab state in localStorage or URL params
@@ -474,6 +475,45 @@ Dynamic pages at `/work/[slug]` for all 10 projects.
 
 **Next case study chain (loops):** waypoint → statespace → channel → seudo → wafer → sherpa → waypoint-sync → kernel → mushroom → cohere-labs → waypoint
 
+## About page (Session 44)
+
+Live at `/about`. Scrollable content page, same visual system as case study pages.
+
+**Files:**
+- `src/app/about/page.tsx` — thin route, renders `<AboutView />`
+- `src/components/about/AboutView.tsx` — `'use client'` component
+- `src/app/api/spotify/callback/route.ts` — OAuth callback, one-time token exchange
+- `src/app/api/spotify/now-playing/route.ts` — fetches currently-playing or recently-played
+
+**Layout:** 880px max-width, `padding: '120px 48px 120px'` — 120px top accounts for about.exe chrome (38px) + nav (~56px) + breathing room (updated Session 45). Two-section layout: photo+bio grid on top, facts+Spotify+connect grid below (2-col, 1fr each).
+
+**Terminal chrome:** sticky top, `zIndex: 40`, `rgba(10,12,16,0.98)` + `blur(12px)`. Traffic lights `#ff5f57`/`#febc2e`/`#28c840` (12px circles). Red → `router.push('/')`. Hover glyphs: `×`/`−`/`+`. Title: `about.exe`.
+
+**Photo:** `/joe.png` — raw `<img>` with `eslint-disable-next-line @next/next/no-img-element`, 200×200, `objectFit: cover`, `borderRadius: 8`.
+
+**Bio copy:** 3 paragraphs, verbatim. Never rewrite. 13px, fontWeight 300, lineHeight 1.8, `rgba(255,255,255,0.65)`.
+
+**Spotify widget:**
+- Calls `/api/spotify/now-playing` on mount + every 30s (via `setInterval`)
+- `pollRef: useRef<ReturnType<typeof setInterval> | undefined>(undefined)` — typed correctly
+- Spotify green is `#1ed760` — NOT `#00ff9f`. Never confuse them.
+- Green dot `#1ed760` + glow `boxShadow: '0 0 6px rgba(30,215,96,0.6)'` when `isPlaying: true`
+- Hover: border `rgba(30,215,96,0.3)`, bg `rgba(30,215,96,0.04)` — imperative via `onMouseEnter/Leave` on the `<a>` tag
+- Album art: raw `<img>` with `eslint-disable-next-line @next/next/no-img-element`
+- Section label: `now playing` / `last played` (toggled by `isPlaying`)
+
+**Spotify API routes:**
+- `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REFRESH_TOKEN` in `.env.local`
+- OAuth scopes: `user-read-currently-playing user-read-recently-played`
+- Callback redirectUri: `http://localhost:3002/api/spotify/callback` (hardcoded for local setup)
+- Both routes use `cache: 'no-store'` — always fresh data
+
+**NavWrapper:** `hasChrome = pathname.startsWith('/work') || pathname === '/about'` — `/about` has its own terminal chrome header so nav shifts down by `TAB_BAR_HEIGHT`. `top` is `useState(0)` + `useEffect` with 60ms delay (Session 46) — always animates from 0 so the CSS transition fires correctly.
+
+**PageTransitionWrapper:** `/about` should be treated as a content page — dark bg, z-20, scrollable. Update `isContentPage` logic to include `pathname === '/about'` if needed.
+
+**`<video>` rule exception note:** `AboutView.tsx` has no video elements. The "no autoPlay" rule does not apply here (no video at all).
+
 ## Scrollbar utilities
 
 Added to `globals.css` `@layer utilities`:
@@ -494,7 +534,7 @@ These files are retained as valid TypeScript stubs (return null, no props) to ke
 - Run `tsc --noEmit` before considering any task complete. Zero type errors.
 - ESLint must pass with no warnings.
 - No `console.log` left in committed code — use a `logger` utility if needed.
-- Images: use `next/image` for standard page content. **Exception:** `OrbitalCard.tsx` and `CaseStudyThumbnail.tsx` use raw `<img>` and `<video>` for project thumbnails — fixed-size decorative media where `next/image` optimization caused silent failures. This exception is intentional and documented with `eslint-disable` comments.
+- Images: use `next/image` for standard page content. **Exception:** `OrbitalCard.tsx`, `CaseStudyThumbnail.tsx`, and `AboutView.tsx` use raw `<img>` — fixed-size or externally-hosted media where `next/image` optimization caused silent failures or is not applicable (e.g. Spotify album art URLs). All exceptions are documented with `eslint-disable-next-line @next/next/no-img-element` comments.
 - All `<video>` elements in the project must have `preload="none"`, `muted`, `playsInline`, and `loop`. Never use `autoPlay` or `preload="auto"` — video only loads on user interaction.
 - Links: use `next/link` for internal navigation. Never raw `<a>` for internal routes.
 - Accessibility: all interactive elements must have accessible labels. `aria-label` on icon buttons. Semantic HTML throughout.

@@ -5,10 +5,10 @@ import { usePathname } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { TAB_BAR_HEIGHT } from './TabBar'
 
-// Case study pages and the work index are "deeper" — they slide in from above, exit downward.
+// Case study pages, work index, and about are "deeper" — they slide in from above, exit downward.
 // Homepage is the base — it enters from below, exits upward.
 function getTransitionDirection(pathname: string): 'up' | 'down' {
-  return pathname.startsWith('/work') ? 'up' : 'down'
+  return pathname.startsWith('/work') || pathname === '/about' ? 'up' : 'down'
 }
 
 const TRANSITION = {
@@ -25,9 +25,11 @@ export default function PageTransitionWrapper({ children }: PageTransitionWrappe
   const direction = getTransitionDirection(pathname)
   // /work/* = individual case study (has tab bar, top offset)
   // /work = index grid (dark bg + scroll, no tab bar offset)
+  // /about = about page (dark bg + scroll, sticky chrome header, no tab bar)
   const isCaseStudy = pathname.startsWith('/work/')
   const isWorkIndex = pathname === '/work'
-  const isContentPage = isCaseStudy || isWorkIndex
+  const isAbout = pathname === '/about'
+  const isContentPage = isCaseStudy || isWorkIndex || isAbout
 
   // Reset scroll position on every navigation
   useEffect(() => {

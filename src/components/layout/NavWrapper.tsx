@@ -1,24 +1,33 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import Nav from './Nav'
 import { TAB_BAR_HEIGHT } from './TabBar'
 
-// Height of the WorkGrid terminal chrome header — matches TabBar height
-const WORK_CHROME_HEIGHT = TAB_BAR_HEIGHT  // both are 38px
-
 export default function NavWrapper() {
   const pathname = usePathname()
+  const hasChrome = pathname.startsWith('/work') || pathname === '/about'
 
-  // Shift nav down when any page has its own terminal chrome header
-  // /work (index) has the sticky WorkGrid chrome; /work/[slug] has the tab bar
-  const hasChrome = pathname.startsWith('/work')
+  // Start at 0 always, then animate to target after mount.
+  // Without this, pathname-derived top renders synchronously and the
+  // CSS transition has no prior state to animate from.
+  const [top, setTop] = useState(0)
+
+  useEffect(() => {
+    // 60ms delay lets the page enter animation begin first so
+    // the nav shift feels coordinated rather than simultaneous.
+    const timer = setTimeout(() => {
+      setTop(hasChrome ? TAB_BAR_HEIGHT : 0)
+    }, 60)
+    return () => clearTimeout(timer)
+  }, [hasChrome])
 
   return (
     <div
       style={{
         position: 'fixed',
-        top: hasChrome ? WORK_CHROME_HEIGHT : 0,
+        top,
         left: 0,
         right: 0,
         zIndex: 40,

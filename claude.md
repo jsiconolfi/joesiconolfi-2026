@@ -205,7 +205,7 @@ The old model recalculated position from scratch every frame (`newPos = driftPos
 
 ### The Nav (`src/components/layout/Nav.tsx`) — updated Session 27
 
-Nav links: `case studies` (dropdown) / `about` / `timeline` / `the lab` / "Chat with me" button. Order left to right: case studies ∨ · about · timeline · the lab · [Chat with me]. `about` links to `/about` (page not yet built). `timeline` → `#timeline`, `the lab` → `#lab` (in-page anchors for future sections). "lab" is gone — only "the lab" exists (updated Session 33).
+Nav links: `case studies` (dropdown) / `about` / `timeline` / `the lab` / "Chat with me" button. Order left to right: case studies ∨ · about · timeline · the lab · [Chat with me]. `about` links to `/about` (built Session 44). `timeline` → `#timeline`, `the lab` → `#lab` (in-page anchors for future sections). "lab" is gone — only "the lab" exists (updated Session 33).
 
 The `work` link is replaced by `<CaseStudiesDropdown />` — a hover-triggered frosted glass dropdown with 4 featured projects. `z-index: 50` on the panel — above orbital cards at `z-10`.
 
@@ -447,6 +447,54 @@ waypoint → statespace → channel → seudo → wafer → sherpa → waypoint-
 Card grid. Glance: title + one-line thesis only. Expand: problem, decision, outcome — inline, never navigates away. Immerse: full case study with artifacts, code, process.
 - Key projects: Waypoint design system, Sherpa Figma plugin (RAG-based, Pinecone + Cohere models), waypoint-sync (Figma-to-code token sync), Channel AI, Statespace/Aimlab.
 - Frame each as a bet made at the right time, not a list of deliverables.
+
+### About page — Session 44
+
+Live at `/about`. Scrollable content page with terminal chrome header.
+
+**Files:**
+- `src/app/about/page.tsx` — thin route, renders `<AboutView />`
+- `src/components/about/AboutView.tsx` — `'use client'` component
+
+**Layout:**
+- Terminal chrome header: `position: sticky, top: 0, zIndex: 40`, `rgba(10,12,16,0.98)` + `blur(12px)`. Traffic lights `#ff5f57`/`#febc2e`/`#28c840`. Red → `router.push('/')`. Window title: `about.exe`. Yellow/green hover shows `−`/`+` glyphs, no action.
+- Max-width 880px content column, `padding: '120px 48px 120px'` — 120px top accounts for about.exe chrome (38px) + nav (~56px) + breathing room (updated Session 45)
+- Two-column grid (200px photo col + 1fr bio col), `gap: 48`, `marginBottom: 72`
+- Photo: `/joe.png` (200×200, `borderRadius: 8`, `objectFit: cover`). Raw `<img>` with `eslint-disable-next-line @next/next/no-img-element`.
+- Name/role below photo: name 14px 400 weight, role `rgba(0,255,159,0.7)` 11px 300, location `rgba(255,255,255,0.35)` 11px 300
+- Bio: 3 paragraphs, 13px fontWeight 300 lineHeight 1.8 `rgba(255,255,255,0.65)`. Copy is **verbatim** — never rewrite.
+- Horizontal divider `rgba(255,255,255,0.06)` separates bio from bottom section
+- Bottom two-column grid (1fr 1fr): facts left, Spotify + connect right
+
+**BIO copy (verbatim — do not modify):**
+```
+Para 1: "I'm a design engineer based in San Francisco, originally from New York (pizza in my veins, West Coast since 22)..."
+Para 2: "My focus is AI-native product, not AI as a feature bolted onto something..."
+Para 3: "When I'm not building I'm digging through record bins, watching the Knicks and Mets find new ways to break my heart..."
+```
+
+**Facts (verbatim — do not modify):** hometown / based / years in tech / first code / record collection / sports / education / currently building
+
+**Spotify widget:**
+- Polls `/api/spotify/now-playing` on mount + every 30s. `pollRef` typed `useRef<ReturnType<typeof setInterval> | undefined>(undefined)`
+- Loading state: simple bordered box with "loading..." text
+- Track present: linked `<a>` card with album art (48×48), title, artist, Spotify SVG icon `#1ed760`. Green dot indicator when `isPlaying: true`. Hover: border `rgba(30,215,96,0.3)`, bg `rgba(30,215,96,0.04)`.
+- No track: "not playing anything right now" text
+- Section label toggles: `now playing` (isPlaying) / `last played` (not playing)
+- Spotify green is `#1ed760` — NOT `#00ff9f`. Do not confuse them.
+- Album art uses raw `<img>` with `eslint-disable-next-line @next/next/no-img-element`
+
+**Connect links:** linkedin / github / email. Hover: `rgba(255,255,255,0.85)`. Terminal green `→` prefix. No `next/link` needed — all external or `mailto:`.
+
+**NavWrapper:** `hasChrome = pathname.startsWith('/work') || pathname === '/about'` — nav shifts down by `TAB_BAR_HEIGHT` on `/about` (same as work pages, because about.exe chrome header occupies top).
+
+**Spotify API routes:**
+- `src/app/api/spotify/callback/route.ts` — OAuth callback. Exchanges `code` for tokens. Returns `refresh_token` in JSON for one-time setup. `redirectUri` hardcoded to `http://localhost:3002/api/spotify/callback`.
+- `src/app/api/spotify/now-playing/route.ts` — uses `SPOTIFY_REFRESH_TOKEN` env var to get a fresh access token, then fetches currently-playing. Falls back to recently-played (limit 1) if nothing is playing. Returns `{ isPlaying, title, artist, album, albumArt, url }`. Both routes use `cache: 'no-store'`.
+- Required env vars: `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REFRESH_TOKEN`
+- OAuth scopes needed: `user-read-currently-playing user-read-recently-played`
+
+**PageTransitionWrapper:** `/about` is treated as a content page — dark bg `rgba(14,16,21,0.97)`, `zIndex: 20`, `pointerEvents: 'auto'`, scrollable (`overflowY: 'auto'`). `isContentPage` condition should include `pathname === '/about'`.
 
 ### The Seam
 - The section that demonstrates keystone 3 directly.
