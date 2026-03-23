@@ -139,11 +139,33 @@ interface Project {
 **Viewport clamping (Session 23):**
 - `clampHome(xPct, yPct, vw, vh)` in `OrbitalSystem.tsx` — ensures every home position keeps the full 220×160 card footprint on screen. `EDGE_PAD = 12`. Re-applied on every resize.
 
-**Soft collision repulsion (Session 23):**
+**Soft collision repulsion (Session 23, staggered Session 30):**
 - `positionsRef` — shared `useRef<Array<{x,y}>>` in `OrbitalSystem`, passed to every card. Updated each RAF frame via `onPositionUpdate` callback. Never triggers re-renders.
 - Each card reads `positionsRef` in its RAF loop: if distance to another card < `MIN_DIST = 240`, applies a gentle push proportional to overlap. `REPULSE_STRENGTH = 0.4`.
 - Repulsion + viewport clamping only apply when card is idle (`activeRef.current === false`). Staged cards are fully exempt.
 - `startTimeRef` uses lazy initialization on first RAF frame (not `performance.now()` at render time) to satisfy `react-hooks/purity`.
+- **Collision check staggered every 3rd frame (Session 30):** `frameCountRef.current % 3 === cardIndex % 3` — different cards check on different frames. Cuts collision compute by 66%; imperceptible since positions change slowly.
+
+**Velocity + damping physics (Session 32 — replaces stateless position model):**
+
+The old model recalculated position from scratch every frame (`newPos = driftPos + forces`). Forces had no memory so they oscillated. Session 32 introduces proper velocity physics:
+
+- `posRef` and `velRef` — `useRef({ x: 0, y: 0 })` each. Persist state between frames. Never trigger renders.
+- `lerpRef` and `frameCountRef` removed — no longer needed.
+- **Spring toward drift target**: `vx += (targetX - x) * SPRING`. `SPRING = 0.018` — gentle follow, not snap.
+- **DAMPING = 0.82** — velocity multiplied by 0.82 every frame. Oscillations decay to zero within ~0.5s regardless of opposing forces.
+- **Collision repulsion adds to velocity** (not position). `REPULSE = 0.6` impulse, then damped. Previous stagger (every 3rd frame) removed — velocity model handles smoothing naturally.
+- **Edge repulsion adds to velocity**. `EDGE_MARGIN = 130px`, `EDGE_FORCE = 0.4`. Force proportional to distance inside margin.
+- **Staging lerp**: when `activeRef.current && chosenSlotRef.current`, card lerps at `0.06` to slot directly. Velocity bled at `0.85x` per frame so return-to-orbit is smooth.
+- **Hard safety clamp (`HARD_MARGIN = 20px`)** — last resort only. Fires only if card somehow exits the viewport despite all soft forces. Does NOT interact with normal physics.
+- Position is initialized on first frame: `if (posRef.current.x === 0 && posRef.current.y === 0) posRef.current = { x: targetX, y: targetY }`
+
+**Physics constants (do not exceed):**
+- `SPRING` ≤ 0.025 — higher makes drift feel snappy not floaty
+- `DAMPING` between 0.78–0.88 — outside this range causes sluggishness or oscillation
+- `HARD_MARGIN` ≤ 20px — it is last resort only, not a regular constraint
+- Do NOT remove `posRef`/`velRef` — position must be stored in refs, not recalculated from drift each frame
+- Do NOT reintroduce stateless `px = homeX + driftX` as the base position
 
 **Activation flow:**
 1. Type → `detectProjectMention` → `portfolio:project-active` dispatched on send
@@ -164,9 +186,20 @@ interface Project {
 
 **Project shuffle (Session 24):** `shuffleArray<T>()` (Fisher-Yates, module scope in `OrbitalSystem.tsx`) is called once via `useMemo(() => shuffleArray(PROJECTS), [])`. The render iterates `shuffledProjects`. Each page load gets a different layout; positions are stable within a session. `PROJECTS` in `projects.ts` is never mutated. Must use `useMemo` — `useState` or `useEffect` would cause a visible flash of the unshuffled order.
 
-**Do NOT modify:** `Swirl.tsx`, `SwirlDotGrid.tsx`, `HiDotGrid.tsx`
+**Performance — Session 30 rewrites:**
+- **OrbitalCard position is direct DOM** — `setDisplayPos` state removed. In the RAF loop, `cardRef.current.style.left/top` is set directly. Eliminates 600 React state updates/second (60fps × 10 cards).
+- **OrbitalCard opacity/zIndex are imperative** — set directly on `cardRef` in hover handlers and activation/deactivation callbacks. `hoveredRef` mirrors `hovered` state for use in async callbacks.
+- **OrbitalCard video is imperative** — `playVideo()` / `pauseVideo()` called from event handlers, not a `useEffect` watching state. `videoPlayingRef` guards against double-play. Deferred `currentTime = 0` avoids seek collision.
+- **Swirl DPR capped at 1.5** (`Math.min(window.devicePixelRatio ?? 1, 1.5)`) — 30% fewer canvas fill ops/frame on Retina; invisible at character sizes.
+- **Swirl canvas `willChange: 'contents'`** — compositor layer for canvas, prevents canvas repaints from invalidating other layers.
+- **CaseStudyThumbnail has zero `useState`** — fully refs + imperative DOM. `passive: true` on event listeners. `willChange: 'transform'` + `translateZ(0)` on both wrapper and video elements.
+- **CaseStudiesDropdown row hover debounced 50ms** — `hoverTimerRef` delays `setHoveredId` by 50ms; `onMouseLeave` clears immediately. Eliminates jitter from fast cursor sweeps.
+
+**Do NOT modify:** `Swirl.tsx` particle logic / color math / RAF timing (DPR cap and `willChange` are the only allowed changes)
+**Do NOT modify:** `SwirlDotGrid.tsx`, `HiDotGrid.tsx`
 **Do NOT change:** `lerpRef` factor (`0.06`), traffic light colors, card visual design
 **Do NOT reintroduce:** elliptical orbital math, `next/image` in OrbitalCard (intentional exception)
+**Do NOT remove:** `willChange: 'transform, left, top'` on OrbitalCard wrapper, `willChange: 'contents'` on Swirl canvas, `willChange: 'transform'` + `translateZ(0)` on CaseStudyThumbnail — these are load-bearing for compositor layering.
 **`@keyframes pulse`** remains in `globals.css` (not used by cards currently)
 
 ### The Nav (`src/components/layout/Nav.tsx`) — updated Session 27
@@ -175,21 +208,26 @@ Nav links: `case studies` (dropdown) / `lab` / `timeline` / "Chat with me" butto
 
 The `work` link is replaced by `<CaseStudiesDropdown />` — a hover-triggered frosted glass dropdown with 4 featured projects. `z-index: 50` on the panel — above orbital cards at `z-10`.
 
-**CaseStudiesDropdown (`src/components/ui/CaseStudiesDropdown.tsx`, Session 27, updated Session 29):**
+**CaseStudiesDropdown (`src/components/ui/CaseStudiesDropdown.tsx`, Session 27, updated Session 30):**
 - Opens on **hover**, not click. `onMouseEnter` / `onMouseLeave` on the wrapper div. 120ms close delay prevents accidental close when cursor moves from trigger to panel.
 - `closeTimer` typed as `useRef<ReturnType<typeof setTimeout> | undefined>(undefined)`
 - Button trigger is a non-interactive label (`cursor: 'default'`, no `onClick`). No outside-click or Escape handlers.
-- Chevron: path draws upward ∧. At rest: `rotate(180deg)` → ∨. Open: `rotate(0deg)` → ∧.
+- Chevron: path draws downward ∨ at rest. Open: `rotate(180deg)` → ∧.
 - Panel: `320px` wide, `rgba(14,16,21,0.97)` + `blur(12px)`, `borderRadius: 12px`, `zIndex: 50`
 - Panel: `top: calc(100% + 20px)`, `left: 0` — left-aligns to trigger, 20px gap below nav
 - Each row: `CaseStudyThumbnail` (64×48px) + name + description + arrow icon (when URL present)
 - "Browse / See all case studies" footer row
+- **Row hover debounced 50ms (Session 30):** `hoverTimerRef` delays `setHoveredId` by 50ms on enter; `onMouseLeave` cancels timer and clears immediately. Applied to all rows + Browse footer. Eliminates flicker from fast cursor sweeps.
 
-**CaseStudyThumbnail (`src/components/ui/CaseStudyThumbnail.tsx`, Session 27, updated Session 29):**
+**CaseStudyThumbnail (`src/components/ui/CaseStudyThumbnail.tsx`, Session 27, updated Session 30):**
 - 64×48px rounded container, `overflow: hidden`
-- Single `<video preload="metadata">` — no `<img>` layer. `onLoadedMetadata` seeks to `currentTime = 0` to paint first frame as the resting state.
-- `mouseenter` → `currentTime = 0`, `play()`. `mouseleave` → `pause()`, `currentTime = 0`.
-- No opacity crossfade — video always visible at full opacity; first frame is the poster.
+- **Zero `useState` (Session 30)** — fully refs + direct DOM manipulation. No React re-renders on hover.
+- `wrapperRef` + `videoRef` + `playingRef` + `seekingRef` — all imperative
+- `mouseenter`/`mouseleave` registered via `useEffect` with `{ passive: true }` — browser doesn't wait for JS
+- `playingRef` guard prevents double-play on fast hover. Deferred `currentTime = 0` via `requestAnimationFrame` avoids seek collision when switching rows quickly.
+- Border updated directly: `wrapper.style.borderColor` — no React re-render
+- `willChange: 'transform'` + `transform: 'translateZ(0)'` on wrapper and video — separate compositor layers, isolated from swirl canvas compositing
+- Single `<video preload="metadata">` — no `<img>` layer. `onLoadedMetadata` seeks to `currentTime = 0` to paint first frame as poster.
 
 **Featured projects data (`src/content/featured-projects.ts`, Session 27, updated Session 29):**
 - `FeaturedProject` interface: `id`, `name`, `description`, `video` (required mp4), `url?`

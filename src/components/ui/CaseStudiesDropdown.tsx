@@ -10,6 +10,7 @@ export default function CaseStudiesDropdown() {
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const router = useRouter()
 
   function handleMouseEnter() {
@@ -62,7 +63,7 @@ export default function CaseStudiesDropdown() {
           viewBox="0 0 10 10"
           fill="none"
           style={{
-            transform: open ? 'rotate(0deg)' : 'rotate(180deg)',
+            transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
             transition: 'transform 0.2s ease',
             opacity: 0.5,
           }}
@@ -92,8 +93,14 @@ export default function CaseStudiesDropdown() {
             <div
               key={project.id}
               onClick={() => handleProjectClick(project.url)}
-              onMouseEnter={() => setHoveredId(project.id)}
-              onMouseLeave={() => setHoveredId(null)}
+              onMouseEnter={() => {
+                clearTimeout(hoverTimerRef.current)
+                hoverTimerRef.current = setTimeout(() => setHoveredId(project.id), 50)
+              }}
+              onMouseLeave={() => {
+                clearTimeout(hoverTimerRef.current)
+                setHoveredId(null)
+              }}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -144,8 +151,14 @@ export default function CaseStudiesDropdown() {
 
           <div
             onClick={() => setOpen(false)}
-            onMouseEnter={() => setHoveredId('browse')}
-            onMouseLeave={() => setHoveredId(null)}
+            onMouseEnter={() => {
+              clearTimeout(hoverTimerRef.current)
+              hoverTimerRef.current = setTimeout(() => setHoveredId('browse'), 50)
+            }}
+            onMouseLeave={() => {
+              clearTimeout(hoverTimerRef.current)
+              setHoveredId(null)
+            }}
             style={{
               padding: '12px 16px',
               cursor: 'pointer',

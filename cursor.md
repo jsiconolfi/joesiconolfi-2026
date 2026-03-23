@@ -108,6 +108,9 @@ The swirl is a canvas/WebGL animation that represents the moment code becomes de
 - Keep it in its own isolated component: `components/ui/Swirl.tsx`
 - Performance: must not block main thread. Use `requestAnimationFrame` or offscreen canvas if needed.
 - On mobile, a simplified CSS version is acceptable
+- **DPR is capped at 1.5** (`Math.min(window.devicePixelRatio ?? 1, 1.5)`) — saves 30% canvas fill ops on Retina; difference is invisible at the character sizes used (Session 30)
+- **Canvas has `style={{ willChange: 'contents' }}`** — tells the browser it updates every frame, gets its own compositor layer so canvas repaints don't invalidate other layers (Session 30)
+- Do NOT remove the DPR cap or `willChange: 'contents'` — they are load-bearing for compositor layering
 
 ## Dot grid components (Session 10)
 
@@ -207,6 +210,15 @@ Z-index stack: Swirl `z-0` → OrbitalSystem `z-10` → ChatPanel `z-20` → Nav
 
 **Hover state (Session 25):** `hovered` boolean state. On hover: `opacity: 0.85`, `zIndex: 12`, border brightens to `rgba(255,255,255,0.2)`, card scales `1.02x` (suppressed when `active`). Active state always overrides hover visually.
 
+**Performance — Session 30 rewrites:**
+- **Position updates are direct DOM** (`cardRef.current.style.left/top`) — `setDisplayPos` state was eliminated. This removes ~600 React state updates/second (60fps × 10 cards) from the reconciler.
+- **Opacity + zIndex are imperative** on both hover and activation — set directly on `cardRef` in mouse handlers and the activation/deactivation callbacks.
+- `hoveredRef` mirrors `hovered` state for use in async callbacks (deactivation timer needs hover state without stale closure issues).
+- **Video play/pause is imperative** — `playVideo()` and `pauseVideo()` are called directly from hover handlers and activation logic. The `useEffect` watching `hovered/active` for video was removed. `videoPlayingRef` guards against double-play.
+- **Collision check staggered** — `frameCountRef.current % 3 === cardIndex % 3` runs collision detection every 3rd frame per card (staggered so different cards check on different frames). Saves 66% of collision compute; imperceptible visually since positions change slowly.
+- `willChange: 'transform, left, top'` on the outer wrapper — promotes to compositor layer, position updates bypass paint.
+- `activeRef.current` is now set directly in the signal handler (not via `useEffect` watching `active` state). The sync `useEffect` was removed.
+
 **Click handling (Session 25):** `handleClick` uses `useRouter` from `next/navigation`. If `project.url` exists: internal paths → `router.push()`, external URLs (start with `http`) → `window.open(..., '_blank', 'noopener noreferrer')`. If no URL: fires `portfolio:query` CustomEvent (chat fallback — every card is always interactive).
 
 **Card footer (Session 25):** small label below `project.role`. No URL: `case study coming soon` at rest → `ask me about this →` on hover. With URL: `view case study →` in `#00ff9f` on hover, dim at rest. Font: 9px mono, uppercase, `0.08em` tracking.
@@ -222,13 +234,15 @@ Z-index stack: Swirl `z-0` → OrbitalSystem `z-10` → ChatPanel `z-20` → Nav
 - `clampHome(xPct, yPct, vw, vh)` — clamps each home position so the card's full 220×160 footprint stays within the viewport. `EDGE_PAD = 12`. Applied to every card on mount and resize.
 - Cards near viewport edges (top/bottom strips at 6%/92% yPct, left/right columns at 6–10%/86–90% xPct) are nudged inward so they're always fully visible.
 
-**Soft collision repulsion (Session 23 — added to OrbitalCard RAF loop):**
-- Shared `positionsRef` in `OrbitalSystem` — a `useRef<Array<{x,y}>>` (not state, no re-renders). Each card calls `onPositionUpdate(cardIndex, px, py)` every frame to keep it current.
-- `MIN_DIST = 240` — minimum center-to-center distance. Do not reduce below 220 (card width).
-- `REPULSE_STRENGTH = 0.4` — force multiplier. Cards ease apart rather than snap.
-- Repulsion only when `activeRef.current === false` — staged cards are exempt.
-- After repulsion, position is viewport-clamped (`hw = CARD_W/2 + 8`, `hh = CARD_H/2 + 8`).
-- `startTimeRef` initialised lazily on the first RAF frame (`if (startTimeRef.current === null) startTimeRef.current = now`) — not during render, to satisfy `react-hooks/purity`.
+**Velocity + damping physics (Session 32 — replaces all prior stateless position models):**
+- `posRef` and `velRef` — `useRef({ x: 0, y: 0 })`. Persist between frames, never trigger renders. `lerpRef` and `frameCountRef` removed.
+- **Spring** (`SPRING = 0.018`): `vx += (targetX - x) * SPRING` — card follows drift target gently.
+- **Damping** (`DAMPING = 0.82`): velocity × 0.82 every frame — any oscillation decays to zero in ~0.5s.
+- **Collision repulsion** adds impulse to velocity (`REPULSE = 0.6`), not position. `MIN_DIST = 240`. Runs every frame (no stagger needed — damping handles smoothing).
+- **Edge repulsion** adds impulse to velocity. `EDGE_MARGIN = 130px`, `EDGE_FORCE = 0.4`. Proportional to how far inside the margin the card is.
+- **Staging**: lerp at `0.06` directly to slot. Velocity bled at `0.85x` per frame.
+- **Hard safety clamp** (`HARD_MARGIN = 20px`) — fires only if card exits viewport entirely. Does not interact with normal physics. Do NOT remove it.
+- `SPRING` ≤ 0.025. `DAMPING` between 0.78–0.88. Do NOT reintroduce `px = homeX + driftX` as the base position each frame.
 
 **Activation — two triggers:**
 1. Chat keyword match → `portfolio:project-active` CustomEvent → card activates
@@ -275,22 +289,27 @@ Homepage is a fixed overlay composition — no scrollable hero section:
 - All type: `font-mono text-xs font-light`, hover → `accent.warm`
 - "Chat with me" button at the right: warm amber pill containing `<HiDotGrid dotSize={4} gap={2.5} speed={1.2} />`, border brightens on hover — grid animates continuously regardless of hover
 
-**CaseStudiesDropdown (`src/components/ui/CaseStudiesDropdown.tsx`, Session 27, updated Session 29):**
+**CaseStudiesDropdown (`src/components/ui/CaseStudiesDropdown.tsx`, Session 27, updated Session 30):**
 - Opens on **hover**, not click. `onMouseEnter` on the wrapper div sets `open: true`; `onMouseLeave` starts a 120ms `closeTimer` before setting `open: false`. Moving cursor from trigger into the panel clears the timer, keeping it open.
 - `closeTimer` typed as `useRef<ReturnType<typeof setTimeout> | undefined>(undefined)`
 - Button trigger is a non-interactive label (`cursor: 'default'`, no `onClick`)
-- Chevron: SVG path draws an upward chevron (∧). At rest: `rotate(180deg)` → points down (∨). Open: `rotate(0deg)` → points up (∧).
+- Chevron: SVG path draws a downward-pointing chevron (∨) at rest. Open: `rotate(180deg)` → points up (∧).
 - Panel: `320px` wide, `rgba(14,16,21,0.97)` + `blur(12px)`, `borderRadius: 12px`, `zIndex: 50`
 - Panel positioning: `top: calc(100% + 20px)`, `left: 0` — left-aligns to trigger left edge, 20px gap below nav
 - Rows: `CaseStudyThumbnail` (64×48px) + name + description + arrow (when URL present)
 - "Browse / See all case studies" footer row
 - No outside-click or Escape handlers — hover-only open/close
+- **Row hover debounce (Session 30):** `hoverTimerRef` with 50ms delay on `setHoveredId` — eliminates flicker from fast cursor sweeps across rows. `onMouseLeave` cancels timer and clears immediately (no delay on leave). Applied to all rows including the "Browse" footer row.
 
-**CaseStudyThumbnail (`src/components/ui/CaseStudyThumbnail.tsx`, Session 27, updated Session 29):**
+**CaseStudyThumbnail (`src/components/ui/CaseStudyThumbnail.tsx`, Session 27, updated Session 30):**
 - 64×48px container with `overflow: hidden`
-- Single `<video preload="metadata">` element — no `<img>` layer. `onLoadedMetadata` seeks to `currentTime = 0` to paint first frame at rest.
-- `mouseenter` → `currentTime = 0`, `play()`. `mouseleave` → `pause()`, `currentTime = 0`.
-- No opacity crossfade — video is always fully visible; first frame serves as the static poster.
+- **Zero `useState`** — all interaction via refs + direct DOM manipulation (Session 30)
+- `wrapperRef` + `videoRef` + `playingRef` + `seekingRef` — all imperative
+- `mouseenter`/`mouseleave` registered via `useEffect` with `{ passive: true }` — browser doesn't wait for JS before scrolling
+- `playingRef` guard prevents double-play on fast hover switching
+- Deferred `currentTime = 0` reset via `requestAnimationFrame` — avoids seek collision when cursor sweeps quickly
+- Border color updated directly on the DOM element (`wrapper.style.borderColor`) — no React re-render
+- `willChange: 'transform'` + `transform: 'translateZ(0)'` on both wrapper and video — separate compositor layers, isolated from swirl canvas compositing
 
 **Featured projects content (`src/content/featured-projects.ts`, Session 27, updated Session 29):**
 - `FeaturedProject` interface: `id`, `name`, `description`, `video` (required mp4 path), `url?`

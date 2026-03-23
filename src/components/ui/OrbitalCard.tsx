@@ -41,19 +41,49 @@ export default function OrbitalCard({
   const router = useRouter()
   const [active, setActive] = useState(false)
   const [hovered, setHovered] = useState(false)
-  const [displayPos, setDisplayPos] = useState({ x: homeX, y: homeY })
   const [imgError, setImgError] = useState(false)
+
+  // DOM ref for imperative position + opacity + zIndex updates
+  const cardRef = useRef<HTMLDivElement>(null)
+
   const rafRef = useRef<number | undefined>(undefined)
   const videoRef = useRef<HTMLVideoElement>(null)
   const deactivateTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  const lerpRef = useRef(0)
   const activeRef = useRef(false)
+  const hoveredRef = useRef(false)
   const chosenSlotRef = useRef<{ x: number; y: number } | null>(null)
   const startTimeRef = useRef<number | null>(null)
+  const videoPlayingRef = useRef(false)
+  // Velocity-based physics state — persists between frames, never triggers renders
+  const posRef = useRef({ x: 0, y: 0 })
+  const velRef = useRef({ x: 0, y: 0 })
 
-  useEffect(() => {
-    activeRef.current = active
-  }, [active])
+  // --- Imperative video helpers ---
+
+  function playVideo() {
+    const video = videoRef.current
+    const hasVideo = !!(project.video || project.image?.endsWith('.mp4'))
+    if (!video || !hasVideo || videoPlayingRef.current) return
+    videoPlayingRef.current = true
+    if (video.readyState >= 2) {
+      video.play().catch(() => {})
+    } else {
+      video.addEventListener('canplay', () => video.play().catch(() => {}), { once: true })
+    }
+  }
+
+  function pauseVideo() {
+    const video = videoRef.current
+    const hasVideo = !!(project.video || project.image?.endsWith('.mp4'))
+    if (!video || !hasVideo) return
+    videoPlayingRef.current = false
+    video.pause()
+    requestAnimationFrame(() => {
+      if (!videoPlayingRef.current) video.currentTime = 0
+    })
+  }
+
+  // --- Activation signal ---
 
   useEffect(() => {
     function handleSignal(e: Event) {
@@ -61,76 +91,129 @@ export default function OrbitalCard({
       if (event.detail.projectId === project.id) {
         const vwCenter = window.innerWidth / 2
         chosenSlotRef.current = homeX < vwCenter ? leftSlot : rightSlot
+        activeRef.current = true
         setActive(true)
+        if (cardRef.current) {
+          cardRef.current.style.opacity = '1'
+          cardRef.current.style.zIndex = '15'
+        }
+        playVideo()
         clearTimeout(deactivateTimer.current)
         deactivateTimer.current = setTimeout(() => {
+          activeRef.current = false
           setActive(false)
           chosenSlotRef.current = null
+          if (cardRef.current) {
+            cardRef.current.style.opacity = hoveredRef.current ? '0.85' : '0.6'
+            cardRef.current.style.zIndex = hoveredRef.current ? '12' : '5'
+          }
+          if (!hoveredRef.current) pauseVideo()
         }, 4000)
       }
     }
     window.addEventListener('portfolio:project-active', handleSignal)
     return () => window.removeEventListener('portfolio:project-active', handleSignal)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project.id, homeX, leftSlot, rightSlot])
 
-  useEffect(() => {
-    const MIN_DIST = 240
-    const REPULSE_STRENGTH = 0.4
+  // --- RAF drift + velocity-based physics (direct DOM, no setState) ---
 
+  useEffect(() => {
     function frame(now: number) {
       if (startTimeRef.current === null) startTimeRef.current = now
       const elapsed = now - startTimeRef.current
 
+      const vw = window.innerWidth
+      const vh = window.innerHeight
+
+      // Drift: gentle sine wave around home position
       const driftX = Math.sin(elapsed * driftXSpeed + driftPhase) * driftXAmp
       const driftY = Math.cos(elapsed * driftYSpeed + driftPhase * 1.3) * driftYAmp
-      let px = homeX + driftX
-      let py = homeY + driftY
+      const targetX = homeX + driftX
+      const targetY = homeY + driftY
 
-      // Collision repulsion — only when not staged (staging overrides)
+      // Initialize position to drift target on first frame
+      if (posRef.current.x === 0 && posRef.current.y === 0) {
+        posRef.current = { x: targetX, y: targetY }
+      }
+
+      let { x, y } = posRef.current
+      let { x: vx, y: vy } = velRef.current
+
+      // Spring toward drift target (bypassed while staged — slot lerp handles it)
+      if (!activeRef.current || !chosenSlotRef.current) {
+        const SPRING = 0.018   // how strongly card follows drift target
+        const DAMPING = 0.82   // velocity decay per frame — kills oscillation
+
+        vx += (targetX - x) * SPRING
+        vy += (targetY - y) * SPRING
+        vx *= DAMPING
+        vy *= DAMPING
+      }
+
+      // Collision repulsion — force added to velocity, not position
       if (!activeRef.current) {
+        const MIN_DIST = 240
+        const REPULSE = 0.6   // impulse magnitude; decays each frame via DAMPING
+
         const others = positionsRef.current
         for (let j = 0; j < others.length; j++) {
           if (j === cardIndex) continue
           const other = others[j]
           if (!other || (other.x === 0 && other.y === 0)) continue
-
-          const dx = px - other.x
-          const dy = py - other.y
+          const dx = x - other.x
+          const dy = y - other.y
           const dist = Math.sqrt(dx * dx + dy * dy)
-
           if (dist < MIN_DIST && dist > 0) {
-            const force = ((MIN_DIST - dist) / MIN_DIST) * REPULSE_STRENGTH
-            px += (dx / dist) * force * MIN_DIST * 0.1
-            py += (dy / dist) * force * MIN_DIST * 0.1
+            const force = ((MIN_DIST - dist) / MIN_DIST) * REPULSE
+            vx += (dx / dist) * force
+            vy += (dy / dist) * force
           }
         }
-
-        // Clamp repelled position to viewport
-        const hw = CARD_W / 2 + 8
-        const hh = CARD_H / 2 + 8
-        const vw = window.innerWidth
-        const vh = window.innerHeight
-        px = Math.max(hw, Math.min(vw - hw, px))
-        py = Math.max(hh, Math.min(vh - hh, py))
       }
 
-      // Report current position to the shared store
-      onPositionUpdate(cardIndex, px, py)
+      // Soft edge repulsion — additive to velocity so it damps naturally
+      if (!activeRef.current) {
+        const EDGE_MARGIN = 130   // px from viewport edge where force starts
+        const EDGE_FORCE = 0.4    // impulse magnitude
 
-      const targetSlot = activeRef.current && chosenSlotRef.current
-        ? chosenSlotRef.current
-        : null
+        if (x < EDGE_MARGIN)       vx += (EDGE_MARGIN - x) / EDGE_MARGIN * EDGE_FORCE
+        if (x > vw - EDGE_MARGIN)  vx -= (x - (vw - EDGE_MARGIN)) / EDGE_MARGIN * EDGE_FORCE
+        if (y < EDGE_MARGIN)       vy += (EDGE_MARGIN - y) / EDGE_MARGIN * EDGE_FORCE
+        if (y > vh - EDGE_MARGIN)  vy -= (y - (vh - EDGE_MARGIN)) / EDGE_MARGIN * EDGE_FORCE
+      }
 
-      const targetLerp = targetSlot ? 1 : 0
-      lerpRef.current += (targetLerp - lerpRef.current) * 0.06
+      // Staging lerp — overrides physics while active and slot is chosen
+      if (activeRef.current && chosenSlotRef.current) {
+        const slot = chosenSlotRef.current
+        x += (slot.x - x) * 0.06
+        y += (slot.y - y) * 0.06
+        // Bleed velocity so return-to-orbit is smooth
+        vx *= 0.85
+        vy *= 0.85
+      } else {
+        x += vx
+        y += vy
+      }
 
-      const tx = targetSlot ? targetSlot.x : px
-      const ty = targetSlot ? targetSlot.y : py
+      // Hard safety clamp — last resort only, fires only if card exits viewport entirely
+      const HARD_MARGIN = 20
+      x = Math.max(HARD_MARGIN, Math.min(vw - HARD_MARGIN, x))
+      y = Math.max(HARD_MARGIN, Math.min(vh - HARD_MARGIN, y))
 
-      const x = px + (tx - px) * lerpRef.current
-      const y = py + (ty - py) * lerpRef.current
+      // Persist state for next frame
+      posRef.current = { x, y }
+      velRef.current = { x: vx, y: vy }
 
-      setDisplayPos({ x, y })
+      // Report to shared positions store
+      onPositionUpdate(cardIndex, x, y)
+
+      // Direct DOM update — bypasses React reconciler entirely
+      if (cardRef.current) {
+        cardRef.current.style.left = `${x}px`
+        cardRef.current.style.top = `${y}px`
+      }
+
       rafRef.current = requestAnimationFrame(frame)
     }
 
@@ -140,17 +223,27 @@ export default function OrbitalCard({
     }
   }, [homeX, homeY, driftXAmp, driftYAmp, driftXSpeed, driftYSpeed, driftPhase, cardIndex, onPositionUpdate, positionsRef])
 
-  useEffect(() => {
-    const video = videoRef.current
-    const hasVideo = project.video || project.image?.endsWith('.mp4')
-    if (!video || !hasVideo) return
-    if (hovered || active) {
-      video.play().catch(() => {})
-    } else {
-      video.pause()
-      video.currentTime = 0
+  // --- Hover handlers ---
+
+  function handleWrapperEnter() {
+    hoveredRef.current = true
+    setHovered(true)
+    if (!activeRef.current && cardRef.current) {
+      cardRef.current.style.opacity = '0.85'
+      cardRef.current.style.zIndex = '12'
     }
-  }, [hovered, active, project.video, project.image])
+    playVideo()
+  }
+
+  function handleWrapperLeave() {
+    hoveredRef.current = false
+    setHovered(false)
+    if (!activeRef.current && cardRef.current) {
+      cardRef.current.style.opacity = '0.6'
+      cardRef.current.style.zIndex = '5'
+    }
+    if (!activeRef.current) pauseVideo()
+  }
 
   function handleClick() {
     if (project.url) {
@@ -170,18 +263,21 @@ export default function OrbitalCard({
 
   return (
     <div
+      ref={cardRef}
       className="absolute pointer-events-auto"
       style={{
-        left: displayPos.x,
-        top: displayPos.y,
+        left: homeX,
+        top: homeY,
         transform: 'translate(-50%, -50%)',
         width: '220px',
-        opacity: active ? 1 : hovered ? 0.85 : 0.6,
+        opacity: 0.6,
         transition: 'opacity 0.3s ease',
-        zIndex: active ? 15 : hovered ? 12 : 5,
+        zIndex: 5,
+        // Promote to compositor layer — position updates bypass paint entirely
+        willChange: 'transform, left, top',
       }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={handleWrapperEnter}
+      onMouseLeave={handleWrapperLeave}
     >
       {/* Active beacon — static dot, no animation */}
       {active && (
@@ -283,6 +379,9 @@ export default function OrbitalCard({
                     height: '100%',
                     objectFit: 'cover',
                     display: 'block',
+                    // Own compositor layer — video decode isolated from canvas
+                    willChange: 'transform',
+                    transform: 'translateZ(0)',
                   }}
                 />
               ) : showStatic ? (

@@ -71,7 +71,7 @@ export default function Swirl({ className }: SwirlProps) {
     // devicePixelRatio — makes the canvas crisp on retina/HiDPI screens.
     // We scale the canvas backing store up by dpr, then scale the context
     // down so all draw calls still use CSS pixel units.
-    const dpr = window.devicePixelRatio ?? 1
+    const dpr = Math.min(window.devicePixelRatio ?? 1, 1.5)
 
     let animFrameId: number
     let resizeTimeout: ReturnType<typeof setTimeout>
@@ -250,6 +250,7 @@ export default function Swirl({ className }: SwirlProps) {
       ref={canvasRef}
       className={className}
       aria-hidden="true"
+      style={{ willChange: 'contents' }}
     />
   )
 }

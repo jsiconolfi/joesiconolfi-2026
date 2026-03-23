@@ -1,40 +1,62 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef, useEffect } from 'react'
 import type { FeaturedProject } from '@/content/featured-projects'
 
-interface CaseStudyThumbnailProps {
-  project: FeaturedProject
-}
-
-export default function CaseStudyThumbnail({ project }: CaseStudyThumbnailProps) {
+export default function CaseStudyThumbnail({ project }: { project: FeaturedProject }) {
+  const wrapperRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
-  const [hovered, setHovered] = useState(false)
+  const playingRef = useRef(false)
+  const seekingRef = useRef(false)
 
-  function handleLoadedMetadata() {
-    if (videoRef.current) videoRef.current.currentTime = 0
-  }
-
-  function handleMouseEnter() {
-    setHovered(true)
+  useEffect(() => {
+    const wrapper = wrapperRef.current
     const video = videoRef.current
-    if (!video) return
-    video.currentTime = 0
-    video.play().catch(() => {})
-  }
+    if (!wrapper || !video) return
 
-  function handleMouseLeave() {
-    setHovered(false)
-    const video = videoRef.current
-    if (!video) return
-    video.pause()
-    video.currentTime = 0
-  }
+    function onEnter() {
+      if (playingRef.current) return
+      playingRef.current = true
+
+      // Update border directly — no React re-render
+      wrapper!.style.borderColor = 'rgba(255,255,255,0.15)'
+
+      // Only seek if not already at start
+      if (!seekingRef.current && video!.currentTime > 0.1) {
+        seekingRef.current = true
+        video!.currentTime = 0
+        video!.addEventListener('seeked', () => {
+          seekingRef.current = false
+          video!.play().catch(() => {})
+        }, { once: true })
+      } else {
+        video!.play().catch(() => {})
+      }
+    }
+
+    function onLeave() {
+      playingRef.current = false
+      wrapper!.style.borderColor = 'rgba(255,255,255,0.06)'
+      video!.pause()
+      // Defer reset to avoid seek collision when switching quickly
+      requestAnimationFrame(() => {
+        if (!playingRef.current) {
+          video!.currentTime = 0
+        }
+      })
+    }
+
+    wrapper.addEventListener('mouseenter', onEnter, { passive: true })
+    wrapper.addEventListener('mouseleave', onLeave, { passive: true })
+    return () => {
+      wrapper.removeEventListener('mouseenter', onEnter)
+      wrapper.removeEventListener('mouseleave', onLeave)
+    }
+  }, [])
 
   return (
     <div
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      ref={wrapperRef}
       style={{
         width: 64,
         height: 48,
@@ -43,10 +65,10 @@ export default function CaseStudyThumbnail({ project }: CaseStudyThumbnailProps)
         position: 'relative',
         flexShrink: 0,
         backgroundColor: 'rgba(255,255,255,0.04)',
-        border: hovered
-          ? '1px solid rgba(255,255,255,0.15)'
-          : '1px solid rgba(255,255,255,0.06)',
-        transition: 'border 0.2s ease',
+        border: '1px solid rgba(255,255,255,0.06)',
+        // Promote to compositor layer — isolates from swirl canvas compositing
+        willChange: 'transform',
+        transform: 'translateZ(0)',
       }}
     >
       <video
@@ -56,12 +78,17 @@ export default function CaseStudyThumbnail({ project }: CaseStudyThumbnailProps)
         playsInline
         loop
         preload="metadata"
-        onLoadedMetadata={handleLoadedMetadata}
+        onLoadedMetadata={() => {
+          if (videoRef.current) videoRef.current.currentTime = 0
+        }}
         style={{
           width: '100%',
           height: '100%',
           objectFit: 'cover',
           display: 'block',
+          // Own compositor layer — video decode isolated from canvas
+          willChange: 'transform',
+          transform: 'translateZ(0)',
         }}
       />
     </div>
