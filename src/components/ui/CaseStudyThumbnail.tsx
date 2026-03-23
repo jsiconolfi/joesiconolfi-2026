@@ -1,12 +1,16 @@
 'use client'
 
-import { useRef, useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import type { FeaturedProject } from '@/content/featured-projects'
 
-export default function CaseStudyThumbnail({ project }: { project: FeaturedProject }) {
+interface CaseStudyThumbnailProps {
+  project: FeaturedProject
+  active: boolean  // driven by parent row hover — plays when true, pauses when false
+}
+
+export default function CaseStudyThumbnail({ project, active }: CaseStudyThumbnailProps) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
-  const playingRef = useRef(false)
   const seekingRef = useRef(false)
 
   useEffect(() => {
@@ -14,45 +18,28 @@ export default function CaseStudyThumbnail({ project }: { project: FeaturedProje
     const video = videoRef.current
     if (!wrapper || !video) return
 
-    function onEnter() {
-      if (playingRef.current) return
-      playingRef.current = true
+    wrapper.style.borderColor = active
+      ? 'rgba(255,255,255,0.15)'
+      : 'rgba(255,255,255,0.06)'
 
-      // Update border directly — no React re-render
-      wrapper!.style.borderColor = 'rgba(255,255,255,0.15)'
-
-      // Only seek if not already at start
-      if (!seekingRef.current && video!.currentTime > 0.1) {
+    if (active) {
+      if (!seekingRef.current && video.currentTime > 0.1) {
         seekingRef.current = true
-        video!.currentTime = 0
-        video!.addEventListener('seeked', () => {
+        video.currentTime = 0
+        video.addEventListener('seeked', () => {
           seekingRef.current = false
-          video!.play().catch(() => {})
+          video.play().catch(() => {})
         }, { once: true })
       } else {
-        video!.play().catch(() => {})
+        video.play().catch(() => {})
       }
-    }
-
-    function onLeave() {
-      playingRef.current = false
-      wrapper!.style.borderColor = 'rgba(255,255,255,0.06)'
-      video!.pause()
-      // Defer reset to avoid seek collision when switching quickly
+    } else {
+      video.pause()
       requestAnimationFrame(() => {
-        if (!playingRef.current) {
-          video!.currentTime = 0
-        }
+        if (!active) video.currentTime = 0
       })
     }
-
-    wrapper.addEventListener('mouseenter', onEnter, { passive: true })
-    wrapper.addEventListener('mouseleave', onLeave, { passive: true })
-    return () => {
-      wrapper.removeEventListener('mouseenter', onEnter)
-      wrapper.removeEventListener('mouseleave', onLeave)
-    }
-  }, [])
+  }, [active])
 
   return (
     <div
@@ -66,7 +53,6 @@ export default function CaseStudyThumbnail({ project }: { project: FeaturedProje
         flexShrink: 0,
         backgroundColor: 'rgba(255,255,255,0.04)',
         border: '1px solid rgba(255,255,255,0.06)',
-        // Promote to compositor layer — isolates from swirl canvas compositing
         willChange: 'transform',
         transform: 'translateZ(0)',
       }}
@@ -86,7 +72,6 @@ export default function CaseStudyThumbnail({ project }: { project: FeaturedProje
           height: '100%',
           objectFit: 'cover',
           display: 'block',
-          // Own compositor layer — video decode isolated from canvas
           willChange: 'transform',
           transform: 'translateZ(0)',
         }}

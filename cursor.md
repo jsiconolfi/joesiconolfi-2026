@@ -6,10 +6,10 @@ This is a personal portfolio site for Joe Siconolfi, Staff Design Engineer at Co
 
 ## Stack
 
-- **Framework**: Next.js 14+ with App Router
+- **Framework**: Next.js 15+ with App Router
 - **Language**: TypeScript (strict mode, no `any` unless explicitly justified)
 - **Styling**: Tailwind CSS v3 — utility-first, no inline styles except for dynamic values (e.g. animation keyframe percentages)
-- **Animation**: Framer Motion for component-level animation, CSS for the swirl/background
+- **Animation**: Framer Motion (`framer-motion@12`) for page transitions and component-level animation, CSS for the swirl/background
 - **Fonts**: Loaded via `next/font/google` — **IBM Plex Mono** only (weights 100–700, normal + italic, CSS var `--font-mono`). All type roles use IBM Plex Mono, differentiated by weight and size. No other fonts.
 - **AI integration**: Anthropic SDK (`@anthropic-ai/sdk`) for the prompt bar / conversational layer
 - **Deployment**: Vercel
@@ -29,6 +29,20 @@ src/
   types/                # Shared TypeScript types and interfaces
   content/              # Static content as typed TS objects (no CMS yet)
 ```
+
+## Next.js 15+ rules
+
+- **Dynamic route `params` are Promises.** Any page component receiving `params` must type it as `Promise<{ ... }>` and `await` it before use. The page function itself must be `async`. This applies to all `/app/**/[slug]/page.tsx` files. Synchronous access to `params` works in static builds but breaks under Turbopack dev mode.
+
+```tsx
+// Correct pattern (Next.js 15+)
+export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  // ...
+}
+```
+
+- `searchParams` follows the same rule — type as `Promise<{ [key: string]: string | string[] | undefined }>` and await.
 
 ## TypeScript rules
 
@@ -156,10 +170,10 @@ The prompt bar has been replaced by a full `ChatPanel` component — the primary
 - Input bar: `>` prompt prefix in `#00ff9f` (terminal green), free-form input, up-arrow send button
 - ID generation: use `useRef` counter (not `Date.now()`) — react-hooks/purity rule is strict
 
-### Animated greeting stream on load (Session 11–13)
+### Animated greeting stream on load (Session 11–13, updated Session 33)
 
 Three-phase load sequence on every page visit:
-1. **Thinking** (1500ms) — `AssistantAvatar thinking={true}` (SwirlDotGrid animates inside the circle) + `"thinking..."` label inline to the right, vertically centered. `isLoading: true`.
+1. **Thinking** (1500ms) — `AssistantAvatar thinking={true}` (SwirlDotGrid animates inside the circle) + `<ThinkingText />` inline to the right, vertically centered. `isLoading: true`. Each character of "thinking..." has a staggered shimmer via `thinking-shimmer` CSS keyframe.
 2. **Streaming** — `isLoading` flips false; avatar crossfades to icon (`opacity 0.4s ease`); `GREETING` streams character by character at `STREAM_SPEED = 28` ms/char; a `2px × 13px` `#00ff9f` cursor blinks at `0.8s step-end`.
 3. **Complete** — 300ms after last character: `streamingContent` clears, full message lands in `messages`.
 
@@ -192,6 +206,16 @@ Chips appear exclusively in the persistent bar directly above the input field. T
 CSS:
 - `@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }` defined in `globals.css` (above `@layer utilities`)
 - Cursor animation: `animation: 'blink 0.8s step-end infinite'` — sharp on/off, not a fade
+- `@keyframes thinking-shimmer { 0%/100% { color: #555555 } 50% { color: #aaaaaa } }` in `globals.css` — used by `ThinkingText` component; 1.6s ease-in-out infinite, 80ms stagger per character
+
+### ThinkingText component (Session 33)
+
+`ThinkingText` is a module-scoped functional component in `ChatPanel.tsx`:
+- Splits `'thinking...'` into individual characters pre-computed in `THINKING_CHARS` (module-level constant)
+- Each `<span>` gets `animation: 'thinking-shimmer 1.6s ease-in-out infinite'` + `animationDelay: ${i * 80}ms`
+- Only `animationDelay` is inline (it's dynamic per character) — the keyframe itself lives in `globals.css`
+- Used in both thinking states: initial page load (`isLoading: true`) and subsequent response loading (`isResponseLoading: true`)
+- Do NOT add external animation libraries for this — it is pure CSS keyframe + stagger
 
 ## Floating project cards (Sessions 14–23 — current state)
 
@@ -202,9 +226,9 @@ Ten project cards float around the chat panel with gentle sine-wave drift, and d
 - `src/components/ui/OrbitalCard.tsx` — floating card with drift animation + staging lerp
 - `src/components/ui/OrbitalSystem.tsx` — mounts 10 cards, computes home positions + staging zones; `z-10`
 
-Z-index stack: Swirl `z-0` → OrbitalSystem `z-10` → ChatPanel `z-20` → Nav `z-30`
+Z-index stack: Swirl `z-0` → OrbitalSystem `z-10` → PageTransitionWrapper `z-10/z-20` → NavWrapper `z-40` → TabBar `z-50` → ChatOverlay `z-50`
 
-**Project interface (Session 20, updated Session 27):** `id`, `name`, `role`, `keywords` (required) + optional `image?: string` (static thumbnail path in `/public/projects/`) + optional `video?: string` (mp4 path — lazy video, plays on hover/active) + optional `url?: string` (case study URL). `url` is `undefined` until a case study is ready — never set a placeholder string. Three projects have `video` set: `waypoint`, `channel`, `seudo`.
+**Project interface (Session 20, updated Session 34):** `id`, `name`, `role`, `keywords` (required) + optional `image?: string` (static thumbnail path in `/public/projects/`) + optional `video?: string` (mp4 path — lazy video, plays on hover/active) + optional `url?: string` (case study URL). All 10 projects now have `url` set to `/work/[slug]` as of Session 34. Three projects have `video` set: `waypoint`, `channel`, `seudo`.
 
 **Card visual (Session 20, updated Session 25):** terminal window — traffic lights `#ff5f57`/`#febc2e`/`#28c840`, dark chrome header (`rgba(14,16,21,0.9)`), `[id].exe` title, 120px image area (placeholder grid when no asset), one line of copy (`project.role`), footer label. Idle `opacity: 0.6`, hovered `opacity: 0.85`, active `opacity: 1`. Static `#00ff9f` beacon on active.
 
@@ -269,27 +293,104 @@ Placeholder grid renders when `image` is undefined or `onError` fires.
 
 Do NOT modify `Swirl.tsx`, `SwirlDotGrid.tsx`, or `HiDotGrid.tsx`.
 
-## Page layout (Session 7 — updated Session 14)
+## Background color (Session 36)
 
-Homepage is a fixed overlay composition — no scrollable hero section:
-- `src/app/page.tsx` — assembles `Swirl`, `OrbitalSystem`, `Nav`, name block, `ChatPanel` directly
-- Swirl: `fixed inset-0 z-0`
-- OrbitalSystem: `fixed inset-0 z-10 pointer-events-none overflow-hidden`
-- Nav: `fixed top-4 z-30`, pill-shaped frosted glass (inline styles for glass effect)
+`#161a22` must be set in **two places**:
+1. `src/app/globals.css`: `html, body { background-color: #161a22; margin: 0; padding: 0; }` — initial paint before JS
+2. `src/app/layout.tsx` body inline style: `backgroundColor: '#161a22'` — hydrated state
+
+Never use `#0e1015` on `<body>` — that's the panel/overlay color. Never use `#000000`. Since Swirl/OrbitalSystem/Nav moved to layout in Session 35, page components no longer control the background; these two locations are the sole source of truth.
+
+## Tab bar system (Session 39)
+
+Persistent browser-like tab bar visible on all `/work/*` routes.
+
+**Files:**
+- `src/context/TabContext.tsx` — `TabProvider`, `useTabs()` hook. `Tab` interface: `{ slug, name, exe }`.
+- `src/components/layout/TabBar.tsx` — renders tab strip. Exports `TAB_BAR_HEIGHT = 38`.
+- `src/components/layout/NavWrapper.tsx` — wraps `Nav`, shifts `top` by `TAB_BAR_HEIGHT` on `/work/*`.
+
+**Tab context rules:**
+- `openTab` max 10 tabs (`tabs.length >= 10` guard). If tab already exists, no-op.
+- `closeTab` uses `historyRef` (LRU order) to find the most recently active remaining tab. Last tab closed → `router.push('/work')`, state cleared.
+- Tab state is in-memory context only — never URL params, never localStorage.
+
+**TabBar layout (Session 43):**
+- `hoveredTab: string | null` — tracks which tab body is hovered (bg tint + close button reveal)
+- `hoveredClose: string | null` — tracks which close button is hovered (circle bg + color)
+- Tab inner order: `[traffic lights — active only] [label flex:1] [× close button]`
+- Traffic lights (`#ff5f57`/`#febc2e`/`#28c840`, 9px) on active tab only — decorative, no close action on red dot
+- `×` button: 16px circle, always mounted. `opacity: 1` when active or tab is hovered; `opacity: 0` at rest on inactive tabs. `e.stopPropagation()` on click + mouseenter/mouseleave prevents bubbling to tab click. Circle bg `rgba(255,255,255,0.12)` on hover.
+- Inactive tab on hover: `rgba(255,255,255,0.03)` bg, label brightens to `rgba(255,255,255,0.55)`
+- **Do NOT** put close action on the red traffic light — `×` button handles close for all tabs
+
+**TabBar constants:**
+- `TAB_BAR_HEIGHT = 38` — used in TabBar, NavWrapper, PageTransitionWrapper. Do NOT change this value without updating all three.
+- Tab `z-index: 50` — same level as ChatOverlay but renders behind it (ChatOverlay is rendered after in DOM order).
+- Background: `rgba(10,12,16,0.98)` — slightly darker than panel overlays.
+
+**Nav changes (Session 39, updated Session 42):**
+- `Nav.tsx` no longer has `fixed` positioning — `NavWrapper` owns all positioning.
+- `NavWrapper` wraps Nav in a `position: fixed` div, shifting `top` by `TAB_BAR_HEIGHT` on all `/work` pages.
+- **Session 42:** `hasChrome = pathname.startsWith('/work')` — covers both `/work` index (sticky WorkGrid chrome) and `/work/[slug]` (tab bar). Previously only matched `/work/` (with trailing slash), missing the index page.
+- **Session 42:** Transition updated from `'top 0.3s ease'` to `'top 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)'` — matches the ease-out-quart used in page transitions. Nav slides smoothly rather than snapping.
+
+**Do NOT:**
+- Store tab state in localStorage or URL params
+- Render TabBar on non-`/work/*` routes
+- Change `TAB_BAR_HEIGHT` without updating all three consumers
+
+Z-index stack (Session 39): Swirl `z-0` → OrbitalSystem `z-10` → PageTransitionWrapper `z-10/z-20` → NavWrapper `z-40` → TabBar `z-50` → ChatOverlay `z-50`
+
+## Page layout (Session 7 — updated Session 39)
+
+Homepage is a fixed overlay composition — no scrollable hero section.
+
+**Root layout (`src/app/layout.tsx`) — updated Session 39:**
+- `Swirl`, `OrbitalSystem`, `TabBar`, `ChatProvider`, `NavWrapper`, `PageTransitionWrapper`, and `ChatOverlay` all live here — persistent across all navigation
+- `TabProvider` wraps everything (outermost)
+- `Swirl`: `fixed inset-0 z-0`
+- `OrbitalSystem`: `fixed inset-0 z-10 pointer-events-none overflow-hidden`
+- `TabBar`: `fixed top-0 z-50` — visible only on `/work/*`
+- `NavWrapper`: `fixed z-40` — shifts `top` by `TAB_BAR_HEIGHT` on work pages; inside `ChatProvider`
+- `PageTransitionWrapper`: wraps `{children}` — `top: TAB_BAR_HEIGHT` on work pages, `top: 0` on homepage
+- `ChatOverlay`: inside `ChatProvider`, `z-50`
+
+**Homepage (`src/app/page.tsx`) — updated Session 35:**
+- Only contains ChatPanel wrapper + name block — NO Swirl, OrbitalSystem, or Nav (those moved to layout)
+- ChatPanel wrapper: `fixed inset-0 flex items-center justify-center z-20 px-4 py-20 pointer-events-none`
+- ChatPanel root div has `id="chat-panel"` and `pointer-events-auto`
 - Name block: `fixed bottom-8 left-8 z-10 pointer-events-none`
-- ChatPanel wrapper: `fixed inset-0 flex items-center justify-center z-20 px-4 py-20 pointer-events-none` — no `id` on this div. Must have `pointer-events-none` so cards behind it remain clickable.
-- ChatPanel root div has `id="chat-panel"` and `pointer-events-auto` (re-enables pointer events since the wrapper inherits `pointer-events-none`). This is what `OrbitalSystem` measures via `getBoundingClientRect()`.
 
-## Nav (Session 7 — updated Session 27)
+**PageTransitionWrapper (`src/components/layout/PageTransitionWrapper.tsx`, Session 35):**
+- `AnimatePresence mode="wait" initial={false}` — exits before enters; no animation on first load
+- `key={pathname}` on `motion.div` — triggers transition on route change
+- `data-scroll-container` on motion.div — `useEffect` resets `scrollTop = 0` on pathname change
+- Homepage: `zIndex: 10, backgroundColor: 'transparent', pointerEvents: 'none'`
+- Case study: `zIndex: 20, backgroundColor: 'rgba(14,16,21,0.97)', pointerEvents: 'auto', overflowY: 'auto'`
+- Transition: `duration: 0.45`, `ease: [0.25, 0.46, 0.45, 0.94]` (ease-out-quart)
+- Case study direction `'up'`: enter from above (`y: '-100vh'`), exit downward (`y: '100vh'`)
+- Homepage direction `'down'`: enter from below (`y: '100vh'`), exit upward (`y: '-100vh'`)
+
+**OrbitalSystem (updated Session 35):**
+- Uses `usePathname` — pathname is a dependency on the measure `useEffect`
+- Runs immediate `measure()` + delayed `measure()` at 600ms on each pathname change
+- Delayed measure ensures `chat-panel` element is found after the 450ms transition animation completes
+- Cards stay rendered (behind opaque overlay) on case study pages — no visibility toggle needed
+
+## Nav (Session 7 — updated Session 33)
 
 `src/components/layout/Nav.tsx` — pill nav, frosted glass, centered top, `'use client'`:
-- Links: `case studies` (dropdown) / `lab` / `timeline` / "Chat with me" button
+- Links left to right: `case studies` (dropdown) / `about` / `timeline` / `the lab` / "Chat with me" button
+- Order: `<CaseStudiesDropdown />` → `about` (href="/about") → `timeline` (href="#timeline") → `the lab` (href="#lab") → Chat with me button
+- "lab" is gone — only "the lab" exists. `about` links to `/about` (not yet built). `timeline` and `the lab` are in-page anchors for future sections.
 - The `work` link was replaced in Session 27 with `<CaseStudiesDropdown />` — a button that opens a `320px` frosted-glass dropdown with 4 featured projects + hover-play video thumbnails
 - Glass: inline styles (`backdropFilter: blur(12px)`, `backgroundColor: rgba(255,255,255,0.05)`, `border: 1px solid rgba(255,255,255,0.1)`)
 - All type: `font-mono text-xs font-light`, hover → `accent.warm`
 - "Chat with me" button at the right: warm amber pill containing `<HiDotGrid dotSize={4} gap={2.5} speed={1.2} />`, border brightens on hover — grid animates continuously regardless of hover
 
-**CaseStudiesDropdown (`src/components/ui/CaseStudiesDropdown.tsx`, Session 27, updated Session 30):**
+**CaseStudiesDropdown (`src/components/ui/CaseStudiesDropdown.tsx`, Session 27, updated Session 40):**
+- "See all case studies" footer row: `onClick` now calls `router.push('/work')` (Session 40). Previously only closed the dropdown.
 - Opens on **hover**, not click. `onMouseEnter` on the wrapper div sets `open: true`; `onMouseLeave` starts a 120ms `closeTimer` before setting `open: false`. Moving cursor from trigger into the panel clears the timer, keeping it open.
 - `closeTimer` typed as `useRef<ReturnType<typeof setTimeout> | undefined>(undefined)`
 - Button trigger is a non-interactive label (`cursor: 'default'`, no `onClick`)
@@ -311,11 +412,67 @@ Homepage is a fixed overlay composition — no scrollable hero section:
 - Border color updated directly on the DOM element (`wrapper.style.borderColor`) — no React re-render
 - `willChange: 'transform'` + `transform: 'translateZ(0)'` on both wrapper and video — separate compositor layers, isolated from swirl canvas compositing
 
-**Featured projects content (`src/content/featured-projects.ts`, Session 27, updated Session 29):**
+**Featured projects content (`src/content/featured-projects.ts`, Session 27, updated Session 34):**
 - `FeaturedProject` interface: `id`, `name`, `description`, `video` (required mp4 path), `url?`
 - `image` field removed — all assets are mp4, no separate static thumbnail needed
 - 4 entries: Waypoint (`waypoint.mp4`), Wafer (`wafer.mp4`), Channel AI (`channelai.mp4`), Seudo AI (`seudo.mp4`)
-- `url: undefined` for all — never set placeholder strings
+- All 4 now have `url` set to `/work/[slug]` — routes are live as of Session 34
+
+## Work index page (Session 40)
+
+`/work` renders a grid of all 10 case studies.
+
+**Files:**
+- `src/app/work/page.tsx` — thin route, renders `<WorkGrid />`
+- `src/components/case-study/WorkGrid.tsx` — `'use client'` grid component
+
+**WorkGrid rules:**
+- **Sticky terminal chrome header (Session 41):** `position: sticky, top: 0, zIndex: 40`, `rgba(10,12,16,0.98)` + `blur(12px)`, `padding: 10px 20px`. Traffic lights 12px circles (`#ff5f57`/`#febc2e`/`#28c840`). Window title: `case-studies.exe`. Red dot: `onClick → router.push('/')` (always goes to homepage, not `router.back()`). Yellow/green: hover shows `−`/`+` glyphs, no action. Hover state via `useState` booleans (`closeHovered`, `yellowHovered`, `greenHovered`).
+- Terminal chrome cards (traffic lights `#ff5f57`/`#febc2e`/`#28c840`) — identical to orbital cards
+- Thumbnails use `preload="metadata"` (not `preload="none"`) so the first frame paints as a poster without autoplay
+- `<video>` elements in WorkGrid: `muted playsInline loop preload="metadata"` — no `autoPlay`
+- Raw `<img>` requires `eslint-disable-next-line @next/next/no-img-element` (same exception as OrbitalCard)
+- Responsive grid: `repeat(auto-fill, minmax(280px, 1fr))`, `gap: 16`
+- No `textTransform: uppercase` on the "case study" label at the bottom of each card
+- Content padding: `64px 48px 120px` (top accounts for sticky chrome header, not nav)
+- PageTransitionWrapper treats `/work` as a content page: dark bg `rgba(14,16,21,0.97)`, z-20, scrollable, `top: 0` (no tab bar offset — tab bar only renders on `/work/*`)
+
+**PageTransitionWrapper update (Session 40):**
+- `isContentPage = isCaseStudy || isWorkIndex` where `isWorkIndex = pathname === '/work'`
+- `isCaseStudy = pathname.startsWith('/work/')` — unchanged, still used for `top: TAB_BAR_HEIGHT` offset
+- Direction logic updated: `pathname.startsWith('/work')` (without trailing slash) catches both `/work` and `/work/*`
+- `/work` index: dark bg, scrollable, z-20, pointer-events auto, `top: 0`
+
+## Case study pages (Session 34)
+
+Dynamic pages at `/work/[slug]` for all 10 projects.
+
+**Files:**
+- `src/content/case-studies.ts` — `CaseStudy` interface, `CASE_STUDIES` array (10 entries), `getCaseStudy(slug)`, `getAllSlugs()`
+- `src/app/work/[slug]/page.tsx` — async server component, `generateStaticParams` for 10 slugs, `notFound()` for unknowns. **Next.js 15+:** `params` is typed as `Promise<{ slug: string }>` and must be `await`ed before use.
+- `src/components/case-study/CaseStudyView.tsx` — `'use client'` view component
+
+**`CaseStudyType`**: `'full'` | `'quick'` — controls whether `hardPart` section renders
+
+**`CaseStudyDecision`**: `{ title: string, body: string, artifact?: string }` — artifact is image or mp4 path
+
+**Full studies (6)**: waypoint, statespace, channel, seudo, wafer, sherpa — include `hardPart`, section label "key decisions"
+
+**Quick takes (4)**: waypoint-sync, kernel, mushroom, cohere-labs — no `hardPart`, section label "what I did"
+
+**CaseStudyView rules:**
+- Sticky chrome header: traffic lights match orbital card exactly (`#ff5f57`/`#febc2e`/`#28c840`), `rgba(14,16,21,0.95)` + `blur(12px)`. Red light = `router.back()`. No type badge in the header — traffic lights + filename only.
+- Traffic light hover behavior (Session 38): `closeHovered`/`yellowHovered`/`greenHovered` `useState` booleans. On hover, red shows `×`, yellow shows `−`, green shows `+` — each as an inline `<span>` child, `fontSize: 8`, dark text `rgba(0,0,0,0.5–0.6)`.
+- Role line: `fontSize: 12`, `color: rgba(0,255,159,0.7)`, `fontWeight: 300` — NO `textTransform: uppercase`, NO `letterSpacing`. Sentence case.
+- Content: `maxWidth: 720`, `margin: '0 auto'`
+- Hero + decision artifact videos use `autoPlay` — this is intentional for case study pages (exception to the site-wide "no autoPlay" rule for orbital/thumbnail videos)
+- All styling: inline styles only — this is a scrollable document page, not the fixed overlay system
+- `<video>` elements in case study pages are ambient/decorative — no `eslint-disable` needed (jsx-a11y/media-has-caption rule is not active in this project)
+- `eslint-disable-next-line @next/next/no-img-element` on all raw `<img>` elements (same exception as OrbitalCard)
+
+**Do NOT add `preload="none"` to case study page videos** — they autoplay on load (different from orbital card/thumbnail videos where `preload="none"` is required).
+
+**Next case study chain (loops):** waypoint → statespace → channel → seudo → wafer → sherpa → waypoint-sync → kernel → mushroom → cohere-labs → waypoint
 
 ## Scrollbar utilities
 

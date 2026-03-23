@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
+import { usePathname } from 'next/navigation'
 import OrbitalCard from './OrbitalCard'
 import { PROJECTS } from '@/content/projects'
 
@@ -74,6 +75,7 @@ function clampHome(xPct: number, yPct: number, vw: number, vh: number) {
 
 export default function OrbitalSystem() {
   const shuffledProjects = useMemo(() => shuffleArray(PROJECTS), [])
+  const pathname = usePathname()
   const [viewport, setViewport] = useState({ w: 0, h: 0 })
   const [leftSlots, setLeftSlots] = useState<Array<{ x: number; y: number }>>([])
   const [rightSlots, setRightSlots] = useState<Array<{ x: number; y: number }>>([])
@@ -122,7 +124,12 @@ export default function OrbitalSystem() {
       }
     }
 
+    // Immediate measure — works on homepage first load and on resize
     measure()
+
+    // Delayed measure to catch chat-panel after page transition animation completes
+    // (AnimatePresence mode="wait" delays the enter animation by ~450ms)
+    const delayedMeasure = setTimeout(measure, 600)
 
     let t: ReturnType<typeof setTimeout>
     function handleResize() {
@@ -134,8 +141,9 @@ export default function OrbitalSystem() {
     return () => {
       window.removeEventListener('resize', handleResize)
       clearTimeout(t)
+      clearTimeout(delayedMeasure)
     }
-  }, [])
+  }, [pathname])
 
   if (!ready || viewport.w === 0) return null
 

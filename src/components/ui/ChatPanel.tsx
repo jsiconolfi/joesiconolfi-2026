@@ -30,6 +30,24 @@ interface AssistantAvatarProps {
   thinking?: boolean
 }
 
+const THINKING_CHARS = 'thinking...'.split('')
+
+const ThinkingText = () => (
+  <span style={{ display: 'inline-flex' }}>
+    {THINKING_CHARS.map((char, i) => (
+      <span
+        key={i}
+        style={{
+          animation: 'thinking-shimmer 1.6s ease-in-out infinite',
+          animationDelay: `${i * 80}ms`,
+        }}
+      >
+        {char}
+      </span>
+    ))}
+  </span>
+)
+
 const AssistantAvatar = ({ thinking = false }: AssistantAvatarProps) => (
   <div
     className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden relative"
@@ -222,7 +240,7 @@ export default function ChatPanel() {
                   pointerEvents: 'none',
                 }}
               >
-                thinking...
+                <ThinkingText />
               </span>
               {/* Streaming text — fades in */}
               <p
@@ -283,7 +301,7 @@ export default function ChatPanel() {
         {!isLoading && messages.length > 0 && isResponseLoading && (
           <div className="flex gap-3 items-center">
             <AssistantAvatar thinking={true} />
-            <p className="font-mono text-xs font-light text-text-hint">thinking...</p>
+            <p className="font-mono text-xs font-light text-text-hint"><ThinkingText /></p>
           </div>
         )}
 

@@ -31,7 +31,7 @@ Every section uses the same interaction grammar: glance → expand → immerse. 
 
 The homepage is a fixed overlay composition — not a scrollable section:
 - **Swirl**: `fixed inset-0 z-0`, fills entire viewport, bleeds through the glass panel
-- **Nav**: `fixed top-4 z-30`, pill-shaped frosted glass, centered — links: work / lab / timeline / contact
+- **Nav**: `fixed top-4 z-30`, pill-shaped frosted glass, centered — links: case studies ∨ / about / timeline / the lab / Chat with me
 - **ChatPanel**: `fixed inset-0 z-20`, centered, `max-w-2xl h-[75vh]` — THE primary interface
 - **Name block**: `fixed bottom-8 left-8 z-10`, static text — name / "Design + Engineering" / thesis
 
@@ -42,10 +42,10 @@ The ChatPanel (`src/components/ui/ChatPanel.tsx`) is a terminal-aesthetic froste
 - `>` prompt prefix in `#00ff9f` terminal green
 - Placeholder AI responses (800ms timeout) — Anthropic integration next session
 - Glass treatment uses inline styles matching the site's existing glass variables
-- Thinking state: `SwirlDotGrid` (6×4, speed 0.055) + "thinking..." label
+- Thinking state: `SwirlDotGrid` (6×4, speed 0.055) + `<ThinkingText />` component (character-shimmer animation)
 
-Load sequence (Session 11–13):
-1. **Phase 1 — Thinking** (1.5s): `isLoading: true`. `AssistantAvatar thinking={true}` — SwirlDotGrid sweeps inside the avatar circle. `"thinking..."` label sits inline to the right, vertically centered on the same row.
+Load sequence (Session 11–13, updated Session 33):
+1. **Phase 1 — Thinking** (1.5s): `isLoading: true`. `AssistantAvatar thinking={true}` — SwirlDotGrid sweeps inside the avatar circle. `<ThinkingText />` label sits inline to the right, vertically centered on the same row. Each character of "thinking..." has a staggered shimmer animation (`thinking-shimmer` keyframe, 80ms stagger per char, 1.6s duration).
 2. **Phase 2 — Streaming**: `isLoading` flips false. Avatar crossfades to icon (`opacity 0.4s ease`). Greeting text builds character by character at 28ms/char; `#00ff9f` cursor blinks at trailing edge.
 3. **Phase 3 — Complete**: 300ms after last char, `streamingContent` clears, full message lands in `messages`.
 
@@ -201,10 +201,11 @@ The old model recalculated position from scratch every frame (`newPos = driftPos
 **Do NOT reintroduce:** elliptical orbital math, `next/image` in OrbitalCard (intentional exception)
 **Do NOT remove:** `willChange: 'transform, left, top'` on OrbitalCard wrapper, `willChange: 'contents'` on Swirl canvas, `willChange: 'transform'` + `translateZ(0)` on CaseStudyThumbnail — these are load-bearing for compositor layering.
 **`@keyframes pulse`** remains in `globals.css` (not used by cards currently)
+**`@keyframes thinking-shimmer`** in `globals.css` — used by `ThinkingText`: `0%/100% { color: #555555 }`, `50% { color: #aaaaaa }`, 1.6s ease-in-out infinite. Each character has an 80ms stagger delay.
 
 ### The Nav (`src/components/layout/Nav.tsx`) — updated Session 27
 
-Nav links: `case studies` (dropdown) / `lab` / `timeline` / "Chat with me" button.
+Nav links: `case studies` (dropdown) / `about` / `timeline` / `the lab` / "Chat with me" button. Order left to right: case studies ∨ · about · timeline · the lab · [Chat with me]. `about` links to `/about` (page not yet built). `timeline` → `#timeline`, `the lab` → `#lab` (in-page anchors for future sections). "lab" is gone — only "the lab" exists (updated Session 33).
 
 The `work` link is replaced by `<CaseStudiesDropdown />` — a hover-triggered frosted glass dropdown with 4 featured projects. `z-index: 50` on the panel — above orbital cards at `z-10`.
 
@@ -229,11 +230,15 @@ The `work` link is replaced by `<CaseStudiesDropdown />` — a hover-triggered f
 - `willChange: 'transform'` + `transform: 'translateZ(0)'` on wrapper and video — separate compositor layers, isolated from swirl canvas compositing
 - Single `<video preload="metadata">` — no `<img>` layer. `onLoadedMetadata` seeks to `currentTime = 0` to paint first frame as poster.
 
-**Featured projects data (`src/content/featured-projects.ts`, Session 27, updated Session 29):**
+**Featured projects data (`src/content/featured-projects.ts`, Session 27, updated Session 34):**
 - `FeaturedProject` interface: `id`, `name`, `description`, `video` (required mp4), `url?`
 - `image` field removed — all 4 assets are mp4
 - Assets: `waypoint.mp4`, `wafer.mp4`, `channelai.mp4`, `seudo.mp4`
-- `url: undefined` for all — never set placeholder strings
+- All 4 now have `url` set: `/work/waypoint`, `/work/wafer`, `/work/channel`, `/work/seudo`
+
+**CaseStudiesDropdown browse footer (Session 40):**
+- "See all case studies" footer row now calls `router.push('/work')` on click (previously only closed the dropdown)
+- `setOpen(false)` fires before the push
 
 **Nav "Chat with me" button (Session 10, unchanged):**
 - Warm amber pill button at the right of the nav
@@ -251,8 +256,195 @@ New RAF-loop animation primitives (Session 10):
 - Glance: three one-liners. Expand: each shows a real example from actual work. Immerse: links to writing and thinking.
 - Principles: skill development through use / human-AI collaboration / making AI understandable + controllable.
 
-### Work (case studies)
-- Card grid. Glance: title + one-line thesis only. Expand: problem, decision, outcome — inline, never navigates away. Immerse: full case study with artifacts, code, process.
+### Background color (Session 36)
+
+`#161a22` must be set in **two places** — both are required:
+1. `globals.css`: `html, body { background-color: #161a22; margin: 0; padding: 0; }` — handles initial paint before JS hydrates
+2. `layout.tsx` body inline style: `backgroundColor: '#161a22'` — handles the hydrated state
+
+Do NOT use `#0e1015` on `<body>` — that's the darker panel/overlay color, not the body background. Do NOT use `#000000`.
+
+After moving Swirl/Nav/OrbitalSystem to `layout.tsx` in Session 35, the page components no longer set the background, so both locations are now the single source of truth.
+
+### Page transitions (Session 35)
+
+Smooth Framer Motion transitions between homepage and case study pages. Swirl and orbital cards are persistent — they never unmount.
+
+**Architecture:**
+- `Swirl`, `OrbitalSystem`, and `Nav` moved from `page.tsx` to `layout.tsx` — persistent across all navigation
+- `PageTransitionWrapper` (`src/components/layout/PageTransitionWrapper.tsx`) wraps `{children}` in the layout
+- `ChatProvider` and `ChatOverlay` remain in layout, wrapping Nav + PageTransitionWrapper + ChatOverlay
+- `page.tsx` now only contains ChatPanel wrapper + name block — no Swirl, OrbitalSystem, or Nav
+
+**PageTransitionWrapper:**
+- `'use client'` — uses `usePathname` from next/navigation
+- `AnimatePresence mode="wait" initial={false}` — exits complete before enters begin; no entrance animation on first load
+- `key={pathname}` — triggers AnimatePresence on every route change
+- `data-scroll-container` attribute on the motion.div — `useEffect` resets `scrollTop` to 0 on pathname change
+- Transition: `duration: 0.45`, `ease: [0.25, 0.46, 0.45, 0.94]` (ease-out-quart)
+- Direction logic: `pathname.startsWith('/work')` → direction `'up'`; all others → direction `'down'` (covers both `/work` and `/work/*`)
+- Case study (direction='up'): enters from above (`y: '-100vh'`), exits downward (`y: '100vh'`)
+- Homepage (direction='down'): enters from below (`y: '100vh'`), exits upward (`y: '-100vh'`)
+- **Session 39:** `top: TAB_BAR_HEIGHT` (38px) on `/work/*` only — content starts below tab bar. `/work` index and homepage keep `top: 0`.
+- **Session 40:** `isContentPage = isCaseStudy || isWorkIndex` — `/work` index gets dark background, scrollable, z-20, pointer-events auto. Tab bar offset only applies to `/work/[slug]` (not `/work` index).
+
+**Z-index and pointer-events:**
+- Homepage wrapper: `zIndex: 10, backgroundColor: 'transparent', pointerEvents: 'none'` — swirl + cards show through; ChatPanel re-enables `pointer-events-auto` internally
+- Case study wrapper: `zIndex: 20, backgroundColor: 'rgba(14,16,21,0.97)', pointerEvents: 'auto'` — nearly opaque, sits above orbital cards, scrollable
+- `overflowY: 'auto'` on case study, `'hidden'` on homepage
+
+**OrbitalSystem changes (Session 35):**
+- Added `usePathname` import — pathname used as dependency in the measure `useEffect`
+- Immediate `measure()` on pathname change + delayed `measure()` after 600ms — catches `chat-panel` element that may still be animating in after transition
+- On case study pages: `chat-panel` not found → `ready` stays as-is, cards keep floating behind the opaque overlay at z-20
+- On return to homepage: delayed measure finds `chat-panel`, recomputes staging slots
+
+**CaseStudyView changes (Session 35):**
+- `backgroundColor: '#0e1015'` removed from `<main>` — background now provided by `PageTransitionWrapper`'s `rgba(14,16,21,0.97)` overlay
+
+**Root layout structure (Session 39):**
+```
+<body>
+  <TabProvider>
+    <Swirl />             {/* z-0, persistent */}
+    <OrbitalSystem />     {/* z-10, persistent */}
+    <TabBar />            {/* z-50, fixed top-0, visible on /work/* only */}
+    <ChatProvider>
+      <NavWrapper />      {/* z-40, fixed — shifts top by TAB_BAR_HEIGHT on /work/* */}
+      <PageTransitionWrapper>
+        {children}        {/* z-10 (homepage) or z-20 (case study) */}
+      </PageTransitionWrapper>
+      <ChatOverlay />     {/* z-50 */}
+    </ChatProvider>
+  </TabProvider>
+</body>
+```
+
+### Tab bar system (Session 39)
+
+Persistent browser-like tab bar that appears on all `/work/*` routes.
+
+**Files:**
+- `src/context/TabContext.tsx` — `TabProvider`, `useTabs()` hook, `Tab` interface
+- `src/components/layout/TabBar.tsx` — renders tab strip; exports `TAB_BAR_HEIGHT = 38`
+- `src/components/layout/NavWrapper.tsx` — wraps `Nav`, shifts its `top` by `TAB_BAR_HEIGHT` on `/work/*`
+
+**Tab interface:**
+```ts
+interface Tab {
+  slug: string
+  name: string  // display name e.g. "Waypoint"
+  exe: string   // e.g. "waypoint.exe"
+}
+```
+
+**Tab context (`TabContext.tsx`):**
+- `tabs: Tab[]` — open tabs in order opened
+- `activeSlug: string | null` — currently active tab
+- `openTab(tab)` — adds tab if not already present; max 10 tabs (`tabs.length >= 10` guard); calls `setActiveSlug`
+- `closeTab(slug)` — removes tab; if last tab → `router.push('/work')`, clear state; otherwise find most-recently-active other tab from `historyRef`, navigate there
+- `setActiveSlug(slug)` — sets active + prepends to `historyRef` (deduped, capped at 20)
+- `historyRef: useRef<string[]>` — tracks history of active slugs for fallback on close. Never triggers re-renders.
+
+**TabBar (`TabBar.tsx`):**
+- Only renders on `/work/*` routes
+- `TAB_BAR_HEIGHT = 38` — exported constant, used by NavWrapper and PageTransitionWrapper
+- `useEffect` on `pathname` — registers current case study as a tab via `openTab` + `setActiveSlug`
+- **Tab layout (Session 43):** `[traffic lights — active only] [label flex:1] [× close button]`. Traffic lights are decorative on active tab (no close action on red). `×` button is always mounted on right: `opacity:1` when active or hovered, `opacity:0` at rest on inactive. `e.stopPropagation()` on close button events.
+- `hoveredTab` and `hoveredClose` state control bg tint, label brightness, and close button visibility
+- `flex: 1, maxWidth: 200px` per tab — tabs compress automatically as more open; label truncates with ellipsis
+- `z-index: 50` — above orbital cards and nav
+- Background: `rgba(10,12,16,0.98)` + `blur(12px)`, border-bottom `rgba(255,255,255,0.06)`
+- Active tab: `rgba(255,255,255,0.05)` bg, `borderBottom: '1px solid #161a22'` (merges with content)
+- Inactive tab: no bg, `rgba(255,255,255,0.35)` label color
+
+**NavWrapper (`NavWrapper.tsx`, Session 39, updated Session 42):**
+- `'use client'` — reads `usePathname`
+- `hasChrome = pathname.startsWith('/work')` — covers `/work` index (sticky WorkGrid chrome) and `/work/[slug]` (tab bar). `top: hasChrome ? TAB_BAR_HEIGHT : 0`
+- `transition: 'top 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)'` — ease-out-quart, matches page transition easing. Nav slides smoothly on route change.
+- `pointerEvents: 'none'` on outer div, `pointerEvents: 'auto'` on inner Nav wrapper — preserves nav interactivity
+- `Nav` no longer sets its own fixed position — NavWrapper owns all positioning
+
+**Nav changes (Session 39):**
+- Removed `fixed top-4 left-1/2 -translate-x-1/2 z-30` from Nav className
+- Nav is now a plain flex element — NavWrapper handles all positioning
+
+**Tab behavior:**
+- Opening a case study → tab registers, appears in bar
+- Refreshing → `useEffect` on pathname re-registers the tab correctly
+- Switching tabs → click navigates + activates tab
+- Closing active tab → switches to most recently viewed other tab
+- Closing last tab → navigates to `/work`, tab bar disappears
+- Max 10 tabs — `openTab` silently ignores if already at capacity
+- Tab state lives in context only — never in URL params or localStorage
+
+**Do NOT:**
+- Store tab state in localStorage or URL params
+- Change `TAB_BAR_HEIGHT` from 38 without updating all three consumers (TabBar, NavWrapper, PageTransitionWrapper)
+- Render TabBar on non-`/work/*` routes
+- Add tabs for the `/work` index page (only `/work/[slug]` routes create tabs)
+
+### Work (case studies) — updated Session 40
+
+Case study pages are now live at `/work/[slug]` for all 10 projects.
+
+**Files (Session 34, updated Session 40):**
+- `src/content/case-studies.ts` — `CaseStudy` interface + `CASE_STUDIES` array (10 entries) + `getCaseStudy(slug)` + `getAllSlugs()` helpers
+- `src/app/work/page.tsx` — `/work` index page, renders `<WorkGrid />` (Session 40)
+- `src/components/case-study/WorkGrid.tsx` — `'use client'` grid of all 10 case studies. Sticky terminal chrome header (`case-studies.exe`, traffic lights — red goes to `/`). Terminal chrome cards, 16/9 thumbnails (`preload="metadata"` for first-frame paint), responsive `auto-fill minmax(280px,1fr)` grid. No `autoPlay` (Session 40, updated Session 41)
+- `src/app/work/[slug]/page.tsx` — async dynamic route, `generateStaticParams` for all 10 slugs, calls `notFound()` for unknown slugs. **Next.js 15+:** `params` typed as `Promise<{ slug: string }>`, awaited before use. Page function is `async`.
+- `src/components/case-study/CaseStudyView.tsx` — `'use client'` component rendering the full case study page
+
+**CaseStudy interface:**
+```ts
+interface CaseStudy {
+  id: string          // matches project id in projects.ts
+  slug: string        // URL slug — /work/[slug]
+  type: CaseStudyType // 'full' | 'quick'
+  name: string
+  tagline: string
+  year: string
+  role: string
+  hook: string        // 2–3 sentences — the real problem and why it mattered
+  hardPart?: string   // full case studies only
+  decisions: CaseStudyDecision[]  // { title, body, artifact? }
+  outcome: string
+  heroAsset?: string  // image or video path
+  nextSlug?: string   // slug of the next case study for nav
+}
+```
+
+**Two types:**
+- `'full'` (6 entries): waypoint, statespace, channel, seudo, wafer, sherpa — includes `hardPart` section
+- `'quick'` (4 entries): waypoint-sync, kernel, mushroom, cohere-labs — no `hardPart` section
+
+**CaseStudyView layout (updated Session 39):**
+- Sticky terminal chrome header **removed** — replaced by the persistent tab bar (`TabBar`) at the top of the viewport.
+- 720px max-width content column, `0 auto` centered
+- Content padding: `120px 24px 120px` — 120px top accounts for tab bar (38px) + nav (~56px) + breathing room
+- Hero asset (if present): `16/9` aspect ratio, `borderRadius: 8`, autoplay muted loop for video
+- Header block: year (muted, uppercase) → name (h1, 32px) → tagline → role (terminal green `rgba(0,255,159,0.7)`, 12px, fontWeight 300, sentence case — no uppercase, no letterSpacing)
+- Sections in order: `the problem` (hook) → `the hard part` (full only) → `key decisions` or `what I did` → `outcome`
+- Decision artifacts render inline below each decision body — video autoplay muted loop, img static
+- Next case study: `[nextSlug].exe →` button at bottom, hover brightens border + text
+- Body copy: 13px, `fontWeight: 300`, `lineHeight: 1.8`, `rgba(255,255,255,0.65)`
+- All styling: inline styles only (no Tailwind — this is a scrollable page, not the fixed overlay system)
+
+**Video rule exception for case study pages:**
+- Hero videos and decision artifact videos autoplay muted loop — this is intentional and correct for case study pages
+- This differs from orbital cards (hover/active only) and thumbnails (hover only)
+- Case study page videos have `autoPlay` — this is the one place this is allowed
+
+**URL wiring (Session 34):**
+- All 10 projects in `projects.ts` now have `url: '/work/[slug]'`
+- All 4 featured projects in `featured-projects.ts` now have `url: '/work/[slug]'`
+- OrbitalCard click → `router.push()` for internal paths (already implemented in Session 25)
+- CaseStudiesDropdown rows → `router.push()` for internal paths (already implemented in Session 27)
+
+**Next case study chain:**
+waypoint → statespace → channel → seudo → wafer → sherpa → waypoint-sync → kernel → mushroom → cohere-labs → waypoint (loops)
+
+Card grid. Glance: title + one-line thesis only. Expand: problem, decision, outcome — inline, never navigates away. Immerse: full case study with artifacts, code, process.
 - Key projects: Waypoint design system, Sherpa Figma plugin (RAG-based, Pinecone + Cohere models), waypoint-sync (Figma-to-code token sync), Channel AI, Statespace/Aimlab.
 - Frame each as a bet made at the right time, not a list of deliverables.
 

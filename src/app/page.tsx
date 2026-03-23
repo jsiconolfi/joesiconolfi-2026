@@ -1,16 +1,15 @@
-import Swirl from '@/components/ui/Swirl'
-import Nav from '@/components/layout/Nav'
 import ChatPanel from '@/components/ui/ChatPanel'
-import OrbitalSystem from '@/components/ui/OrbitalSystem'
 
 export default function Home() {
   return (
-    <main className="relative min-h-screen bg-[#161a22] overflow-hidden">
-      <Swirl className="fixed inset-0 w-screen h-screen z-0" />
-      <OrbitalSystem />
-      <Nav />
-
-      {/* Chat panel — always visible on homepage, centered */}
+    <div
+      style={{
+        // Transparent — swirl and orbital cards show through from layout
+        position: 'fixed',
+        inset: 0,
+      }}
+    >
+      {/* Chat panel — centered, always visible on homepage */}
       <div className="fixed inset-0 flex items-center justify-center z-20 px-4 py-20 pointer-events-none">
         <ChatPanel />
       </div>
@@ -20,6 +19,6 @@ export default function Home() {
         <p className="font-mono text-sm font-normal text-white">Joe Siconolfi</p>
         <p className="font-mono text-xs font-light text-text-hint mt-0.5">Design + Engineering</p>
       </div>
-    </main>
+    </div>
   )
 }

@@ -9,7 +9,7 @@ export default function Nav() {
   const { toggle } = useChatContext()
   return (
     <nav
-      className="fixed top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-6 px-6 py-3 rounded-full"
+      className="flex items-center gap-6 px-6 py-3 rounded-full"
       style={{
         backgroundColor: 'rgba(22, 26, 34, 0.7)',
         backdropFilter: 'blur(5px)',
@@ -27,11 +27,14 @@ export default function Nav() {
       />
       <div className="w-px h-4 bg-white/20" />
       <CaseStudiesDropdown />
-      <a href="#lab" className="font-mono text-xs font-light text-text-secondary hover:text-accent-neon transition-colors">
-        lab
+      <a href="/about" className="font-mono text-xs font-light text-text-secondary hover:text-accent-neon transition-colors">
+        about
       </a>
       <a href="#timeline" className="font-mono text-xs font-light text-text-secondary hover:text-accent-neon transition-colors">
         timeline
+      </a>
+      <a href="#lab" className="font-mono text-xs font-light text-text-secondary hover:text-accent-neon transition-colors">
+        the lab
       </a>
       <div className="w-px h-4 bg-white/20" />
       <button

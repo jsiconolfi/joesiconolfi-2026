@@ -114,7 +114,7 @@ export default function CaseStudiesDropdown() {
                 borderBottom: '1px solid rgba(255,255,255,0.04)',
               }}
             >
-              <CaseStudyThumbnail project={project} />
+              <CaseStudyThumbnail project={project} active={hoveredId === project.id} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{
                   fontFamily: 'var(--font-mono, monospace)',
@@ -150,7 +150,10 @@ export default function CaseStudiesDropdown() {
           ))}
 
           <div
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              setOpen(false)
+              router.push('/work')
+            }}
             onMouseEnter={() => {
               clearTimeout(hoverTimerRef.current)
               hoverTimerRef.current = setTimeout(() => setHoveredId('browse'), 50)
