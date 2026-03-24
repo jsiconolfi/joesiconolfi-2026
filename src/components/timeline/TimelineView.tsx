@@ -106,7 +106,7 @@ export default function TimelineView() {
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '120px 48px 160px' }}>
 
         {/* Header */}
-        <div style={{ marginBottom: 80 }}>
+        <div style={{ marginBottom: 80, paddingLeft: 48 }}>
           <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', letterSpacing: '0.12em', margin: '0 0 12px' }}>
             timeline
           </p>
@@ -170,9 +170,8 @@ export default function TimelineView() {
           </div>
         </div>
 
-        {/* Footer — sibling of timeline wrapper, outside grid context */}
-        {/* marginLeft: 48 shifts the whole div (border + text) to align with era content column */}
-        <div style={{ marginTop: 64, paddingTop: 40, marginLeft: 48, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        {/* Footer — marginLeft: 11 aligns border with rail, paddingLeft: 37 keeps text at content column (11+37=48) */}
+        <div style={{ marginTop: 64, paddingTop: 40, marginLeft: 11, paddingLeft: 37, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
           <p style={{
             fontSize: 11,
             fontWeight: 300,

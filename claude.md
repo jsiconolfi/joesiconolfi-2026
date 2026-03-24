@@ -534,6 +534,7 @@ interface TimelineEra {
 **Layout (Session 51 + Session 52, updated Session 58):**
 - Terminal chrome: `position: sticky, top: 0, zIndex: 40`, `rgba(10,12,16,0.98)` + `blur(12px)`. Traffic lights. Red → `router.push('/')`. Window title: `timeline.exe`.
 - Max-width 760px content column, `padding: '120px 48px 160px'`
+- Header div: `paddingLeft: 48` (Session 59) — aligns header text with era content column (24px dot + 24px gap)
 - Header h1: "15+ years of building" (updated Session 58)
 - Resume download link below subtitle: `<a href="/JoeSiconolfi_Resume-2026.pdf" download>` — `marginTop: 20`, `fontSize: 11`, `fontWeight: 300`, `color: rgba(255,255,255,0.4)`. Hover → `#00ff9f`. `↓` arrow prefix in `rgba(0,255,159,0.5)`. PDF served from `/public/`.
 - Each `EraBlock`: `display: grid, gridTemplateColumns: '24px 1fr', gap: '0 24px'`
@@ -567,7 +568,7 @@ interface TimelineEra {
 
 **Cohere era:** `"now"` badge — `fontSize: 9, color: '#00ff9f', border: 1px solid rgba(0,255,159,0.3)`, `borderRadius: 3`
 
-**Footer (Session 50, confirmed Session 55):** Simple text line only. `borderTop: '1px solid rgba(255,255,255,0.06)'`, `marginTop: 64`, `paddingTop: 40`. No box, no background, no border-radius, no pulsing dot. "Currently at Cohere, San Francisco · Staff Design Engineer" in `rgba(255,255,255,0.25)`. Footer is a sibling of the timeline wrapper div — not a child of it — so it has no grid inheritance from EraBlock. Also removed unused `index` param from `TIMELINE.map` (Session 55).
+**Footer (Session 50–59):** Simple text line only. `borderTop: '1px solid rgba(255,255,255,0.06)'`, `marginTop: 64`, `paddingTop: 40`, `paddingLeft: 48` (Session 59 — aligns border + text with era content column). No box, no background, no border-radius. "Currently at Cohere, San Francisco · Staff Design Engineer" in `rgba(255,255,255,0.25)`. Footer is a sibling of the timeline wrapper — not a child.
 
 **`pulse-slow` keyframe** exists in `globals.css` (added Session 49, no longer used by timeline footer but retained for possible future use).
 

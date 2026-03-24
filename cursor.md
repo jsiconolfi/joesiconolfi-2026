@@ -536,7 +536,7 @@ Live at `/timeline`. Vertical scroll timeline with single scroll listener + CSS 
 - `src/app/timeline/page.tsx` — thin route, renders `<TimelineView />`
 - `src/components/timeline/TimelineView.tsx` — `'use client'`, single scroll listener, CSS grid `EraBlock`
 
-**Header (Session 58):** h1 reads "15+ years of building". Resume download link below subtitle: `<a href="/JoeSiconolfi_Resume-2026.pdf" download>` with `↓` prefix, `marginTop: 20`, hover → `#00ff9f`. File must exist at `public/JoeSiconolfi_Resume-2026.pdf`.
+**Header (Session 58–59):** `paddingLeft: 48` on the header div aligns it with the era content column. h1 reads "15+ years of building". Resume download link below subtitle: `<a href="/JoeSiconolfi_Resume-2026.pdf" download>` with `↓` prefix, `marginTop: 20`, hover → `#00ff9f`. File must exist at `public/JoeSiconolfi_Resume-2026.pdf`.
 
 **Era types:** `compact` (early career, 5 eras) = dot 6px, smaller text, no artifacts/tech/link. `full` (5 eras) = dot 8px, full treatment with artifacts, tech pills, case study link.
 
@@ -557,7 +557,7 @@ Live at `/timeline`. Vertical scroll timeline with single scroll listener + CSS 
 - Column 2: all text content.
 - **Single static rail (Session 52):** `position: absolute, left: 11, top: 8, bottom: 0, width: 1, rgba(255,255,255,0.07)` on the `position: relative` timeline wrapper. Never has a transition or animation. Era blocks sit at `zIndex: 1` above it. `left: 11` centers the rail on the 24px dot column.
 
-**Footer (Session 55):** Simple text line — `borderTop: '1px solid rgba(255,255,255,0.06)'`. Must be a sibling of the `position: relative` timeline wrapper, NOT a child of it. No box, no animation. Do NOT nest it inside the grid wrapper or it will inherit the `24px 1fr` column layout.
+**Footer (Session 55–59):** `paddingLeft: 48` (Session 59) — aligns border and text with era content column. `borderTop: '1px solid rgba(255,255,255,0.06)'`, `marginTop: 64`, `paddingTop: 40`. Sibling of the timeline wrapper, NOT a child. No box, no animation.
 
 **`pulse-slow` keyframe** in `globals.css` — retained but not used by timeline.
 
