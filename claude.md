@@ -32,13 +32,13 @@ Every section uses the same interaction grammar: glance → expand → immerse. 
 The homepage is a fixed overlay composition — not a scrollable section:
 - **Swirl**: `fixed inset-0 z-0`, fills entire viewport, bleeds through the glass panel
 - **Nav**: via `NavWrapper` at `z-40` — desktop: pill frosted glass, centered; **mobile (Session 66)**: full-width bar, logo + hamburger + Chat (see Nav)
-- **ChatPanel**: `z-20`, `h-[75vh]` — desktop: `560px` wide, viewport-centered; **mobile**: `width: calc(100vw - 32px)`, wrapper `alignItems: flex-start`, `paddingTop: 100`, horizontal `16px` — THE primary interface
+- **ChatPanel**: `z-20` — desktop: `560px` wide, `height: 75vh`, `maxHeight: 80vh`, viewport-centered; **mobile**: `width: calc(100vw - 32px)`, `height` / `maxHeight: calc(100dvh - 140px)` (**`dvh` not `vh`** — Session 68); messages column `flex: 1` + `minHeight: 0` + `overflowY: auto`; chips + input `flexShrink: 0`
 - **Name block**: desktop `bottom: 32px` `left: 32px`; **mobile**: `bottom: 100px` `left: 16px` (clears mobile nav)
 
-**Homepage file (`src/app/page.tsx`, Session 66):** `'use client'` — `useIsMobile()` drives chat wrapper + name block offsets. Chat wrapper uses inline `position: fixed; inset: 0; display: flex; pointer-events: none` with `zIndex: 20`.
+**Homepage file (`src/app/page.tsx`, Session 66, Session 68):** `'use client'` — `useIsMobile()` drives chat wrapper + name block offsets. Chat wrapper **Session 68 mobile:** `position: fixed; top: 80px; left: 0; right: 0; bottom: 0;` + `padding: 16px` (sides/top/bottom); desktop: `top: 0`, centered flex. `pointer-events: none` with `zIndex: 20`.
 
 The ChatPanel (`src/components/ui/ChatPanel.tsx`) is a terminal-aesthetic frosted glass chat interface:
-- macOS traffic-light header chrome
+- **`variant` prop (Session 69):** `'embedded'` (default, homepage) vs `'overlay'` (`ChatOverlay` only). **Embedded:** three **gray** dots `rgba(255,255,255,0.15)` at `10px` — persistent ambient window, not closeable from chrome; `id="chat-panel"` on root for `OrbitalSystem`. **Overlay:** **colored** `#ff5f57` / `#febc2e` / `#28c840` — red `<button>` hover `×`, `title="Close"`, `onClick → useChatContext().close()`; yellow/green `−` / `+` hover only; **no** `id` on root (avoids duplicate id with embedded instance).
 - Animated greeting stream on load — three phases: thinking → streaming → chips (Session 11)
 - AI avatar: `/logo-update.svg` in a small circle
 - `>` prompt prefix in `#00ff9f` terminal green
@@ -208,13 +208,13 @@ The old model recalculated position from scratch every frame (`newPos = driftPos
 **`@keyframes pulse`** remains in `globals.css` (not used by cards currently)
 **`@keyframes thinking-shimmer`** in `globals.css` — used by `ThinkingText`: `0%/100% { color: #555555 }`, `50% { color: #aaaaaa }`, 1.6s ease-in-out infinite. Each character has an 80ms stagger delay.
 
-### The Nav (`src/components/layout/Nav.tsx`) — updated Session 27, Session 65, Session 66
+### The Nav (`src/components/layout/Nav.tsx`) — updated Session 27, Session 65, Session 66, Session 68, Session 69
 
 **Desktop:** `case studies` (dropdown) / `about` / `timeline` / `the lab` / "Chat with me" button. Order left to right: case studies ∨ · about · timeline · the lab · [Chat with me]. `about` links to `/about` (built Session 44). `timeline` links to `/timeline` (built Session 49). `the lab` links to `/lab` (built Session 60). "lab" is gone — only "the lab" exists (updated Session 33).
 
-**Mobile (Session 66):** `useIsMobile()` replaces the desktop pill with a full-width frosted bar (`width: 100%`, pill `borderRadius: 100`): logo (`/logo-update.svg` via `next/image`, links home) · hamburger (two bars, `#00ff9f` when open) · **Chat** pill (`HiDotGrid` `dotSize={3}` `gap={2}` `speed={1.2}` + label "Chat") — calls `useChatContext().toggle()` and closes the menu, same intent as desktop "Chat with me". Full-screen menu overlay when open: `position: fixed; inset: 0; z-index: 45`; `rgba(14,16,21,0.97)` + blur; close `×` top-right; links as `next/link` to `/work` (case studies), `/about`, `/timeline`, `/lab` — active route `#00ff9f`, others `rgba(255,255,255,0.5)`. **NavWrapper (Session 66):** inner wrapper `width: 100%` when mobile so the bar spans the padded area.
+**Mobile (Session 66–69):** Full-width bar with **`position: relative; z-index: 46`** so it stacks **above** the menu overlay (`z-index: 45`). Hamburger: **two** lines, `gap: 6`, morph to **X** via `translateY(±3.75px)` + `rotate(±45deg)` when `menuOpen` (CSS only, `0.25s`). **Menu overlay (Session 69):** always mounted; **`opacity` + `pointerEvents`** toggle (not conditional render) so fade-out can complete; `rgba(14,16,21,0.92)` + `blur(20px)`; nav rows **left-aligned**, `fontSize: 32`, `translateX(-16px)` → `0` with **`transition-delay: i * 60ms`**; bottom **linkedin** / **github** links with extra delay after rows. `useRouter().push` on row click + `setMenuOpen(false)`; **`useEffect` on `pathname`** closes menu (browser back). **Chat** pill: `toggle()` + close menu. **NavWrapper (Session 66):** inner `width: 100%` when mobile.
 
-**ChatOverlay (Session 66):** `useIsMobile()` — inner panel wrapper drops `max-w-2xl` on mobile so `ChatPanel` width (`calc(100vw - 32px)`) is not capped by `672px`.
+**ChatOverlay (Session 66, animation Session 69):** `useIsMobile()` — inner `motion.div` wrapper drops `max-w-2xl` on mobile. Renders `<ChatPanel variant="overlay" />`. **Panel motion:** `framer-motion` `useAnimation()` — open slides **from above** (`y: '-100vh'` → `0`), close slides **down** (`y: '100vh'`), then instant reset to `-100vh` for the next open; `duration: 0.45`, `ease: [0.25, 0.46, 0.45, 0.94]` (matches `PageTransitionWrapper`). Root overlay `opacity` / `visibility` close delay aligned to `0.45s`.
 
 **Active route highlighting (Session 65):**
 - `usePathname()` from `next/navigation` in `Nav.tsx`. Helper `isActive(href)`: if `href === '/'` then `pathname === '/'`, else `pathname.startsWith(href)`.
@@ -571,9 +571,9 @@ interface FeedEntry {
 - Feed entries with `url` render title as `<a>` that turns `#00ff9f` on hover, with ` →` suffix
 - All styling: inline styles only (no Tailwind)
 
-**Traffic light rule (Session 61 — applies site-wide):**
-- Colored dots (`#ff5f57`, `#febc2e`, `#28c840`) = interactive/closeable chrome. The red dot does something (closes/navigates). Use on: page-level terminal chrome bars, OrbitalCards.
-- Gray dots (`rgba(255,255,255,0.15)`) = decorative chrome only. Card cannot be closed or interacted with as a window. Use on: experiment cards, WorkGrid cards, any non-closeable terminal card.
+**Traffic light rule (Session 61, clarified Session 68, Session 69):**
+- **Colored dots** (`#ff5f57`, `#febc2e`, `#28c840`) = dismissible/interactive window chrome. Use on: **`ChatPanel variant="overlay"`** (red → `close()`), case study **TabBar** active tab (decorative lights; tab close is `×`), about / timeline / lab / work **index** sticky chrome, case study page chrome, **OrbitalCards**.
+- **Gray dots** (`rgba(255,255,255,0.15)`) = non-closeable decorative chrome: **`ChatPanel variant="embedded"`** (homepage — not closable from header), **WorkGrid** per-card rows, **Lab** experiment cards.
 
 **Nav/transition wiring:**
 - `NavWrapper.tsx`: `hasChrome` includes `pathname === '/lab'`

@@ -164,17 +164,20 @@ Two RAF-loop dot grid components live in `src/components/ui/`:
 - `rafRef` typed as `useRef<number | undefined>(undefined)` — cleanup on unmount
 - `prefers-reduced-motion`: static snapshot state, no animation
 
-## AI / chat panel (Session 7 — updated Session 11, Session 66)
+## AI / chat panel (Session 7 — updated Session 11, Session 66, Session 68, Session 69)
 
 The prompt bar has been replaced by a full `ChatPanel` component — the primary interface of the homepage. Rules:
-- `src/components/ui/ChatPanel.tsx` — the main deliverable, centered in the viewport (desktop) or top-biased on mobile (homepage wrapper)
-- Panel dimensions: `h-[75vh]`; desktop `width` / `maxWidth` `560px`; mobile `calc(100vw - 32px)` / `100%` via `useIsMobile()` (Session 66)
+- `src/components/ui/ChatPanel.tsx` — `variant?: 'embedded' | 'overlay'` (default **`embedded`**). Homepage uses embedded; **`ChatOverlay`** passes **`variant="overlay"`**.
+- **Chrome (Session 69):** **Embedded** — three **gray** dots `rgba(255,255,255,0.15)` `10px`, no close control; **`id="chat-panel"`** on root. **Overlay** — **colored** traffic lights, red closes via **`useChatContext().close()`**; **no** `id` on root.
+- Panel dimensions: desktop `width` / `maxWidth` `560px`, `height: 75vh`, `maxHeight: 80vh`; mobile `width: calc(100vw - 32px)`, `maxWidth: 100%`, **`height` and `maxHeight: calc(100dvh - 140px)`** — **`dvh` not `vh`** on mobile (Session 68). Outer panel `display: flex; flexDirection: column; minHeight: 0` so the messages region scrolls.
+- Messages column: `flex: 1`, `minHeight: 0`, `overflowY: auto` (inline style) — chips + input wrapper `flexShrink: 0` so they stay pinned below the thread.
 - Glass treatment uses **inline styles only** (not Tailwind backdrop-blur classes):
   - Outer panel: `backgroundColor: rgba(22,26,34,0.7)`, `backdropFilter: blur(5px)`, `boxShadow: 0 8px 32px rgba(0,0,0,0.3)`, `border: 1px solid rgba(255,255,255,0.06)`
   - Header / input bar: `backgroundColor: rgba(14,16,21,0.8)`, `borderBottom/Top: 1px solid rgba(255,255,255,0.06)`
   - User message bubble: `rgba(255,255,255,0.08)` bg, `rgba(255,255,255,0.1)` border, `borderRadius: 16px 16px 4px 16px`
   - Suggestion chips: `rgba(255,255,255,0.04)` bg, `rgba(255,255,255,0.12)` border, `borderRadius: 20px`
-- Terminal chrome header: macOS traffic-light dots (white/15 placeholder) + `portfolio.navigator`
+- **`ChatOverlay` (Session 69):** `motion.div` + **`useAnimation()`** — panel enters from **`y: '-100vh'`**, exits to **`y: '100vh'`**, then resets to **`'-100vh'`**; `duration: 0.45`, same ease as page transitions. Outer dialog visibility delay **`0.45s`** on close.
+- Mobile send control: `44×44` min touch target (Session 68).
 - AI avatar: logo image in a small circle (`/logo-update.svg`)
 - Input bar: `>` prompt prefix in `#00ff9f` (terminal green), free-form input, up-arrow send button
 - ID generation: use `useRef` counter (not `Date.now()`) — react-hooks/purity rule is strict
@@ -370,11 +373,11 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 - `PageTransitionWrapper`: wraps `{children}` — `top: TAB_BAR_HEIGHT` on work pages, `top: 0` on homepage
 - `ChatOverlay`: inside `ChatProvider`, `z-50`
 
-**Homepage (`src/app/page.tsx`) — updated Session 35, Session 66:**
+**Homepage (`src/app/page.tsx`) — updated Session 35, Session 66, Session 68:**
 - Only contains ChatPanel wrapper + name block — NO Swirl, OrbitalSystem, or Nav (those moved to layout)
 - `'use client'` + `useIsMobile()` (Session 66)
-- ChatPanel wrapper: `fixed inset-0 z-20 pointer-events-none`; desktop `flex items-center justify-center`; mobile `alignItems: flex-start`, `paddingTop: 100`, `paddingLeft/Right: 16`
-- ChatPanel root div has `id="chat-panel"` and `pointer-events-auto`; desktop width `560px`, mobile `calc(100vw - 32px)` (see ChatPanel)
+- ChatPanel wrapper: `z-20` `pointer-events-none`; desktop `top: 0; inset` horizontal + bottom `0`, `flex` center; **mobile Session 68:** `top: 80px`, `left/right/bottom: 0`, `padding: 16px`, `alignItems: flex-start`
+- Embedded `ChatPanel` root has `id="chat-panel"` and `pointer-events-auto` (overlay instance omits `id` — Session 69); desktop width `560px`, mobile `calc(100vw - 32px)` (see ChatPanel)
 - Name block: desktop `bottom: 32px` `left: 32px`; mobile `bottom: 100px` `left: 16px` — `z-10` `pointer-events-none`
 
 **PageTransitionWrapper (`src/components/layout/PageTransitionWrapper.tsx`, Session 35, rewritten Session 47):**
@@ -404,13 +407,20 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 
 - **OrbitalSystem:** `if (isMobile) return null` after all hooks — no cards on mobile; do not partially render. Swirl stays mounted in layout (`Swirl.tsx` unchanged).
 - **Nav:** Desktop pill unchanged. Mobile: full-width bar (logo / hamburger / Chat); hamburger opens fixed overlay `z-index: 45` with large link labels; active route `#00ff9f`; Chat calls `useChatContext().toggle()`. **NavWrapper:** inner `width: 100%` when mobile.
-- **ChatPanel:** Root `width` / `maxWidth` — mobile `calc(100vw - 32px)` / `100%`, desktop `560px`. Chips row wraps with `gap: 8` and mobile padding `10px 16px`.
-- **Homepage `page.tsx`:** `'use client'` + `useIsMobile` — chat wrapper `alignItems: flex-start`, `paddingTop: 100`, horizontal padding `16px`; name block `bottom: 100` / `left: 16` on mobile vs `32` desktop.
+- **ChatPanel:** Root `width` / `maxWidth` — mobile `calc(100vw - 32px)` / `100%`, desktop `560px`. Mobile height **`calc(100dvh - 140px)`**; flex column + scrollable messages (Session 68). **Embedded** = gray chrome; **overlay** = colored chrome (Session 69).
+- **Homepage `page.tsx`:** `'use client'` + `useIsMobile` — **Session 68 mobile:** wrapper `top: 80px`, `left/right/bottom: 0`, `padding: 16px`, `alignItems: flex-start`; desktop `top: 0`, centered. Name block `bottom: 100` / `left: 16` on mobile vs `32` desktop.
 - **ChatOverlay:** Drop `max-w-2xl` on the inner wrapper when mobile so panel width matches viewport padding.
 
 **Do not modify** `Swirl.tsx`, `SwirlDotGrid.tsx`, or `HiDotGrid.tsx` for mobile work.
 
-## Nav (Session 7 — updated Session 33, Session 65, Session 66)
+**Session 68 — touch targets:** Mobile nav logo link, hamburger, and Chat pill use **minimum 44×44** hit areas where specified in `Nav.tsx`.
+
+## Traffic lights — Session 68 clarification, Session 69 ChatPanel split
+
+- **Colored** (`#ff5f57`, `#febc2e`, `#28c840`): dismissible/interactive window chrome — **`ChatPanel variant="overlay"`**, page-level terminal bars, case study headers, **OrbitalCards**, TabBar lights on active tab.
+- **Gray** (`rgba(255,255,255,0.15)`): non-closeable chrome — **`ChatPanel variant="embedded"`** (homepage), **WorkGrid** card rows, **Lab** experiment cards.
+
+## Nav (Session 7 — updated Session 33, Session 65, Session 66, Session 68, Session 69)
 
 `src/components/layout/Nav.tsx` — pill nav (desktop), frosted glass, centered top, `'use client'`:
 - Links left to right: `case studies` (dropdown) / `about` / `timeline` / `the lab` / "Chat with me" button
@@ -420,6 +430,8 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 - Glass: inline styles (`backdropFilter: blur(12px)`, `backgroundColor: rgba(255,255,255,0.05)`, `border: 1px solid rgba(255,255,255,0.1)`)
 - **Active route (Session 65):** `usePathname()` + `isActive(href)` (`/` exact match; else `pathname.startsWith(href)`). Text links: idle `rgba(255,255,255,0.6)`; current route or hover → `#00ff9f` (via `NavTextLink` + hover state). Logo has no active color.
 - "Chat with me" button at the right: warm amber pill containing `<HiDotGrid dotSize={2.5} gap={1.5} speed={1.2} />`, border brightens on hover — grid animates continuously regardless of hover (Session 66 mobile Chat pill: `dotSize={3}` `gap={2}`)
+
+**Mobile nav (Session 69):** Bar `z-index: 46`; menu overlay `z-index: 45`, always in DOM, `opacity` / `pointerEvents` only; hamburger **two-line → X** morph; staggered link animation `i * 60ms`; `useEffect` on `pathname` closes menu (`eslint-disable-next-line react-hooks/set-state-in-effect` on `setMenuOpen`).
 
 **CaseStudiesDropdown (`src/components/ui/CaseStudiesDropdown.tsx`, Session 27, updated Session 40, Session 65):**
 - `usePathname()`: `pathname.startsWith('/work')` → trigger `#00ff9f`; else open → `rgba(255,255,255,0.9)`; else `rgba(255,255,255,0.6)`.
@@ -576,10 +588,10 @@ Live at `/lab`. Open notebook with beliefs, open questions, experiments, and a c
 - Experiment description and feed body: `text.split('\n\n').map((para) => <p>)` — renders multi-paragraph content.
 - All styling: inline styles only.
 
-**Traffic light rule (site-wide, established Session 61):**
-- Colored dots (`#ff5f57`, `#febc2e`, `#28c840`) = interactive chrome. Red dot navigates/closes.
-- Gray dots (`rgba(255,255,255,0.15)`) = decorative chrome. Card is not closeable.
-- Lab experiment cards and WorkGrid cards use gray dots. Page-level chrome bars and OrbitalCards use colored dots.
+**Traffic light rule (site-wide, Session 61, clarified Session 68–69):**
+- **Colored dots** = dismissible window metaphor. **`ChatPanel variant="overlay"`** only (red → `close()`). Plus page chrome, OrbitalCards, case study chrome, TabBar.
+- **Gray dots** = non-closeable — **`ChatPanel variant="embedded"`**, WorkGrid card rows, Lab experiment cards.
+- See **Traffic lights — Session 68 clarification, Session 69 ChatPanel split** above.
 
 **Nav/transition wiring:**
 - `Nav.tsx`: `<Link href="/lab">`

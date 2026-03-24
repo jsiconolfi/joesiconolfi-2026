@@ -1,14 +1,49 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
+import { motion, useAnimation } from 'framer-motion'
 import ChatPanel from '@/components/ui/ChatPanel'
 import { useChatContext } from '@/context/ChatContext'
 import { useIsMobile } from '@/hooks/useIsMobile'
 
+const PANEL_EASE = [0.25, 0.46, 0.45, 0.94] as const
+const PANEL_DURATION = 0.45
+
 export default function ChatOverlay() {
   const isMobile = useIsMobile()
   const { isOpen, close } = useChatContext()
-  const panelRef = useRef<HTMLDivElement>(null)
+  const panelControls = useAnimation()
+  const prevOpenRef = useRef(isOpen)
+
+  useLayoutEffect(() => {
+    void panelControls.set({ y: '-100vh', opacity: 0 })
+  }, [panelControls])
+
+  useEffect(() => {
+    const wasOpen = prevOpenRef.current
+    prevOpenRef.current = isOpen
+
+    if (isOpen) {
+      void panelControls.start({
+        y: 0,
+        opacity: 1,
+        transition: { duration: PANEL_DURATION, ease: PANEL_EASE },
+      })
+      return
+    }
+
+    if (wasOpen) {
+      void panelControls
+        .start({
+          y: '100vh',
+          opacity: 0,
+          transition: { duration: PANEL_DURATION, ease: PANEL_EASE },
+        })
+        .then(() => {
+          void panelControls.start({ y: '-100vh', opacity: 0, transition: { duration: 0 } })
+        })
+    }
+  }, [isOpen, panelControls])
 
   // Close on Escape
   useEffect(() => {
@@ -23,7 +58,9 @@ export default function ChatOverlay() {
   // Prevent body scroll while open
   useEffect(() => {
     document.body.style.overflow = isOpen ? 'hidden' : ''
-    return () => { document.body.style.overflow = '' }
+    return () => {
+      document.body.style.overflow = ''
+    }
   }, [isOpen])
 
   return (
@@ -34,16 +71,12 @@ export default function ChatOverlay() {
       className="fixed inset-0 z-50 flex items-center justify-center px-4 py-20"
       style={{
         opacity: isOpen ? 1 : 0,
-        // visibility: hidden blocks pointer events on the entire subtree,
-        // including children that re-declare pointer-events: auto.
-        // Delay visibility on close so the opacity fade-out is visible first.
         visibility: isOpen ? 'visible' : 'hidden',
         transition: isOpen
-          ? 'opacity 0.2s ease, visibility 0s linear 0s'
-          : 'opacity 0.2s ease, visibility 0s linear 0.2s',
+          ? 'opacity 0.25s ease, visibility 0s linear 0s'
+          : `opacity ${PANEL_DURATION}s ease, visibility 0s linear ${PANEL_DURATION}s`,
       }}
     >
-      {/* Backdrop — click to close */}
       <div
         className="absolute inset-0"
         style={{
@@ -55,17 +88,13 @@ export default function ChatOverlay() {
         aria-hidden="true"
       />
 
-      {/* Panel — elevated above backdrop */}
-      <div
-        ref={panelRef}
+      <motion.div
+        animate={panelControls}
         className={isMobile ? 'relative z-10 w-full' : 'relative z-10 w-full max-w-2xl'}
-        style={{
-          transform: isOpen ? 'translateY(0)' : 'translateY(12px)',
-          transition: 'transform 0.25s ease',
-        }}
+        style={{ willChange: 'transform' }}
       >
-        <ChatPanel />
-      </div>
+        <ChatPanel variant="overlay" />
+      </motion.div>
     </div>
   )
 }

@@ -16,14 +16,17 @@ export default function Home() {
       <div
         style={{
           position: 'fixed',
-          inset: 0,
+          top: isMobile ? 80 : 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
           display: 'flex',
           alignItems: isMobile ? 'flex-start' : 'center',
           justifyContent: 'center',
-          paddingTop: isMobile ? 100 : 0,
-          paddingBottom: 0,
+          paddingTop: isMobile ? 16 : 0,
           paddingLeft: isMobile ? 16 : 0,
           paddingRight: isMobile ? 16 : 0,
+          paddingBottom: isMobile ? 16 : 0,
           zIndex: 20,
           pointerEvents: 'none',
         }}

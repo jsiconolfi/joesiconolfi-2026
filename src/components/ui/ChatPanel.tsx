@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import SwirlDotGrid from '@/components/ui/SwirlDotGrid'
 import { PROJECTS } from '@/content/projects'
+import { useChatContext } from '@/context/ChatContext'
 import { useIsMobile } from '@/hooks/useIsMobile'
 
 function detectProjectMention(text: string): string | null {
@@ -48,6 +49,13 @@ const ThinkingText = () => (
     ))}
   </span>
 )
+
+export type ChatPanelVariant = 'embedded' | 'overlay'
+
+interface ChatPanelProps {
+  /** `embedded` = homepage persistent panel (gray chrome). `overlay` = nav Chat overlay (colored chrome + close). */
+  variant?: ChatPanelVariant
+}
 
 const AssistantAvatar = ({ thinking = false }: AssistantAvatarProps) => (
   <div
@@ -96,8 +104,13 @@ const AssistantAvatar = ({ thinking = false }: AssistantAvatarProps) => (
   </div>
 )
 
-export default function ChatPanel() {
+export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
   const isMobile = useIsMobile()
+  const { close: closeChatOverlay } = useChatContext()
+  const isOverlay = variant === 'overlay'
+  const [closeHovered, setCloseHovered] = useState(false)
+  const [yellowHovered, setYellowHovered] = useState(false)
+  const [greenHovered, setGreenHovered] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(true)
@@ -201,18 +214,23 @@ export default function ChatPanel() {
 
   return (
     <div
-      id="chat-panel"
-      className="flex flex-col rounded-lg overflow-hidden pointer-events-auto h-[75vh]"
+      id={isOverlay ? undefined : 'chat-panel'}
+      className="flex flex-col rounded-lg overflow-hidden pointer-events-auto"
       style={{
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 0,
         width: isMobile ? 'calc(100vw - 32px)' : '560px',
-        maxWidth: isMobile ? '100%' : '560px',
+        maxWidth: '100%',
+        height: isMobile ? 'calc(100dvh - 140px)' : '75vh',
+        maxHeight: isMobile ? 'calc(100dvh - 140px)' : '80vh',
         backgroundColor: 'rgba(22, 26, 34, 0.7)',
         backdropFilter: 'blur(5px)',
         WebkitBackdropFilter: 'blur(5px)',
         border: '1px solid rgba(255, 255, 255, 0.06)',
       }}
     >
-      {/* Terminal chrome header */}
+      {/* Terminal chrome — gray (embedded / not closeable) vs colored (overlay / dismissible) */}
       <div
         className="flex items-center gap-2 px-4 py-3 flex-shrink-0"
         style={{
@@ -220,16 +238,150 @@ export default function ChatPanel() {
           borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
         }}
       >
-        <span className="w-3 h-3 rounded-full bg-white/15" />
-        <span className="w-3 h-3 rounded-full bg-white/15" />
-        <span className="w-3 h-3 rounded-full bg-white/15" />
+        {isOverlay ? (
+          <>
+            <button
+              type="button"
+              title="Close"
+              aria-label="Close chat"
+              onClick={() => closeChatOverlay()}
+              onMouseEnter={() => setCloseHovered(true)}
+              onMouseLeave={() => setCloseHovered(false)}
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                backgroundColor: '#ff5f57',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0,
+                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {closeHovered && (
+                <span
+                  style={{
+                    fontSize: 7,
+                    lineHeight: 1,
+                    color: 'rgba(0,0,0,0.65)',
+                    fontWeight: 700,
+                    userSelect: 'none',
+                  }}
+                >
+                  ×
+                </span>
+              )}
+            </button>
+            <span
+              role="presentation"
+              onMouseEnter={() => setYellowHovered(true)}
+              onMouseLeave={() => setYellowHovered(false)}
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                backgroundColor: '#febc2e',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              {yellowHovered && (
+                <span
+                  style={{
+                    fontSize: 7,
+                    lineHeight: 1,
+                    color: 'rgba(0,0,0,0.5)',
+                    fontWeight: 700,
+                    userSelect: 'none',
+                  }}
+                >
+                  −
+                </span>
+              )}
+            </span>
+            <span
+              role="presentation"
+              onMouseEnter={() => setGreenHovered(true)}
+              onMouseLeave={() => setGreenHovered(false)}
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                backgroundColor: '#28c840',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              {greenHovered && (
+                <span
+                  style={{
+                    fontSize: 7,
+                    lineHeight: 1,
+                    color: 'rgba(0,0,0,0.5)',
+                    fontWeight: 700,
+                    userSelect: 'none',
+                  }}
+                >
+                  +
+                </span>
+              )}
+            </span>
+          </>
+        ) : (
+          <>
+            <span
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                backgroundColor: 'rgba(255,255,255,0.15)',
+                display: 'block',
+                flexShrink: 0,
+              }}
+            />
+            <span
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                backgroundColor: 'rgba(255,255,255,0.15)',
+                display: 'block',
+                flexShrink: 0,
+              }}
+            />
+            <span
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                backgroundColor: 'rgba(255,255,255,0.15)',
+                display: 'block',
+                flexShrink: 0,
+              }}
+            />
+          </>
+        )}
         <span className="font-mono text-xs text-text-hint ml-3 flex-1">
           portfolio.navigator
         </span>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
+      <div
+        className="px-4 py-4 space-y-4 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10"
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+        }}
+      >
         {/* Phases 1 + 2: mounted until greeting message lands — no gap between phases */}
         {messages.length === 0 && (
           <div className="flex gap-3 items-start">
@@ -312,10 +464,11 @@ export default function ChatPanel() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input bar */}
+      {/* Input bar — pinned below scrollable messages */}
       <div
         className={`flex-shrink-0 pt-3 pb-3 flex flex-col gap-2.5 ${isMobile ? 'px-0' : 'px-4'}`}
         style={{
+          flexShrink: 0,
           backgroundColor: 'rgba(14, 16, 21, 0.6)',
           borderTop: '1px solid rgba(255, 255, 255, 0.06)',
         }}
@@ -365,8 +518,15 @@ export default function ChatPanel() {
             onClick={handleSubmit}
             disabled={!input.trim() || isResponseLoading}
             aria-label="Send message"
-            className="w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
-            style={{ border: '1px solid rgba(255,255,255,0.2)', backgroundColor: 'rgba(255,255,255,0.05)' }}
+            className="rounded-full flex items-center justify-center transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
+            style={{
+              width: isMobile ? 44 : 28,
+              height: isMobile ? 44 : 28,
+              minWidth: isMobile ? 44 : undefined,
+              minHeight: isMobile ? 44 : undefined,
+              border: '1px solid rgba(255,255,255,0.2)',
+              backgroundColor: 'rgba(255,255,255,0.05)',
+            }}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'
             }}

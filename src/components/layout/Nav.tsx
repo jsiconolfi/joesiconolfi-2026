@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import HiDotGrid from '@/components/ui/HiDotGrid'
 import CaseStudiesDropdown from '@/components/ui/CaseStudiesDropdown'
 import { useChatContext } from '@/context/ChatContext'
@@ -36,22 +36,36 @@ const MOBILE_NAV_LINKS = [
   { label: 'the lab', href: '/lab' },
 ] as const
 
+const MOBILE_SOCIAL_LINKS = [
+  { label: 'linkedin', url: 'https://linkedin.com/in/joesiconolfi' },
+  { label: 'github', url: 'https://github.com/joesiconolfi' },
+] as const
+
 export default function Nav() {
   const pathname = usePathname()
+  const router = useRouter()
   const { toggle } = useChatContext()
   const isMobile = useIsMobile()
   const [menuOpen, setMenuOpen] = useState(false)
+
+  useEffect(() => {
+    // Close menu when the route changes (including browser back/forward).
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync menu to Next pathname
+    setMenuOpen(false)
+  }, [pathname])
 
   if (isMobile) {
     return (
       <>
         <div
           style={{
+            position: 'relative',
+            zIndex: 46,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '12px 20px',
-            backgroundColor: 'rgba(22,26,34,0.85)',
+            padding: '10px 16px',
+            backgroundColor: 'rgba(22,26,34,0.9)',
             backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
             border: '1px solid rgba(255,255,255,0.08)',
@@ -63,7 +77,13 @@ export default function Nav() {
           <Link
             href="/"
             onClick={() => setMenuOpen(false)}
-            style={{ display: 'flex', alignItems: 'center' }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: 44,
+              minHeight: 44,
+            }}
             aria-label="Home"
           >
             <Image
@@ -84,30 +104,39 @@ export default function Nav() {
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              padding: '4px 8px',
+              padding: 8,
               display: 'flex',
               flexDirection: 'column',
-              gap: 5,
+              gap: 6,
               alignItems: 'center',
               justifyContent: 'center',
+              minWidth: 44,
+              minHeight: 44,
+              position: 'relative',
             }}
           >
             <span
               style={{
                 display: 'block',
-                width: 18,
+                width: 20,
                 height: 1.5,
-                backgroundColor: menuOpen ? '#00ff9f' : 'rgba(255,255,255,0.6)',
-                transition: 'background-color 0.2s ease',
+                backgroundColor: menuOpen ? '#00ff9f' : 'rgba(255,255,255,0.7)',
+                borderRadius: 1,
+                transformOrigin: 'center',
+                transform: menuOpen ? 'translateY(3.75px) rotate(45deg)' : 'none',
+                transition: 'transform 0.25s ease, background-color 0.2s ease',
               }}
             />
             <span
               style={{
                 display: 'block',
-                width: 18,
+                width: 20,
                 height: 1.5,
-                backgroundColor: menuOpen ? '#00ff9f' : 'rgba(255,255,255,0.6)',
-                transition: 'background-color 0.2s ease',
+                backgroundColor: menuOpen ? '#00ff9f' : 'rgba(255,255,255,0.7)',
+                borderRadius: 1,
+                transformOrigin: 'center',
+                transform: menuOpen ? 'translateY(-3.75px) rotate(-45deg)' : 'none',
+                transition: 'transform 0.25s ease, background-color 0.2s ease',
               }}
             />
           </button>
@@ -123,6 +152,7 @@ export default function Nav() {
               alignItems: 'center',
               gap: 6,
               padding: '7px 14px',
+              minHeight: 44,
               backgroundColor: 'rgba(196,174,145,0.08)',
               border: '1px solid rgba(196,174,145,0.2)',
               borderRadius: 100,
@@ -138,64 +168,97 @@ export default function Nav() {
           </button>
         </div>
 
-        {menuOpen && (
-          <div
-            style={{
-              position: 'fixed',
-              inset: 0,
-              backgroundColor: 'rgba(14,16,21,0.97)',
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)',
-              zIndex: 45,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-            }}
-          >
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(14, 16, 21, 0.92)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            zIndex: 45,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            padding: '0 40px',
+            opacity: menuOpen ? 1 : 0,
+            pointerEvents: menuOpen ? 'auto' : 'none',
+            transition: 'opacity 0.25s ease',
+          }}
+        >
+          {MOBILE_NAV_LINKS.map((link, i) => (
             <button
+              key={link.href}
               type="button"
-              onClick={() => setMenuOpen(false)}
-              aria-label="Close menu"
+              onClick={() => {
+                router.push(link.href)
+                setMenuOpen(false)
+              }}
               style={{
-                position: 'absolute',
-                top: 24,
-                right: 24,
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
-                fontSize: 20,
-                color: 'rgba(255,255,255,0.4)',
                 fontFamily: 'var(--font-mono)',
+                fontSize: 32,
+                fontWeight: 300,
+                color: isActive(pathname, link.href) ? '#00ff9f' : 'rgba(255,255,255,0.5)',
+                padding: '16px 0',
+                textAlign: 'left',
+                width: '100%',
+                borderBottom: '1px solid rgba(255,255,255,0.06)',
+                transform: menuOpen ? 'translateX(0)' : 'translateX(-16px)',
+                opacity: menuOpen ? 1 : 0,
+                transition: `transform 0.3s ease ${i * 60}ms, opacity 0.3s ease ${i * 60}ms, color 0.2s ease`,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = '#00ff9f'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = isActive(pathname, link.href)
+                  ? '#00ff9f'
+                  : 'rgba(255,255,255,0.5)'
               }}
             >
-              ×
+              {link.label}
             </button>
+          ))}
 
-            {MOBILE_NAV_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setMenuOpen(false)}
+          <div
+            style={{
+              marginTop: 40,
+              opacity: menuOpen ? 1 : 0,
+              transform: menuOpen ? 'translateY(0)' : 'translateY(8px)',
+              transition: `opacity 0.3s ease ${MOBILE_NAV_LINKS.length * 60 + 60}ms, transform 0.3s ease ${MOBILE_NAV_LINKS.length * 60 + 60}ms`,
+              display: 'flex',
+              gap: 24,
+            }}
+          >
+            {MOBILE_SOCIAL_LINKS.map((social) => (
+              <a
+                key={social.label}
+                href={social.url}
+                target="_blank"
+                rel="noopener noreferrer"
                 style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 28,
+                  fontSize: 11,
                   fontWeight: 300,
-                  color: isActive(pathname, link.href) ? '#00ff9f' : 'rgba(255,255,255,0.5)',
-                  padding: '12px 0',
-                  transition: 'color 0.2s ease',
+                  fontFamily: 'var(--font-mono)',
+                  color: 'rgba(255,255,255,0.3)',
                   textDecoration: 'none',
+                  transition: 'color 0.2s ease',
                 }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = '#00ff9f'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.3)'
+                }}
+                onClick={() => setMenuOpen(false)}
               >
-                {link.label}
-              </Link>
+                {social.label}
+              </a>
             ))}
           </div>
-        )}
+        </div>
       </>
     )
   }
