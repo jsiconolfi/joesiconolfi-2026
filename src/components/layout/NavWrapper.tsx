@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import Nav from './Nav'
 import { TAB_BAR_HEIGHT } from './TabBar'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 export default function NavWrapper() {
   const pathname = usePathname()
+  const isMobile = useIsMobile()
   const hasChrome = pathname.startsWith('/work') || pathname === '/about' || pathname === '/timeline' || pathname === '/lab'
 
   // Start at 0 always, then animate to target after mount.
@@ -38,7 +40,7 @@ export default function NavWrapper() {
         pointerEvents: 'none',
       }}
     >
-      <div style={{ pointerEvents: 'auto' }}>
+      <div style={{ pointerEvents: 'auto', width: isMobile ? '100%' : 'auto' }}>
         <Nav />
       </div>
     </div>

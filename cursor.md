@@ -24,7 +24,7 @@ src/
     sections/           # Page sections (Hero, Work, Lab, Timeline, etc.)
     layout/             # Nav, Footer, wrappers
   lib/                  # Utilities, helpers, constants
-  hooks/                # Custom React hooks
+  hooks/                # Custom React hooks (`useIsMobile.ts` — Session 66, breakpoint 768px)
   styles/               # Global CSS, Tailwind config extensions
   types/                # Shared TypeScript types and interfaces
   content/              # Static content as typed TS objects (no CMS yet)
@@ -164,11 +164,11 @@ Two RAF-loop dot grid components live in `src/components/ui/`:
 - `rafRef` typed as `useRef<number | undefined>(undefined)` — cleanup on unmount
 - `prefers-reduced-motion`: static snapshot state, no animation
 
-## AI / chat panel (Session 7 — updated Session 11)
+## AI / chat panel (Session 7 — updated Session 11, Session 66)
 
 The prompt bar has been replaced by a full `ChatPanel` component — the primary interface of the homepage. Rules:
-- `src/components/ui/ChatPanel.tsx` — the main deliverable, centered in the viewport
-- Panel dimensions: `w-full max-w-2xl h-[75vh]` — large, not a widget
+- `src/components/ui/ChatPanel.tsx` — the main deliverable, centered in the viewport (desktop) or top-biased on mobile (homepage wrapper)
+- Panel dimensions: `h-[75vh]`; desktop `width` / `maxWidth` `560px`; mobile `calc(100vw - 32px)` / `100%` via `useIsMobile()` (Session 66)
 - Glass treatment uses **inline styles only** (not Tailwind backdrop-blur classes):
   - Outer panel: `backgroundColor: rgba(22,26,34,0.7)`, `backdropFilter: blur(5px)`, `boxShadow: 0 8px 32px rgba(0,0,0,0.3)`, `border: 1px solid rgba(255,255,255,0.06)`
   - Header / input bar: `backgroundColor: rgba(14,16,21,0.8)`, `borderBottom/Top: 1px solid rgba(255,255,255,0.06)`
@@ -338,6 +338,8 @@ Persistent browser-like tab bar visible on all `/work/*` routes.
 - Tab `z-index: 50` — same level as ChatOverlay but renders behind it (ChatOverlay is rendered after in DOM order).
 - Background: `rgba(10,12,16,0.98)` — slightly darker than panel overlays.
 
+**NavWrapper (Session 66):** `useIsMobile()` — inner wrapper around `<Nav />` uses `width: '100%'` on mobile so the Session 66 nav bar spans available horizontal space.
+
 **Nav changes (Session 39, updated Session 44):**
 - `Nav.tsx` no longer has `fixed` positioning — `NavWrapper` owns all positioning.
 - `NavWrapper` wraps Nav in a `position: fixed` div, shifting `top` by `TAB_BAR_HEIGHT` on all `/work` pages.
@@ -368,11 +370,12 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 - `PageTransitionWrapper`: wraps `{children}` — `top: TAB_BAR_HEIGHT` on work pages, `top: 0` on homepage
 - `ChatOverlay`: inside `ChatProvider`, `z-50`
 
-**Homepage (`src/app/page.tsx`) — updated Session 35:**
+**Homepage (`src/app/page.tsx`) — updated Session 35, Session 66:**
 - Only contains ChatPanel wrapper + name block — NO Swirl, OrbitalSystem, or Nav (those moved to layout)
-- ChatPanel wrapper: `fixed inset-0 flex items-center justify-center z-20 px-4 py-20 pointer-events-none`
-- ChatPanel root div has `id="chat-panel"` and `pointer-events-auto`
-- Name block: `fixed bottom-8 left-8 z-10 pointer-events-none`
+- `'use client'` + `useIsMobile()` (Session 66)
+- ChatPanel wrapper: `fixed inset-0 z-20 pointer-events-none`; desktop `flex items-center justify-center`; mobile `alignItems: flex-start`, `paddingTop: 100`, `paddingLeft/Right: 16`
+- ChatPanel root div has `id="chat-panel"` and `pointer-events-auto`; desktop width `560px`, mobile `calc(100vw - 32px)` (see ChatPanel)
+- Name block: desktop `bottom: 32px` `left: 32px`; mobile `bottom: 100px` `left: 16px` — `z-10` `pointer-events-none`
 
 **PageTransitionWrapper (`src/components/layout/PageTransitionWrapper.tsx`, Session 35, rewritten Session 47):**
 - `AnimatePresence mode="wait" initial={false}` — exits before enters; no animation on first load
@@ -388,22 +391,35 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 - `isCaseStudy`, `isWorkIndex`, `isAbout`, `isContentPage` variables removed — replaced by single `deep` boolean
 - Do NOT reintroduce `top: TAB_BAR_HEIGHT` on the wrapper; do NOT split `isDeepPage` back into separate variables
 
-**OrbitalSystem (updated Session 35):**
+**OrbitalSystem (updated Session 35, Session 66):**
+- **Session 66:** `useIsMobile()` — returns `null` on viewports `< 768px` (after all hooks). No orbital UI on phone; Swirl unchanged.
 - Uses `usePathname` — pathname is a dependency on the measure `useEffect`
 - Runs immediate `measure()` + delayed `measure()` at 600ms on each pathname change
 - Delayed measure ensures `chat-panel` element is found after the 450ms transition animation completes
 - Cards stay rendered (behind opaque overlay) on case study pages — no visibility toggle needed
 
-## Nav (Session 7 — updated Session 33, Session 65)
+## Mobile layout — Session 66
 
-`src/components/layout/Nav.tsx` — pill nav, frosted glass, centered top, `'use client'`:
+**Breakpoint:** `768px`. Shared hook `src/hooks/useIsMobile.ts` — `'use client'`, `useState(false)` + `useEffect` with `resize` listener; `isMobile === window.innerWidth < 768`. Use this hook (not ad-hoc media queries) for responsive behavior unless a static CSS approach is explicitly required.
+
+- **OrbitalSystem:** `if (isMobile) return null` after all hooks — no cards on mobile; do not partially render. Swirl stays mounted in layout (`Swirl.tsx` unchanged).
+- **Nav:** Desktop pill unchanged. Mobile: full-width bar (logo / hamburger / Chat); hamburger opens fixed overlay `z-index: 45` with large link labels; active route `#00ff9f`; Chat calls `useChatContext().toggle()`. **NavWrapper:** inner `width: 100%` when mobile.
+- **ChatPanel:** Root `width` / `maxWidth` — mobile `calc(100vw - 32px)` / `100%`, desktop `560px`. Chips row wraps with `gap: 8` and mobile padding `10px 16px`.
+- **Homepage `page.tsx`:** `'use client'` + `useIsMobile` — chat wrapper `alignItems: flex-start`, `paddingTop: 100`, horizontal padding `16px`; name block `bottom: 100` / `left: 16` on mobile vs `32` desktop.
+- **ChatOverlay:** Drop `max-w-2xl` on the inner wrapper when mobile so panel width matches viewport padding.
+
+**Do not modify** `Swirl.tsx`, `SwirlDotGrid.tsx`, or `HiDotGrid.tsx` for mobile work.
+
+## Nav (Session 7 — updated Session 33, Session 65, Session 66)
+
+`src/components/layout/Nav.tsx` — pill nav (desktop), frosted glass, centered top, `'use client'`:
 - Links left to right: `case studies` (dropdown) / `about` / `timeline` / `the lab` / "Chat with me" button
 - Order: `<CaseStudiesDropdown />` → `about` (href="/about") → `timeline` (href="/timeline") → `the lab` (href="/lab") → Chat with me button
 - "lab" is gone — only "the lab" exists. `about` links to `/about`. `timeline` links to `/timeline` (live, Session 49). `the lab` links to `/lab` (live, Session 60).
 - The `work` link was replaced in Session 27 with `<CaseStudiesDropdown />` — a button that opens a `320px` frosted-glass dropdown with 4 featured projects + hover-play video thumbnails
 - Glass: inline styles (`backdropFilter: blur(12px)`, `backgroundColor: rgba(255,255,255,0.05)`, `border: 1px solid rgba(255,255,255,0.1)`)
 - **Active route (Session 65):** `usePathname()` + `isActive(href)` (`/` exact match; else `pathname.startsWith(href)`). Text links: idle `rgba(255,255,255,0.6)`; current route or hover → `#00ff9f` (via `NavTextLink` + hover state). Logo has no active color.
-- "Chat with me" button at the right: warm amber pill containing `<HiDotGrid dotSize={4} gap={2.5} speed={1.2} />`, border brightens on hover — grid animates continuously regardless of hover
+- "Chat with me" button at the right: warm amber pill containing `<HiDotGrid dotSize={2.5} gap={1.5} speed={1.2} />`, border brightens on hover — grid animates continuously regardless of hover (Session 66 mobile Chat pill: `dotSize={3}` `gap={2}`)
 
 **CaseStudiesDropdown (`src/components/ui/CaseStudiesDropdown.tsx`, Session 27, updated Session 40, Session 65):**
 - `usePathname()`: `pathname.startsWith('/work')` → trigger `#00ff9f`; else open → `rgba(255,255,255,0.9)`; else `rgba(255,255,255,0.6)`.

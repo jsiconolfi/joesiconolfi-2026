@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import SwirlDotGrid from '@/components/ui/SwirlDotGrid'
 import { PROJECTS } from '@/content/projects'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 function detectProjectMention(text: string): string | null {
   const lower = text.toLowerCase()
@@ -96,6 +97,7 @@ const AssistantAvatar = ({ thinking = false }: AssistantAvatarProps) => (
 )
 
 export default function ChatPanel() {
+  const isMobile = useIsMobile()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(true)
@@ -200,8 +202,10 @@ export default function ChatPanel() {
   return (
     <div
       id="chat-panel"
-      className="w-full max-w-2xl h-[75vh] flex flex-col rounded-lg overflow-hidden pointer-events-auto"
+      className="flex flex-col rounded-lg overflow-hidden pointer-events-auto h-[75vh]"
       style={{
+        width: isMobile ? 'calc(100vw - 32px)' : '560px',
+        maxWidth: isMobile ? '100%' : '560px',
         backgroundColor: 'rgba(22, 26, 34, 0.7)',
         backdropFilter: 'blur(5px)',
         WebkitBackdropFilter: 'blur(5px)',
@@ -310,14 +314,20 @@ export default function ChatPanel() {
 
       {/* Input bar */}
       <div
-        className="flex-shrink-0 px-4 pt-3 pb-3 flex flex-col gap-2.5"
+        className={`flex-shrink-0 pt-3 pb-3 flex flex-col gap-2.5 ${isMobile ? 'px-0' : 'px-4'}`}
         style={{
           backgroundColor: 'rgba(14, 16, 21, 0.6)',
           borderTop: '1px solid rgba(255, 255, 255, 0.06)',
         }}
       >
         {/* Persistent suggestion chips */}
-        <div className="flex flex-wrap gap-2">
+        <div
+          className="flex flex-wrap"
+          style={{
+            gap: 8,
+            padding: isMobile ? '10px 16px' : '0',
+          }}
+        >
           {['my work', 'my experience', 'about me', 'my resume', 'contact'].map((chip) => (
             <button
               key={chip}
@@ -333,7 +343,7 @@ export default function ChatPanel() {
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-3">
+        <div className={`flex items-center gap-3 ${isMobile ? 'px-4' : ''}`}>
           <span className="font-mono text-xs flex-shrink-0 select-none" style={{ color: '#00ff9f' }}>&gt;</span>
           <input
             ref={inputRef}

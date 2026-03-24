@@ -27,13 +27,15 @@ Every section uses the same interaction grammar: glance → expand → immerse. 
 
 ## Site sections and their purpose
 
-### Hero / Homepage (Sessions 11–20 — current state)
+### Hero / Homepage (Sessions 11–20 — current state, mobile Session 66)
 
 The homepage is a fixed overlay composition — not a scrollable section:
 - **Swirl**: `fixed inset-0 z-0`, fills entire viewport, bleeds through the glass panel
-- **Nav**: `fixed top-4 z-30`, pill-shaped frosted glass, centered — links: case studies ∨ / about / timeline / the lab / Chat with me
-- **ChatPanel**: `fixed inset-0 z-20`, centered, `max-w-2xl h-[75vh]` — THE primary interface
-- **Name block**: `fixed bottom-8 left-8 z-10`, static text — name / "Design + Engineering" / thesis
+- **Nav**: via `NavWrapper` at `z-40` — desktop: pill frosted glass, centered; **mobile (Session 66)**: full-width bar, logo + hamburger + Chat (see Nav)
+- **ChatPanel**: `z-20`, `h-[75vh]` — desktop: `560px` wide, viewport-centered; **mobile**: `width: calc(100vw - 32px)`, wrapper `alignItems: flex-start`, `paddingTop: 100`, horizontal `16px` — THE primary interface
+- **Name block**: desktop `bottom: 32px` `left: 32px`; **mobile**: `bottom: 100px` `left: 16px` (clears mobile nav)
+
+**Homepage file (`src/app/page.tsx`, Session 66):** `'use client'` — `useIsMobile()` drives chat wrapper + name block offsets. Chat wrapper uses inline `position: fixed; inset: 0; display: flex; pointer-events: none` with `zIndex: 20`.
 
 The ChatPanel (`src/components/ui/ChatPanel.tsx`) is a terminal-aesthetic frosted glass chat interface:
 - macOS traffic-light header chrome
@@ -73,6 +75,7 @@ Suggestion chips — persistent bar only:
 - The `Message` interface has no `chips` field — do not add one.
 - The bar always shows the fixed set: `my work`, `my experience`, `about me`, `my resume`, `contact`.
 - When wiring real AI responses, do not pass chips through message data — the bar handles all navigation shortcuts.
+- **Session 66 (mobile):** chips row uses `flexWrap` + `gap: 8`; `padding: 10px 16px` on the chips container; input bar uses `px-0` on mobile with chips/input horizontal padding adjusted so the row wraps cleanly.
 
 ### Floating project cards (Sessions 14–23 — current state)
 
@@ -82,6 +85,8 @@ Ten project cards orbit the chat panel in slow elliptical arcs and dock to stagi
 - `src/content/projects.ts` — typed `Project` interface + `PROJECTS` array (10 entries)
 - `src/components/ui/OrbitalCard.tsx` — floating card with sine-wave drift + staging lerp
 - `src/components/ui/OrbitalSystem.tsx` — mounts 10 cards, computes home positions + staging zones
+
+**Mobile (Session 66):** `useIsMobile()` from `src/hooks/useIsMobile.ts` (`true` when `window.innerWidth < 768`). After all hooks, `if (isMobile) return null` — no orbital cards on mobile; **Swirl is unchanged** and still runs in layout.
 
 **Project interface (Session 20, updated Session 27):**
 ```ts
@@ -203,9 +208,13 @@ The old model recalculated position from scratch every frame (`newPos = driftPos
 **`@keyframes pulse`** remains in `globals.css` (not used by cards currently)
 **`@keyframes thinking-shimmer`** in `globals.css` — used by `ThinkingText`: `0%/100% { color: #555555 }`, `50% { color: #aaaaaa }`, 1.6s ease-in-out infinite. Each character has an 80ms stagger delay.
 
-### The Nav (`src/components/layout/Nav.tsx`) — updated Session 27, Session 65
+### The Nav (`src/components/layout/Nav.tsx`) — updated Session 27, Session 65, Session 66
 
-Nav links: `case studies` (dropdown) / `about` / `timeline` / `the lab` / "Chat with me" button. Order left to right: case studies ∨ · about · timeline · the lab · [Chat with me]. `about` links to `/about` (built Session 44). `timeline` links to `/timeline` (built Session 49). `the lab` links to `/lab` (built Session 60). "lab" is gone — only "the lab" exists (updated Session 33).
+**Desktop:** `case studies` (dropdown) / `about` / `timeline` / `the lab` / "Chat with me" button. Order left to right: case studies ∨ · about · timeline · the lab · [Chat with me]. `about` links to `/about` (built Session 44). `timeline` links to `/timeline` (built Session 49). `the lab` links to `/lab` (built Session 60). "lab" is gone — only "the lab" exists (updated Session 33).
+
+**Mobile (Session 66):** `useIsMobile()` replaces the desktop pill with a full-width frosted bar (`width: 100%`, pill `borderRadius: 100`): logo (`/logo-update.svg` via `next/image`, links home) · hamburger (two bars, `#00ff9f` when open) · **Chat** pill (`HiDotGrid` `dotSize={3}` `gap={2}` `speed={1.2}` + label "Chat") — calls `useChatContext().toggle()` and closes the menu, same intent as desktop "Chat with me". Full-screen menu overlay when open: `position: fixed; inset: 0; z-index: 45`; `rgba(14,16,21,0.97)` + blur; close `×` top-right; links as `next/link` to `/work` (case studies), `/about`, `/timeline`, `/lab` — active route `#00ff9f`, others `rgba(255,255,255,0.5)`. **NavWrapper (Session 66):** inner wrapper `width: 100%` when mobile so the bar spans the padded area.
+
+**ChatOverlay (Session 66):** `useIsMobile()` — inner panel wrapper drops `max-w-2xl` on mobile so `ChatPanel` width (`calc(100vw - 32px)`) is not capped by `672px`.
 
 **Active route highlighting (Session 65):**
 - `usePathname()` from `next/navigation` in `Nav.tsx`. Helper `isActive(href)`: if `href === '/'` then `pathname === '/'`, else `pathname.startsWith(href)`.

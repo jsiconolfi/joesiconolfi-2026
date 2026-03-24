@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { usePathname } from 'next/navigation'
 import OrbitalCard from './OrbitalCard'
 import { PROJECTS } from '@/content/projects'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 // Fisher-Yates shuffle — runs once, result is stable for the session
 function shuffleArray<T>(arr: T[]): T[] {
@@ -74,6 +75,7 @@ function clampHome(xPct: number, yPct: number, vw: number, vh: number) {
 }
 
 export default function OrbitalSystem() {
+  const isMobile = useIsMobile()
   const shuffledProjects = useMemo(() => shuffleArray(PROJECTS), [])
   const pathname = usePathname()
   const [viewport, setViewport] = useState({ w: 0, h: 0 })
@@ -145,6 +147,7 @@ export default function OrbitalSystem() {
     }
   }, [pathname])
 
+  if (isMobile) return null
   if (!ready || viewport.w === 0) return null
 
   return (

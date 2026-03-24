@@ -1,23 +1,46 @@
+'use client'
+
 import ChatPanel from '@/components/ui/ChatPanel'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 export default function Home() {
+  const isMobile = useIsMobile()
+
   return (
     <div
       style={{
-        // Transparent — swirl and orbital cards show through from layout
         position: 'fixed',
         inset: 0,
       }}
     >
-      {/* Chat panel — centered, always visible on homepage */}
-      <div className="fixed inset-0 flex items-center justify-center z-20 px-4 py-20 pointer-events-none">
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          display: 'flex',
+          alignItems: isMobile ? 'flex-start' : 'center',
+          justifyContent: 'center',
+          paddingTop: isMobile ? 100 : 0,
+          paddingBottom: 0,
+          paddingLeft: isMobile ? 16 : 0,
+          paddingRight: isMobile ? 16 : 0,
+          zIndex: 20,
+          pointerEvents: 'none',
+        }}
+      >
         <ChatPanel />
       </div>
 
-      {/* Name block — bottom left */}
-      <div className="fixed bottom-8 left-8 z-10 pointer-events-none">
-        <p className="font-mono text-sm font-normal text-white">Joe Siconolfi</p>
-        <p className="font-mono text-xs font-light text-text-hint mt-0.5">Design + Engineering</p>
+      <div
+        className="font-mono z-10 pointer-events-none"
+        style={{
+          position: 'fixed',
+          bottom: isMobile ? 100 : 32,
+          left: isMobile ? 16 : 32,
+        }}
+      >
+        <p className="text-sm font-normal text-white">Joe Siconolfi</p>
+        <p className="text-xs font-light text-text-hint mt-0.5">Design + Engineering</p>
       </div>
     </div>
   )

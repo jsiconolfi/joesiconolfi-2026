@@ -3,8 +3,10 @@
 import { useEffect, useRef } from 'react'
 import ChatPanel from '@/components/ui/ChatPanel'
 import { useChatContext } from '@/context/ChatContext'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 export default function ChatOverlay() {
+  const isMobile = useIsMobile()
   const { isOpen, close } = useChatContext()
   const panelRef = useRef<HTMLDivElement>(null)
 
@@ -56,7 +58,7 @@ export default function ChatOverlay() {
       {/* Panel — elevated above backdrop */}
       <div
         ref={panelRef}
-        className="relative z-10 w-full max-w-2xl"
+        className={isMobile ? 'relative z-10 w-full' : 'relative z-10 w-full max-w-2xl'}
         style={{
           transform: isOpen ? 'translateY(0)' : 'translateY(12px)',
           transition: 'transform 0.25s ease',
