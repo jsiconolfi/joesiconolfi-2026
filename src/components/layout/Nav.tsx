@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import Link from 'next/link'
 import HiDotGrid from '@/components/ui/HiDotGrid'
 import CaseStudiesDropdown from '@/components/ui/CaseStudiesDropdown'
 import { useChatContext } from '@/context/ChatContext'
@@ -27,9 +28,9 @@ export default function Nav() {
       />
       <div className="w-px h-4 bg-white/20" />
       <CaseStudiesDropdown />
-      <a href="/about" className="font-mono text-xs font-light text-text-secondary hover:text-accent-neon transition-colors">
+      <Link href="/about" className="font-mono text-xs font-light text-text-secondary hover:text-accent-neon transition-colors">
         about
-      </a>
+      </Link>
       <a href="#timeline" className="font-mono text-xs font-light text-text-secondary hover:text-accent-neon transition-colors">
         timeline
       </a>

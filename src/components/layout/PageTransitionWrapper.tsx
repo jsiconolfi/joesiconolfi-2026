@@ -1,70 +1,63 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
-import { TAB_BAR_HEIGHT } from './TabBar'
 
-// Case study pages, work index, and about are "deeper" — they slide in from above, exit downward.
-// Homepage is the base — it enters from below, exits upward.
-function getTransitionDirection(pathname: string): 'up' | 'down' {
-  return pathname.startsWith('/work') || pathname === '/about' ? 'up' : 'down'
+function isDeepPage(pathname: string): boolean {
+  return pathname.startsWith('/work') || pathname === '/about'
 }
 
-const TRANSITION = {
-  duration: 0.45,
-  ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number],
-}
-
-interface PageTransitionWrapperProps {
+interface PageContentProps {
+  pathname: string
   children: React.ReactNode
 }
 
-export default function PageTransitionWrapper({ children }: PageTransitionWrapperProps) {
-  const pathname = usePathname()
-  const direction = getTransitionDirection(pathname)
-  // /work/* = individual case study (has tab bar, top offset)
-  // /work = index grid (dark bg + scroll, no tab bar offset)
-  // /about = about page (dark bg + scroll, sticky chrome header, no tab bar)
-  const isCaseStudy = pathname.startsWith('/work/')
-  const isWorkIndex = pathname === '/work'
-  const isAbout = pathname === '/about'
-  const isContentPage = isCaseStudy || isWorkIndex || isAbout
+// Inner component keyed by pathname in AnimatePresence.
+// deep is captured via useRef at first mount and never changes for this instance —
+// even if AnimatePresence re-renders it with a new pathname prop during exit,
+// the initial/exit directions and style values stay correct for this page tier.
+function PageContent({ pathname, children }: PageContentProps) {
+  const deepRef = useRef(isDeepPage(pathname))
+  const deep = deepRef.current
 
-  // Reset scroll position on every navigation
   useEffect(() => {
-    const container = document.querySelector<HTMLElement>('[data-scroll-container]')
-    if (container) container.scrollTop = 0
-  }, [pathname])
+    const container = document.querySelector('[data-scroll-container]')
+    if (container) (container as HTMLElement).scrollTop = 0
+  })
+
+  return (
+    <motion.div
+      data-scroll-container
+      initial={{ y: deep ? '-100vh' : '100vh', opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      exit={{ y: deep ? '100vh' : '-100vh', opacity: 0 }}
+      transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        overflowY: deep ? 'auto' : 'hidden',
+        backgroundColor: deep ? 'rgba(14, 16, 21, 0.97)' : 'transparent',
+        zIndex: deep ? 20 : 10,
+        pointerEvents: deep ? 'auto' : 'none',
+      }}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
+export default function PageTransitionWrapper({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
 
   return (
     <AnimatePresence mode="wait" initial={false}>
-      <motion.div
-        key={pathname}
-        data-scroll-container
-        initial={direction === 'up' ? { y: '-100vh', opacity: 0 } : { y: '100vh', opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={direction === 'up' ? { y: '100vh', opacity: 0 } : { y: '-100vh', opacity: 0 }}
-        transition={TRANSITION}
-        style={{
-          position: 'fixed',
-          // Case studies have tab bar (38px offset); work index and homepage do not
-          top: isCaseStudy ? TAB_BAR_HEIGHT : 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          overflowY: isContentPage ? 'auto' : 'hidden',
-          // Content pages (case studies + work index): nearly opaque overlay
-          // Homepage: transparent so swirl + orbital cards show fully
-          backgroundColor: isContentPage ? 'rgba(14, 16, 21, 0.97)' : 'transparent',
-          // Content pages sit above orbital cards (z-10); homepage is transparent so
-          // pointer-events-none is safe — ChatPanel re-enables pointer-events-auto
-          zIndex: isContentPage ? 20 : 10,
-          pointerEvents: isContentPage ? 'auto' : 'none',
-        }}
-      >
+      <PageContent key={pathname} pathname={pathname}>
         {children}
-      </motion.div>
+      </PageContent>
     </AnimatePresence>
   )
 }

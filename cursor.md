@@ -363,15 +363,19 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 - ChatPanel root div has `id="chat-panel"` and `pointer-events-auto`
 - Name block: `fixed bottom-8 left-8 z-10 pointer-events-none`
 
-**PageTransitionWrapper (`src/components/layout/PageTransitionWrapper.tsx`, Session 35):**
+**PageTransitionWrapper (`src/components/layout/PageTransitionWrapper.tsx`, Session 35, rewritten Session 47):**
 - `AnimatePresence mode="wait" initial={false}` — exits before enters; no animation on first load
 - `key={pathname}` on `motion.div` — triggers transition on route change
 - `data-scroll-container` on motion.div — `useEffect` resets `scrollTop = 0` on pathname change
-- Homepage: `zIndex: 10, backgroundColor: 'transparent', pointerEvents: 'none'`
-- Case study: `zIndex: 20, backgroundColor: 'rgba(14,16,21,0.97)', pointerEvents: 'auto', overflowY: 'auto'`
+- `isDeepPage(pathname)` helper: `pathname.startsWith('/work') || pathname === '/about'` — single source of truth for page tier
+- Deep pages (`/work`, `/work/*`, `/about`): `zIndex: 20`, dark bg `rgba(14,16,21,0.97)`, `pointerEvents: 'auto'`, `overflowY: 'auto'`, `top: 0`
+- Homepage: `zIndex: 10`, transparent bg, `pointerEvents: 'none'`, `overflowY: 'hidden'`, `top: 0`
 - Transition: `duration: 0.45`, `ease: [0.25, 0.46, 0.45, 0.94]` (ease-out-quart)
-- Case study direction `'up'`: enter from above (`y: '-100vh'`), exit downward (`y: '100vh'`)
-- Homepage direction `'down'`: enter from below (`y: '100vh'`), exit upward (`y: '-100vh'`)
+- Deep pages: enter from above (`y: '-100vh'`), exit downward (`y: '100vh'`)
+- Homepage: enter from below (`y: '100vh'`), exit upward (`y: '-100vh'`)
+- `top: 0` for all pages — `TAB_BAR_HEIGHT` offset removed from wrapper; content padding handles tab bar clearance
+- `isCaseStudy`, `isWorkIndex`, `isAbout`, `isContentPage` variables removed — replaced by single `deep` boolean
+- Do NOT reintroduce `top: TAB_BAR_HEIGHT` on the wrapper; do NOT split `isDeepPage` back into separate variables
 
 **OrbitalSystem (updated Session 35):**
 - Uses `usePathname` — pathname is a dependency on the measure `useEffect`
@@ -438,11 +442,10 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 - Content padding: `64px 48px 120px` (top accounts for sticky chrome header, not nav)
 - PageTransitionWrapper treats `/work` as a content page: dark bg `rgba(14,16,21,0.97)`, z-20, scrollable, `top: 0` (no tab bar offset — tab bar only renders on `/work/*`)
 
-**PageTransitionWrapper update (Session 40):**
-- `isContentPage = isCaseStudy || isWorkIndex` where `isWorkIndex = pathname === '/work'`
-- `isCaseStudy = pathname.startsWith('/work/')` — unchanged, still used for `top: TAB_BAR_HEIGHT` offset
-- Direction logic updated: `pathname.startsWith('/work')` (without trailing slash) catches both `/work` and `/work/*`
-- `/work` index: dark bg, scrollable, z-20, pointer-events auto, `top: 0`
+**PageTransitionWrapper update (Session 40, superseded Session 47):**
+- Session 47 rewrote the wrapper entirely — see PageTransitionWrapper entry above.
+- `isContentPage`, `isCaseStudy`, `isWorkIndex`, `isAbout` all removed. Single `isDeepPage` helper covers all three: `/work`, `/work/*`, `/about`.
+- `top: TAB_BAR_HEIGHT` offset on case study pages removed from wrapper — `top: 0` for all pages now.
 
 ## Case study pages (Session 34)
 
@@ -510,7 +513,7 @@ Live at `/about`. Scrollable content page, same visual system as case study page
 
 **NavWrapper:** `hasChrome = pathname.startsWith('/work') || pathname === '/about'` — `/about` has its own terminal chrome header so nav shifts down by `TAB_BAR_HEIGHT`. `top` is `useState(0)` + `useEffect` with 60ms delay (Session 46) — always animates from 0 so the CSS transition fires correctly.
 
-**PageTransitionWrapper:** `/about` should be treated as a content page — dark bg, z-20, scrollable. Update `isContentPage` logic to include `pathname === '/about'` if needed.
+**PageTransitionWrapper:** `/about` is a deep page — dark bg, z-20, scrollable, enters from above. Handled by `isDeepPage` (Session 47).
 
 **`<video>` rule exception note:** `AboutView.tsx` has no video elements. The "no autoPlay" rule does not apply here (no video at all).
 

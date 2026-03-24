@@ -276,22 +276,18 @@ Smooth Framer Motion transitions between homepage and case study pages. Swirl an
 - `ChatProvider` and `ChatOverlay` remain in layout, wrapping Nav + PageTransitionWrapper + ChatOverlay
 - `page.tsx` now only contains ChatPanel wrapper + name block — no Swirl, OrbitalSystem, or Nav
 
-**PageTransitionWrapper:**
+**PageTransitionWrapper (rewritten Session 47):**
 - `'use client'` — uses `usePathname` from next/navigation
 - `AnimatePresence mode="wait" initial={false}` — exits complete before enters begin; no entrance animation on first load
 - `key={pathname}` — triggers AnimatePresence on every route change
 - `data-scroll-container` attribute on the motion.div — `useEffect` resets `scrollTop` to 0 on pathname change
 - Transition: `duration: 0.45`, `ease: [0.25, 0.46, 0.45, 0.94]` (ease-out-quart)
-- Direction logic: `pathname.startsWith('/work')` → direction `'up'`; all others → direction `'down'` (covers both `/work` and `/work/*`)
-- Case study (direction='up'): enters from above (`y: '-100vh'`), exits downward (`y: '100vh'`)
-- Homepage (direction='down'): enters from below (`y: '100vh'`), exits upward (`y: '-100vh'`)
-- **Session 39:** `top: TAB_BAR_HEIGHT` (38px) on `/work/*` only — content starts below tab bar. `/work` index and homepage keep `top: 0`.
-- **Session 40:** `isContentPage = isCaseStudy || isWorkIndex` — `/work` index gets dark background, scrollable, z-20, pointer-events auto. Tab bar offset only applies to `/work/[slug]` (not `/work` index).
-
-**Z-index and pointer-events:**
-- Homepage wrapper: `zIndex: 10, backgroundColor: 'transparent', pointerEvents: 'none'` — swirl + cards show through; ChatPanel re-enables `pointer-events-auto` internally
-- Case study wrapper: `zIndex: 20, backgroundColor: 'rgba(14,16,21,0.97)', pointerEvents: 'auto'` — nearly opaque, sits above orbital cards, scrollable
-- `overflowY: 'auto'` on case study, `'hidden'` on homepage
+- `isDeepPage(pathname)`: `pathname.startsWith('/work') || pathname === '/about'` — single helper, replaces all prior `isCaseStudy`/`isWorkIndex`/`isAbout`/`isContentPage` variables
+- Deep pages (`/work`, `/work/*`, `/about`): enter from above (`y: '-100vh'`), exit downward (`y: '100vh'`); dark bg, z-20, `pointerEvents: 'auto'`, `overflowY: 'auto'`, `top: 0`
+- Homepage: enters from below (`y: '100vh'`), exits upward (`y: '-100vh'`); transparent bg, z-10, `pointerEvents: 'none'`, `overflowY: 'hidden'`, `top: 0`
+- `top: 0` for all pages — `TAB_BAR_HEIGHT` offset removed from wrapper; content-level padding handles tab bar / chrome clearance
+- Do NOT reintroduce `top: TAB_BAR_HEIGHT` on the wrapper
+- Do NOT split `isDeepPage` back into per-pathname variables (`isCaseStudy`, `isWorkIndex`, `isAbout`)
 
 **OrbitalSystem changes (Session 35):**
 - Added `usePathname` import — pathname used as dependency in the measure `useEffect`
@@ -358,10 +354,11 @@ interface Tab {
 - Active tab: `rgba(255,255,255,0.05)` bg, `borderBottom: '1px solid #161a22'` (merges with content)
 - Inactive tab: no bg, `rgba(255,255,255,0.35)` label color
 
-**NavWrapper (`NavWrapper.tsx`, Session 39, updated Session 42):**
+**NavWrapper (`NavWrapper.tsx`, Session 39, updated Session 46):**
 - `'use client'` — reads `usePathname`
-- `hasChrome = pathname.startsWith('/work')` — covers `/work` index (sticky WorkGrid chrome) and `/work/[slug]` (tab bar). `top: hasChrome ? TAB_BAR_HEIGHT : 0`
-- `transition: 'top 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)'` — ease-out-quart, matches page transition easing. Nav slides smoothly on route change.
+- `hasChrome = pathname.startsWith('/work') || pathname === '/about'` — covers `/work` index, `/work/[slug]`, and `/about` (Session 44)
+- `top` is `useState(0)` + `useEffect` with 60ms `setTimeout` (Session 46). Nav always mounts at `top: 0` and animates to `TAB_BAR_HEIGHT` after the delay. Without this, the `pathname`-derived value renders synchronously so the CSS transition has no prior state to animate from. `useState(0)` initial value is intentional — do NOT initialize to `hasChrome ? TAB_BAR_HEIGHT : 0`. The delay must stay 50–100ms.
+- `transition: 'top 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)'` — ease-out-quart, matches page transition easing.
 - `pointerEvents: 'none'` on outer div, `pointerEvents: 'auto'` on inner Nav wrapper — preserves nav interactivity
 - `Nav` no longer sets its own fixed position — NavWrapper owns all positioning
 
@@ -486,7 +483,7 @@ Para 3: "When I'm not building I'm digging through record bins, watching the Kni
 
 **Connect links:** linkedin / github / email. Hover: `rgba(255,255,255,0.85)`. Terminal green `→` prefix. No `next/link` needed — all external or `mailto:`.
 
-**NavWrapper:** `hasChrome = pathname.startsWith('/work') || pathname === '/about'` — nav shifts down by `TAB_BAR_HEIGHT` on `/about` (same as work pages, because about.exe chrome header occupies top).
+**NavWrapper:** `hasChrome = pathname.startsWith('/work') || pathname === '/about'` — nav shifts down by `TAB_BAR_HEIGHT` on `/about` (same as work pages). `top` is `useState(0)` + `useEffect` with 60ms delay (Session 46) so the CSS transition always has a prior value to animate from.
 
 **Spotify API routes:**
 - `src/app/api/spotify/callback/route.ts` — OAuth callback. Exchanges `code` for tokens. Returns `refresh_token` in JSON for one-time setup. `redirectUri` hardcoded to `http://localhost:3002/api/spotify/callback`.
@@ -494,7 +491,7 @@ Para 3: "When I'm not building I'm digging through record bins, watching the Kni
 - Required env vars: `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REFRESH_TOKEN`
 - OAuth scopes needed: `user-read-currently-playing user-read-recently-played`
 
-**PageTransitionWrapper:** `/about` is treated as a content page — dark bg `rgba(14,16,21,0.97)`, `zIndex: 20`, `pointerEvents: 'auto'`, scrollable (`overflowY: 'auto'`). `isContentPage` condition should include `pathname === '/about'`.
+**PageTransitionWrapper:** `/about` is a deep page — handled by `isDeepPage` helper (Session 47). Dark bg, z-20, scrollable, enters from above (`y: '-100vh'`). No separate `isAbout` variable needed.
 
 ### The Seam
 - The section that demonstrates keystone 3 directly.
