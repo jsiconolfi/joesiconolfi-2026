@@ -538,9 +538,9 @@ Live at `/timeline`. Vertical scroll timeline with single scroll listener + CSS 
 
 **Era types:** `compact` (early career, 5 eras) = dot 6px, smaller text, no artifacts/tech/link. `full` (5 eras) = dot 8px, full treatment with artifacts, tech pills, case study link.
 
-**Dot color (Session 54):** All active dots `#00ff9f` + `boxShadow: 0 0 6px rgba(0,255,159,0.3)`. Inactive: `rgba(255,255,255,0.12)`. Thread system removed — no warm amber, no legend, `thread` field gone from interface and all entries.
+**Dot color (Session 54, cleaned Session 57):** Active dots `#00ff9f` hardcoded inline + `boxShadow: 0 0 6px rgba(0,255,159,0.3)`. Inactive: `rgba(255,255,255,0.12)`. No `threadColor` variable. No `position: relative` or `zIndex` on dot — redundant, era list flex container provides stacking context. No `marginLeft`/`marginRight` — `alignItems: 'center'` on dot column centers it on the 24px column and rail.
 
-**Active state:** `opacity: 1`, `translateX(0)`. Inactive: `opacity: 0.3`, `translateX(-4px)`. Transition: `0.35s ease`.
+**Active state (Session 56):** No `opacity` or `transform` on the EraBlock outer wrapper — dots are stationary and always fully visible. Active/inactive drives color only: dot `backgroundColor` + `boxShadow`, and all text color values, transition at `0.35s ease`. Do NOT add `opacity` or `transform` back to the EraBlock wrapper.
 
 **Scroll activation (Session 51, fixed Session 53):** Single scroll listener on `[data-scroll-container]`.
 - `targetY = window.innerHeight * 0.4` — fixed viewport point, not a scroll offset

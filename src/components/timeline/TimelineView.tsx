@@ -150,7 +150,8 @@ export default function TimelineView() {
         </div>
 
         {/* Footer — sibling of timeline wrapper, outside grid context */}
-        <div style={{ marginTop: 64, paddingTop: 40, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        {/* marginLeft: 48 shifts the whole div (border + text) to align with era content column */}
+        <div style={{ marginTop: 64, paddingTop: 40, marginLeft: 48, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
           <p style={{
             fontSize: 11,
             fontWeight: 300,
@@ -177,8 +178,6 @@ function EraBlock({ era, isActive, onRef, onCaseStudy }: EraBlockProps) {
   const isCompact = era.type === 'compact'
   const isCurrent = era.id === 'cohere'
 
-  const threadColor = '#00ff9f'
-
   return (
     <div
       ref={onRef}
@@ -186,9 +185,6 @@ function EraBlock({ era, isActive, onRef, onCaseStudy }: EraBlockProps) {
         display: 'grid',
         gridTemplateColumns: '24px 1fr',
         gap: '0 24px',
-        opacity: isActive ? 1 : 0.3,
-        transform: isActive ? 'translateX(0)' : 'translateX(-4px)',
-        transition: 'opacity 0.35s ease, transform 0.35s ease',
       }}
     >
       {/* Dot column — dot only, sits above the static rail */}
@@ -199,12 +195,10 @@ function EraBlock({ era, isActive, onRef, onCaseStudy }: EraBlockProps) {
         paddingTop: 4,
       }}>
         <div style={{
-          position: 'relative',
-          zIndex: 1,
           width: isCompact ? 6 : 8,
           height: isCompact ? 6 : 8,
           borderRadius: '50%',
-          backgroundColor: isActive ? threadColor : 'rgba(255,255,255,0.12)',
+          backgroundColor: isActive ? '#00ff9f' : 'rgba(255,255,255,0.12)',
           boxShadow: isActive ? '0 0 6px rgba(0,255,159,0.3)' : 'none',
           transition: 'background-color 0.35s ease, box-shadow 0.35s ease',
           flexShrink: 0,

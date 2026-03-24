@@ -549,14 +549,15 @@ interface TimelineEra {
 - `{ passive: true }` listener, cleaned up on unmount
 - Works in both scroll directions. Never skips eras. No threshold tuning needed.
 - `activeId` state — the geometrically closest era is always active
-- Active era: `opacity: 1`, `translateX(0)`. Inactive: `opacity: 0.3`, `translateX(-4px)`
-- Transition: `0.35s ease` on opacity, transform, color
+- No `opacity` or `transform` on the EraBlock outer wrapper (Session 56) — dots are stationary, always fully visible
+- Active/inactive state drives color only: dot color, glow, and text color values transition at `0.35s ease`
 
-**Dot color (Session 54 — thread system removed):**
-- All active dots: `#00ff9f` + `boxShadow: 0 0 6px rgba(0,255,159,0.3)` — no warm amber variant
+**Dot color (Session 54, cleaned Session 57):**
+- All active dots: `#00ff9f` + `boxShadow: 0 0 6px rgba(0,255,159,0.3)` — hardcoded inline, no `threadColor` variable
 - Inactive dots: `rgba(255,255,255,0.12)`
+- No `position: relative` or `zIndex` on the dot element — redundant, the era list flex container already provides the stacking context
+- No `marginLeft`, `marginRight`, or `marginTop` on the dot — `alignItems: 'center'` on the dot column handles centering
 - No thread legend in the header — terminal chrome is traffic lights + `timeline.exe` only
-- `thread` field removed from `TimelineEra` interface and all TIMELINE entries
 
 **Era types:**
 - `compact` — dot 6px, smaller text (12px company, 10px role, 11px summary), `paddingBottom: 32px` in content col, `minHeight: 32px` line, no artifacts/tech/case-study rendered
