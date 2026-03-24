@@ -536,6 +536,8 @@ Live at `/timeline`. Vertical scroll timeline with single scroll listener + CSS 
 - `src/app/timeline/page.tsx` — thin route, renders `<TimelineView />`
 - `src/components/timeline/TimelineView.tsx` — `'use client'`, single scroll listener, CSS grid `EraBlock`
 
+**Header (Session 58):** h1 reads "15+ years of building". Resume download link below subtitle: `<a href="/JoeSiconolfi_Resume-2026.pdf" download>` with `↓` prefix, `marginTop: 20`, hover → `#00ff9f`. File must exist at `public/JoeSiconolfi_Resume-2026.pdf`.
+
 **Era types:** `compact` (early career, 5 eras) = dot 6px, smaller text, no artifacts/tech/link. `full` (5 eras) = dot 8px, full treatment with artifacts, tech pills, case study link.
 
 **Dot color (Session 54, cleaned Session 57):** Active dots `#00ff9f` hardcoded inline + `boxShadow: 0 0 6px rgba(0,255,159,0.3)`. Inactive: `rgba(255,255,255,0.12)`. No `threadColor` variable. No `position: relative` or `zIndex` on dot — redundant, era list flex container provides stacking context. No `marginLeft`/`marginRight` — `alignItems: 'center'` on dot column centers it on the 24px column and rail.

@@ -531,9 +531,11 @@ interface TimelineEra {
 
 **10 eras in order:** maxq, progressive, spongecell, viacom, logic (compact), statespace-1, statespace-2 (full), mushroom, channel, cohere (full)
 
-**Layout (Session 51 + Session 52):**
-- Terminal chrome: `position: sticky, top: 0, zIndex: 40`, `rgba(10,12,16,0.98)` + `blur(12px)`. Traffic lights. Red → `router.push('/')`. Window title: `timeline.exe`. Thread legend on the right.
+**Layout (Session 51 + Session 52, updated Session 58):**
+- Terminal chrome: `position: sticky, top: 0, zIndex: 40`, `rgba(10,12,16,0.98)` + `blur(12px)`. Traffic lights. Red → `router.push('/')`. Window title: `timeline.exe`.
 - Max-width 760px content column, `padding: '120px 48px 160px'`
+- Header h1: "15+ years of building" (updated Session 58)
+- Resume download link below subtitle: `<a href="/JoeSiconolfi_Resume-2026.pdf" download>` — `marginTop: 20`, `fontSize: 11`, `fontWeight: 300`, `color: rgba(255,255,255,0.4)`. Hover → `#00ff9f`. `↓` arrow prefix in `rgba(0,255,159,0.5)`. PDF served from `/public/`.
 - Each `EraBlock`: `display: grid, gridTemplateColumns: '24px 1fr', gap: '0 24px'`
   - Column 1 (24px): dot only (`position: relative, zIndex: 1`) — sits above the static rail
   - Column 2 (1fr): all text content

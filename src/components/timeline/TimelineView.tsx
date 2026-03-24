@@ -111,11 +111,32 @@ export default function TimelineView() {
             timeline
           </p>
           <h1 style={{ fontSize: 28, fontWeight: 400, margin: '0 0 8px', letterSpacing: '-0.02em', color: 'rgba(255,255,255,0.9)' }}>
-            15 years of building
+            15+ years of building
           </h1>
           <p style={{ fontSize: 13, fontWeight: 300, color: 'rgba(255,255,255,0.4)', margin: 0, lineHeight: 1.6 }}>
             From MySpace CSS to AI systems at Cohere. Every role compounded the next.
           </p>
+          <a
+            href="/JoeSiconolfi_Resume-2026.pdf"
+            download
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              marginTop: 20,
+              fontSize: 11,
+              fontWeight: 300,
+              color: 'rgba(255,255,255,0.4)',
+              textDecoration: 'none',
+              fontFamily: 'var(--font-mono)',
+              transition: 'color 0.2s ease',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.color = '#00ff9f')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}
+          >
+            <span style={{ fontSize: 10, color: 'rgba(0,255,159,0.5)' }}>↓</span>
+            download resume
+          </a>
         </div>
 
         {/* Timeline — single static rail + era blocks on top */}
