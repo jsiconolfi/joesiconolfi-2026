@@ -19,21 +19,25 @@ export default function Nav() {
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
       }}
     >
-      <Image
-        src="/logo-update.svg"
-        alt="Joe Siconolfi"
-        width={26}
-        height={26}
-        style={{ opacity: 0.9 }}
-      />
+      <Link href="/" style={{ display: 'flex', alignItems: 'center' }}>
+        <Image
+          src="/logo-update.svg"
+          alt="Joe Siconolfi"
+          width={26}
+          height={26}
+          style={{ opacity: 0.9, transition: 'opacity 0.2s ease' }}
+          onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+          onMouseLeave={e => (e.currentTarget.style.opacity = '0.9')}
+        />
+      </Link>
       <div className="w-px h-4 bg-white/20" />
       <CaseStudiesDropdown />
       <Link href="/about" className="font-mono text-xs font-light text-text-secondary hover:text-accent-neon transition-colors">
         about
       </Link>
-      <a href="#timeline" className="font-mono text-xs font-light text-text-secondary hover:text-accent-neon transition-colors">
+      <Link href="/timeline" className="font-mono text-xs font-light text-text-secondary hover:text-accent-neon transition-colors">
         timeline
-      </a>
+      </Link>
       <a href="#lab" className="font-mono text-xs font-light text-text-secondary hover:text-accent-neon transition-colors">
         the lab
       </a>

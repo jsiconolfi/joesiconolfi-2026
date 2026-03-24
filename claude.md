@@ -282,12 +282,12 @@ Smooth Framer Motion transitions between homepage and case study pages. Swirl an
 - `key={pathname}` — triggers AnimatePresence on every route change
 - `data-scroll-container` attribute on the motion.div — `useEffect` resets `scrollTop` to 0 on pathname change
 - Transition: `duration: 0.45`, `ease: [0.25, 0.46, 0.45, 0.94]` (ease-out-quart)
-- `isDeepPage(pathname)`: `pathname.startsWith('/work') || pathname === '/about'` — single helper, replaces all prior `isCaseStudy`/`isWorkIndex`/`isAbout`/`isContentPage` variables
-- Deep pages (`/work`, `/work/*`, `/about`): enter from above (`y: '-100vh'`), exit downward (`y: '100vh'`); dark bg, z-20, `pointerEvents: 'auto'`, `overflowY: 'auto'`, `top: 0`
+- `isDeepPage(pathname)`: `pathname.startsWith('/work') || pathname === '/about' || pathname === '/timeline'` — single helper, replaces all prior `isCaseStudy`/`isWorkIndex`/`isAbout`/`isContentPage` variables
+- Deep pages (`/work`, `/work/*`, `/about`, `/timeline`): enter from above (`y: '-100vh'`), exit downward (`y: '100vh'`); dark bg, z-20, `pointerEvents: 'auto'`, `overflowY: 'auto'`, `top: 0`
 - Homepage: enters from below (`y: '100vh'`), exits upward (`y: '-100vh'`); transparent bg, z-10, `pointerEvents: 'none'`, `overflowY: 'hidden'`, `top: 0`
 - `top: 0` for all pages — `TAB_BAR_HEIGHT` offset removed from wrapper; content-level padding handles tab bar / chrome clearance
 - Do NOT reintroduce `top: TAB_BAR_HEIGHT` on the wrapper
-- Do NOT split `isDeepPage` back into per-pathname variables (`isCaseStudy`, `isWorkIndex`, `isAbout`)
+- Do NOT split `isDeepPage` back into per-pathname variables (`isCaseStudy`, `isWorkIndex`, `isAbout`, `isTimeline`)
 
 **OrbitalSystem changes (Session 35):**
 - Added `usePathname` import — pathname used as dependency in the measure `useEffect`
@@ -356,7 +356,7 @@ interface Tab {
 
 **NavWrapper (`NavWrapper.tsx`, Session 39, updated Session 46):**
 - `'use client'` — reads `usePathname`
-- `hasChrome = pathname.startsWith('/work') || pathname === '/about'` — covers `/work` index, `/work/[slug]`, and `/about` (Session 44)
+- `hasChrome = pathname.startsWith('/work') || pathname === '/about' || pathname === '/timeline'` — covers `/work` index, `/work/[slug]`, `/about` (Session 44), and `/timeline` (Session 49)
 - `top` is `useState(0)` + `useEffect` with 60ms `setTimeout` (Session 46). Nav always mounts at `top: 0` and animates to `TAB_BAR_HEIGHT` after the delay. Without this, the `pathname`-derived value renders synchronously so the CSS transition has no prior state to animate from. `useState(0)` initial value is intentional — do NOT initialize to `hasChrome ? TAB_BAR_HEIGHT : 0`. The delay must stay 50–100ms.
 - `transition: 'top 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)'` — ease-out-quart, matches page transition easing.
 - `pointerEvents: 'none'` on outer div, `pointerEvents: 'auto'` on inner Nav wrapper — preserves nav interactivity
@@ -483,7 +483,7 @@ Para 3: "When I'm not building I'm digging through record bins, watching the Kni
 
 **Connect links:** linkedin / github / email. Hover: `rgba(255,255,255,0.85)`. Terminal green `→` prefix. No `next/link` needed — all external or `mailto:`.
 
-**NavWrapper:** `hasChrome = pathname.startsWith('/work') || pathname === '/about'` — nav shifts down by `TAB_BAR_HEIGHT` on `/about` (same as work pages). `top` is `useState(0)` + `useEffect` with 60ms delay (Session 46) so the CSS transition always has a prior value to animate from.
+**NavWrapper:** `hasChrome = pathname.startsWith('/work') || pathname === '/about' || pathname === '/timeline'` — nav shifts down by `TAB_BAR_HEIGHT` on `/about` and `/timeline` (same as work pages). `top` is `useState(0)` + `useEffect` with 60ms delay (Session 46) so the CSS transition always has a prior value to animate from.
 
 **Spotify API routes:**
 - `src/app/api/spotify/callback/route.ts` — OAuth callback. Exchanges `code` for tokens. Returns `refresh_token` in JSON for one-time setup. `redirectUri` hardcoded to `http://localhost:3002/api/spotify/callback`.
@@ -504,11 +504,84 @@ Para 3: "When I'm not building I'm digging through record bins, watching the Kni
 - Glance: "currently experimenting with —" with a live signal. Expand: experiment cards (before/after prompts, what changed, why). Immerse: actual system prompt structure from Sherpa, Pinecone RAG architecture, real evals with results.
 - This is where senior hiring managers spend the most time. Keep it honest and specific.
 
-### Timeline
-- 15 years framed as compounding bets, not a resume.
-- Glance: company + role + dates. Expand: "the bet I made" — why this role, what shifted. Immerse: artifacts from that era.
-- The arc must be legible: someone who saw the AI-native shift coming and kept running toward it.
-- Ends at Cohere/Waypoint as the culmination, not just the latest job.
+### Timeline — Session 49
+
+Live at `/timeline`. Vertical scroll timeline with continuous thread line and viewport-driven era highlighting.
+
+**Files:**
+- `src/content/timeline.ts` — `TimelineArtifact` + `TimelineEra` interfaces + `TIMELINE` array (10 eras)
+- `src/app/timeline/page.tsx` — thin route, renders `<TimelineView />`
+- `src/components/timeline/TimelineView.tsx` — `'use client'` component with single scroll listener, CSS grid layout
+
+**TimelineEra interface:**
+```ts
+interface TimelineEra {
+  id: string
+  years: string
+  company: string
+  role: string
+  location: string
+  type: 'full' | 'compact'  // compact = early career smaller treatment
+  summary: string
+  artifacts: TimelineArtifact[]
+  tech?: string[]
+  slug?: string  // links to case study if exists
+}
+```
+
+**10 eras in order:** maxq, progressive, spongecell, viacom, logic (compact), statespace-1, statespace-2 (full), mushroom, channel, cohere (full)
+
+**Layout (Session 51 + Session 52):**
+- Terminal chrome: `position: sticky, top: 0, zIndex: 40`, `rgba(10,12,16,0.98)` + `blur(12px)`. Traffic lights. Red → `router.push('/')`. Window title: `timeline.exe`. Thread legend on the right.
+- Max-width 760px content column, `padding: '120px 48px 160px'`
+- Each `EraBlock`: `display: grid, gridTemplateColumns: '24px 1fr', gap: '0 24px'`
+  - Column 1 (24px): dot only (`position: relative, zIndex: 1`) — sits above the static rail
+  - Column 2 (1fr): all text content
+- **Single static rail (Session 52):** `position: absolute, left: 11, top: 8, bottom: 0, width: 1, backgroundColor: 'rgba(255,255,255,0.07)'` on the `position: relative` timeline wrapper. Never transitions. Era blocks sit at `zIndex: 1` above it. No per-block line segments.
+- `left: 11` = center of 24px dot column (12px) minus half of 1px line width. Dot centers sit exactly on the rail.
+
+**Scroll activation (Session 51, fixed Session 53):**
+- Single scroll listener on `[data-scroll-container]` (the `PageTransitionWrapper` motion.div)
+- `targetY = window.innerHeight * 0.4` — a fixed viewport point, not a scroll offset
+- Each event: finds the era whose center (`getBoundingClientRect().top + rect.height / 2`) is closest to `targetY`
+- `getBoundingClientRect()` is always viewport-relative — correct regardless of scroll container nesting. `offsetTop` was wrong here because it's relative to `offsetParent`, not the scroll container.
+- `requestAnimationFrame(findActiveEra)` on mount — ensures DOM is fully painted before first measurement
+- `{ passive: true }` listener, cleaned up on unmount
+- Works in both scroll directions. Never skips eras. No threshold tuning needed.
+- `activeId` state — the geometrically closest era is always active
+- Active era: `opacity: 1`, `translateX(0)`. Inactive: `opacity: 0.3`, `translateX(-4px)`
+- Transition: `0.35s ease` on opacity, transform, color
+
+**Dot color (Session 54 — thread system removed):**
+- All active dots: `#00ff9f` + `boxShadow: 0 0 6px rgba(0,255,159,0.3)` — no warm amber variant
+- Inactive dots: `rgba(255,255,255,0.12)`
+- No thread legend in the header — terminal chrome is traffic lights + `timeline.exe` only
+- `thread` field removed from `TimelineEra` interface and all TIMELINE entries
+
+**Era types:**
+- `compact` — dot 6px, smaller text (12px company, 10px role, 11px summary), `paddingBottom: 32px` in content col, `minHeight: 32px` line, no artifacts/tech/case-study rendered
+- `full` — dot 8px, larger text (14px company, 11px role, 12px summary), `paddingBottom: 56px`, `minHeight: 48px` line, artifacts + tech pills + case study link
+
+**Cohere era:** `"now"` badge — `fontSize: 9, color: '#00ff9f', border: 1px solid rgba(0,255,159,0.3)`, `borderRadius: 3`
+
+**Footer (Session 50, confirmed Session 55):** Simple text line only. `borderTop: '1px solid rgba(255,255,255,0.06)'`, `marginTop: 64`, `paddingTop: 40`. No box, no background, no border-radius, no pulsing dot. "Currently at Cohere, San Francisco · Staff Design Engineer" in `rgba(255,255,255,0.25)`. Footer is a sibling of the timeline wrapper div — not a child of it — so it has no grid inheritance from EraBlock. Also removed unused `index` param from `TIMELINE.map` (Session 55).
+
+**`pulse-slow` keyframe** exists in `globals.css` (added Session 49, no longer used by timeline footer but retained for possible future use).
+
+**Nav/transition wiring:**
+- `NavWrapper.tsx`: `hasChrome` includes `pathname === '/timeline'` — nav shifts down by `TAB_BAR_HEIGHT`
+- `PageTransitionWrapper.tsx`: `isDeepPage` includes `'/timeline'` — enters from above, dark bg, z-20, scrollable
+- `Nav.tsx`: timeline link changed from `<a href="#timeline">` to `<Link href="/timeline">`
+
+**Do NOT:**
+- Modify the thread colors (`#00ff9f` for ai/both, `rgba(196,174,145,0.7)` for builder)
+- Set inactive era opacity below `0.3`
+- Use em dashes in copy (use `x` or `–` for ranges)
+- Add `animation` property to any element in `TimelineView.tsx` — no pulsing anywhere on the page
+- Add a box/background/border-radius to the footer — text only
+- Use `IntersectionObserver` for scroll tracking — single scroll listener only (Session 51)
+- Use per-block line segments — the rail is a single static absolute element (Session 52)
+- Add transition or animation to the rail line — it must never change (Session 52)
 
 ## Key technical artifacts to reference
 
@@ -550,6 +623,16 @@ accent.terminal: #00ff9f  — neon terminal green — streaming cursor, > prompt
 ```
 
 No purple gradients on white. No generic AI aesthetics. Two accents are now defined — `#c4ae91` for nav/link interactions, `#00ff9f` for terminal/chat interactions. Do not add a third without explicit instruction.
+
+### Hover color rule (Session 48)
+`#00ff9f` is the universal hover highlight color across all interactive elements.
+- Link hovers: `color → '#00ff9f'`
+- Border hovers: `rgba(0,255,159,0.3)`
+- Background hovers: `rgba(0,255,159,0.04)`
+- Text color changes on hover may use `rgba(255,255,255,0.9)` for readability but never as an accent
+- EXCEPTION: Spotify widget uses `#1ed760` to signal brand context — do not change this
+- Never use white as an accent/highlight color on hover
+- This rule applies to all pages: homepage, about, work grid, case studies, nav, orbital cards
 
 ### Motion
 - Swirl: slow, considered. Speed should feel deliberate, not decorative.

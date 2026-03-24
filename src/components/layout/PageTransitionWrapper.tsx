@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 
 function isDeepPage(pathname: string): boolean {
-  return pathname.startsWith('/work') || pathname === '/about'
+  return pathname.startsWith('/work') || pathname === '/about' || pathname === '/timeline'
 }
 
 interface PageContentProps {

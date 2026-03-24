@@ -19,7 +19,7 @@ const BIO = [
 ]
 
 const FACTS = [
-  { label: 'hometown', value: 'Long Island, NY' },
+  { label: 'hometown', value: 'Huntington, NY' },
   { label: 'based', value: 'San Francisco, CA' },
   { label: 'years in tech', value: '15+' },
   { label: 'first code', value: 'MySpace CSS, circa 2004' },
@@ -30,9 +30,9 @@ const FACTS = [
 ]
 
 const LINKS = [
-  { label: 'linkedin', url: 'https://linkedin.com/in/joesiconolfi' },
-  { label: 'github', url: 'https://github.com/joesiconolfi' },
-  { label: 'email', url: 'mailto:joe@joesiconolfi.com' },
+  { label: 'linkedin', url: 'https://www.linkedin.com/in/joe-siconolfi/' },
+  { label: 'github', url: 'https://github.com/Jsiconolfi' },
+  { label: 'email', url: 'mailto:jsiconolfi@gmail.com' },
 ]
 
 export default function AboutView() {
@@ -122,7 +122,7 @@ export default function AboutView() {
             <div style={{ marginTop: 16 }}>
               <p style={{ fontSize: 14, fontWeight: 400, color: 'rgba(255,255,255,0.9)', margin: '0 0 4px' }}>Joe Siconolfi</p>
               <p style={{ fontSize: 11, fontWeight: 300, color: 'rgba(0,255,159,0.7)', margin: '0 0 4px' }}>Staff Design Engineer</p>
-              <p style={{ fontSize: 11, fontWeight: 300, color: 'rgba(255,255,255,0.35)', margin: 0 }}>Cohere · San Francisco</p>
+              <p style={{ fontSize: 11, fontWeight: 300, color: 'rgba(255,255,255,0.35)', margin: 0 }}>Cohere · San Francisco Bay</p>
             </div>
           </div>
 
@@ -246,10 +246,10 @@ export default function AboutView() {
                       textDecoration: 'none', transition: 'color 0.2s ease',
                       display: 'flex', alignItems: 'center', gap: 8,
                     }}
-                    onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.85)')}
+                    onMouseEnter={e => (e.currentTarget.style.color = '#00ff9f')}
                     onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}
                   >
-                    <span style={{ color: 'rgba(0,255,159,0.5)', fontSize: 10 }}>→</span>
+                    <span style={{ color: '#00ff9f', fontSize: 10 }}>→</span>
                     {link.label}
                   </a>
                 ))}

@@ -99,6 +99,15 @@ accent.warm:   #c4ae91  — link hover state (the site's one warm accent — pre
 
 No purple gradients on white. No generic AI aesthetics. The warm accent `#c4ae91` is the only accent color on the current site and should remain the primary interactive accent unless explicitly extended.
 
+### Hover states
+All interactive hover states use `#00ff9f` (terminal green) as the highlight color.
+- Link hovers: `color → '#00ff9f'`
+- Border hovers: `rgba(0,255,159,0.3)`
+- Background hovers: `rgba(0,255,159,0.04)`
+- Text color changes on hover may use `rgba(255,255,255,0.9)` for readability
+- EXCEPTION: Spotify widget uses `#1ed760` to signal brand context
+- Never use white as an accent/highlight color on hover
+
 ### Motion principles
 - The swirl animation is the hero — slow, considered, purposeful
 - Text resolves/assembles on load rather than fading in generically
@@ -334,6 +343,7 @@ Persistent browser-like tab bar visible on all `/work/*` routes.
 - `NavWrapper` wraps Nav in a `position: fixed` div, shifting `top` by `TAB_BAR_HEIGHT` on all `/work` pages.
 - **Session 42:** Transition updated from `'top 0.3s ease'` to `'top 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)'` — matches the ease-out-quart used in page transitions. Nav slides smoothly rather than snapping.
 - **Session 44:** `hasChrome = pathname.startsWith('/work') || pathname === '/about'` — `/about` also has a sticky terminal chrome header so the nav must shift down there too.
+- **Session 49:** `hasChrome` updated to also include `pathname === '/timeline'` — `/timeline` has its own sticky terminal chrome, nav shifts down there too.
 - **Session 46:** `top` is now driven by `useState(0)` + `useEffect`. The nav always mounts at `top: 0` and animates to `TAB_BAR_HEIGHT` after a 60ms delay. Without this, `pathname`-derived `top` renders synchronously on mount so the CSS transition has no prior value to animate from. `useState(0)` initial value is intentional — do NOT initialize to `hasChrome ? TAB_BAR_HEIGHT : 0`. The `setTimeout` delay must stay in the 50–100ms range.
 
 **Do NOT:**
@@ -367,7 +377,7 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 - `AnimatePresence mode="wait" initial={false}` — exits before enters; no animation on first load
 - `key={pathname}` on `motion.div` — triggers transition on route change
 - `data-scroll-container` on motion.div — `useEffect` resets `scrollTop = 0` on pathname change
-- `isDeepPage(pathname)` helper: `pathname.startsWith('/work') || pathname === '/about'` — single source of truth for page tier
+- `isDeepPage(pathname)` helper: `pathname.startsWith('/work') || pathname === '/about' || pathname === '/timeline'` — single source of truth for page tier
 - Deep pages (`/work`, `/work/*`, `/about`): `zIndex: 20`, dark bg `rgba(14,16,21,0.97)`, `pointerEvents: 'auto'`, `overflowY: 'auto'`, `top: 0`
 - Homepage: `zIndex: 10`, transparent bg, `pointerEvents: 'none'`, `overflowY: 'hidden'`, `top: 0`
 - Transition: `duration: 0.45`, `ease: [0.25, 0.46, 0.45, 0.94]` (ease-out-quart)
@@ -387,8 +397,8 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 
 `src/components/layout/Nav.tsx` — pill nav, frosted glass, centered top, `'use client'`:
 - Links left to right: `case studies` (dropdown) / `about` / `timeline` / `the lab` / "Chat with me" button
-- Order: `<CaseStudiesDropdown />` → `about` (href="/about") → `timeline` (href="#timeline") → `the lab` (href="#lab") → Chat with me button
-- "lab" is gone — only "the lab" exists. `about` links to `/about` (not yet built). `timeline` and `the lab` are in-page anchors for future sections.
+- Order: `<CaseStudiesDropdown />` → `about` (href="/about") → `timeline` (href="/timeline") → `the lab` (href="#lab") → Chat with me button
+- "lab" is gone — only "the lab" exists. `about` links to `/about`. `timeline` links to `/timeline` (live, Session 49). `the lab` is an in-page anchor for a future section.
 - The `work` link was replaced in Session 27 with `<CaseStudiesDropdown />` — a button that opens a `320px` frosted-glass dropdown with 4 featured projects + hover-play video thumbnails
 - Glass: inline styles (`backdropFilter: blur(12px)`, `backgroundColor: rgba(255,255,255,0.05)`, `border: 1px solid rgba(255,255,255,0.1)`)
 - All type: `font-mono text-xs font-light`, hover → `accent.warm`
@@ -444,7 +454,7 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 
 **PageTransitionWrapper update (Session 40, superseded Session 47):**
 - Session 47 rewrote the wrapper entirely — see PageTransitionWrapper entry above.
-- `isContentPage`, `isCaseStudy`, `isWorkIndex`, `isAbout` all removed. Single `isDeepPage` helper covers all three: `/work`, `/work/*`, `/about`.
+- `isContentPage`, `isCaseStudy`, `isWorkIndex`, `isAbout` all removed. Single `isDeepPage` helper covers all: `/work`, `/work/*`, `/about`, `/timeline`.
 - `top: TAB_BAR_HEIGHT` offset on case study pages removed from wrapper — `top: 0` for all pages now.
 
 ## Case study pages (Session 34)
@@ -511,11 +521,45 @@ Live at `/about`. Scrollable content page, same visual system as case study page
 - Callback redirectUri: `http://localhost:3002/api/spotify/callback` (hardcoded for local setup)
 - Both routes use `cache: 'no-store'` — always fresh data
 
-**NavWrapper:** `hasChrome = pathname.startsWith('/work') || pathname === '/about'` — `/about` has its own terminal chrome header so nav shifts down by `TAB_BAR_HEIGHT`. `top` is `useState(0)` + `useEffect` with 60ms delay (Session 46) — always animates from 0 so the CSS transition fires correctly.
+**NavWrapper:** `hasChrome = pathname.startsWith('/work') || pathname === '/about' || pathname === '/timeline'` — these pages have sticky terminal chrome headers so nav shifts down by `TAB_BAR_HEIGHT`. `top` is `useState(0)` + `useEffect` with 60ms delay (Session 46) — always animates from 0 so the CSS transition fires correctly.
 
-**PageTransitionWrapper:** `/about` is a deep page — dark bg, z-20, scrollable, enters from above. Handled by `isDeepPage` (Session 47).
+**PageTransitionWrapper:** `/about` and `/timeline` are deep pages — dark bg, z-20, scrollable, enter from above. Handled by `isDeepPage` (Session 47, updated Session 49).
 
 **`<video>` rule exception note:** `AboutView.tsx` has no video elements. The "no autoPlay" rule does not apply here (no video at all).
+
+## Timeline page — Session 49 (rebuilt Session 51)
+
+Live at `/timeline`. Vertical scroll timeline with single scroll listener + CSS grid dot/line layout.
+
+**Files:**
+- `src/content/timeline.ts` — `TimelineArtifact` + `TimelineEra` interfaces + `TIMELINE` array (10 eras)
+- `src/app/timeline/page.tsx` — thin route, renders `<TimelineView />`
+- `src/components/timeline/TimelineView.tsx` — `'use client'`, single scroll listener, CSS grid `EraBlock`
+
+**Era types:** `compact` (early career, 5 eras) = dot 6px, smaller text, no artifacts/tech/link. `full` (5 eras) = dot 8px, full treatment with artifacts, tech pills, case study link.
+
+**Dot color (Session 54):** All active dots `#00ff9f` + `boxShadow: 0 0 6px rgba(0,255,159,0.3)`. Inactive: `rgba(255,255,255,0.12)`. Thread system removed — no warm amber, no legend, `thread` field gone from interface and all entries.
+
+**Active state:** `opacity: 1`, `translateX(0)`. Inactive: `opacity: 0.3`, `translateX(-4px)`. Transition: `0.35s ease`.
+
+**Scroll activation (Session 51, fixed Session 53):** Single scroll listener on `[data-scroll-container]`.
+- `targetY = window.innerHeight * 0.4` — fixed viewport point, not a scroll offset
+- Finds era whose center (`getBoundingClientRect().top + rect.height / 2`) is closest to `targetY`
+- `getBoundingClientRect()` is always viewport-relative. `offsetTop` was wrong — it's relative to `offsetParent`, not the scroll container.
+- `requestAnimationFrame(findActiveEra)` on mount. `{ passive: true }` listener. Works in both directions.
+- NEVER use `IntersectionObserver` for this — it fires multiple times simultaneously and doesn't work in reverse.
+- NEVER use `offsetTop` for this calculation — use `getBoundingClientRect()`.
+
+**Layout (Session 51 + Session 52):** CSS grid per era — `gridTemplateColumns: '24px 1fr'`.
+- Column 1: dot only (`position: relative, zIndex: 1`). No per-block line segment.
+- Column 2: all text content.
+- **Single static rail (Session 52):** `position: absolute, left: 11, top: 8, bottom: 0, width: 1, rgba(255,255,255,0.07)` on the `position: relative` timeline wrapper. Never has a transition or animation. Era blocks sit at `zIndex: 1` above it. `left: 11` centers the rail on the 24px dot column.
+
+**Footer (Session 55):** Simple text line — `borderTop: '1px solid rgba(255,255,255,0.06)'`. Must be a sibling of the `position: relative` timeline wrapper, NOT a child of it. No box, no animation. Do NOT nest it inside the grid wrapper or it will inherit the `24px 1fr` column layout.
+
+**`pulse-slow` keyframe** in `globals.css` — retained but not used by timeline.
+
+**Nav wiring:** `timeline` link is `<Link href="/timeline">`.
 
 ## Scrollbar utilities
 
