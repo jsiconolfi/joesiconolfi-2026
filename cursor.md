@@ -344,6 +344,7 @@ Persistent browser-like tab bar visible on all `/work/*` routes.
 - **Session 42:** Transition updated from `'top 0.3s ease'` to `'top 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)'` — matches the ease-out-quart used in page transitions. Nav slides smoothly rather than snapping.
 - **Session 44:** `hasChrome = pathname.startsWith('/work') || pathname === '/about'` — `/about` also has a sticky terminal chrome header so the nav must shift down there too.
 - **Session 49:** `hasChrome` updated to also include `pathname === '/timeline'` — `/timeline` has its own sticky terminal chrome, nav shifts down there too.
+- **Session 60:** `hasChrome` updated to also include `pathname === '/lab'` — `/lab` has its own sticky terminal chrome, nav shifts down there too.
 - **Session 46:** `top` is now driven by `useState(0)` + `useEffect`. The nav always mounts at `top: 0` and animates to `TAB_BAR_HEIGHT` after a 60ms delay. Without this, `pathname`-derived `top` renders synchronously on mount so the CSS transition has no prior value to animate from. `useState(0)` initial value is intentional — do NOT initialize to `hasChrome ? TAB_BAR_HEIGHT : 0`. The `setTimeout` delay must stay in the 50–100ms range.
 
 **Do NOT:**
@@ -377,7 +378,7 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 - `AnimatePresence mode="wait" initial={false}` — exits before enters; no animation on first load
 - `key={pathname}` on `motion.div` — triggers transition on route change
 - `data-scroll-container` on motion.div — `useEffect` resets `scrollTop = 0` on pathname change
-- `isDeepPage(pathname)` helper: `pathname.startsWith('/work') || pathname === '/about' || pathname === '/timeline'` — single source of truth for page tier
+- `isDeepPage(pathname)` helper: `pathname.startsWith('/work') || pathname === '/about' || pathname === '/timeline' || pathname === '/lab'` — single source of truth for page tier
 - Deep pages (`/work`, `/work/*`, `/about`): `zIndex: 20`, dark bg `rgba(14,16,21,0.97)`, `pointerEvents: 'auto'`, `overflowY: 'auto'`, `top: 0`
 - Homepage: `zIndex: 10`, transparent bg, `pointerEvents: 'none'`, `overflowY: 'hidden'`, `top: 0`
 - Transition: `duration: 0.45`, `ease: [0.25, 0.46, 0.45, 0.94]` (ease-out-quart)
@@ -397,8 +398,8 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 
 `src/components/layout/Nav.tsx` — pill nav, frosted glass, centered top, `'use client'`:
 - Links left to right: `case studies` (dropdown) / `about` / `timeline` / `the lab` / "Chat with me" button
-- Order: `<CaseStudiesDropdown />` → `about` (href="/about") → `timeline` (href="/timeline") → `the lab` (href="#lab") → Chat with me button
-- "lab" is gone — only "the lab" exists. `about` links to `/about`. `timeline` links to `/timeline` (live, Session 49). `the lab` is an in-page anchor for a future section.
+- Order: `<CaseStudiesDropdown />` → `about` (href="/about") → `timeline` (href="/timeline") → `the lab` (href="/lab") → Chat with me button
+- "lab" is gone — only "the lab" exists. `about` links to `/about`. `timeline` links to `/timeline` (live, Session 49). `the lab` links to `/lab` (live, Session 60).
 - The `work` link was replaced in Session 27 with `<CaseStudiesDropdown />` — a button that opens a `320px` frosted-glass dropdown with 4 featured projects + hover-play video thumbnails
 - Glass: inline styles (`backdropFilter: blur(12px)`, `backgroundColor: rgba(255,255,255,0.05)`, `border: 1px solid rgba(255,255,255,0.1)`)
 - All type: `font-mono text-xs font-light`, hover → `accent.warm`
@@ -454,7 +455,7 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 
 **PageTransitionWrapper update (Session 40, superseded Session 47):**
 - Session 47 rewrote the wrapper entirely — see PageTransitionWrapper entry above.
-- `isContentPage`, `isCaseStudy`, `isWorkIndex`, `isAbout` all removed. Single `isDeepPage` helper covers all: `/work`, `/work/*`, `/about`, `/timeline`.
+- `isContentPage`, `isCaseStudy`, `isWorkIndex`, `isAbout` all removed. Single `isDeepPage` helper covers all: `/work`, `/work/*`, `/about`, `/timeline`, `/lab`.
 - `top: TAB_BAR_HEIGHT` offset on case study pages removed from wrapper — `top: 0` for all pages now.
 
 ## Case study pages (Session 34)
@@ -521,11 +522,59 @@ Live at `/about`. Scrollable content page, same visual system as case study page
 - Callback redirectUri: `http://localhost:3002/api/spotify/callback` (hardcoded for local setup)
 - Both routes use `cache: 'no-store'` — always fresh data
 
-**NavWrapper:** `hasChrome = pathname.startsWith('/work') || pathname === '/about' || pathname === '/timeline'` — these pages have sticky terminal chrome headers so nav shifts down by `TAB_BAR_HEIGHT`. `top` is `useState(0)` + `useEffect` with 60ms delay (Session 46) — always animates from 0 so the CSS transition fires correctly.
+**NavWrapper:** `hasChrome = pathname.startsWith('/work') || pathname === '/about' || pathname === '/timeline' || pathname === '/lab'` — these pages have sticky terminal chrome headers so nav shifts down by `TAB_BAR_HEIGHT`. `top` is `useState(0)` + `useEffect` with 60ms delay (Session 46) — always animates from 0 so the CSS transition fires correctly.
 
-**PageTransitionWrapper:** `/about` and `/timeline` are deep pages — dark bg, z-20, scrollable, enter from above. Handled by `isDeepPage` (Session 47, updated Session 49).
+**PageTransitionWrapper:** `/about`, `/timeline`, and `/lab` are deep pages — dark bg, z-20, scrollable, enter from above. Handled by `isDeepPage` (Session 47, updated Session 49, Session 60).
 
 **`<video>` rule exception note:** `AboutView.tsx` has no video elements. The "no autoPlay" rule does not apply here (no video at all).
+
+## The Lab page — Session 60, updated Session 61–63
+
+Live at `/lab`. Open notebook with beliefs, open questions, experiments, and a chronological feed.
+
+**Files:**
+- `src/content/lab-experiments.ts` — 3 experiments (expanded write-ups, Session 61)
+- `src/content/lab-feed.ts` — 14 entries (5 new prepended in Session 61)
+- `src/app/lab/page.tsx` — thin route
+- `src/components/lab/LabView.tsx` — `'use client'` component
+
+**Page order:**
+1. Terminal chrome (`lab.exe`)
+2. Header (eyebrow + h1 + subtitle + tagline)
+3. "Currently thinking about" (4 questions, green arrow prefix)
+4. Divider
+5. "Things I hold true" (7 beliefs, two-column grid)
+6. Divider
+7. "Experiments" (3 terminal window cards, gray dots)
+8. Divider
+9. "Feed" label + tag search + active pills + filtered entries (14 entries in data, newest first; client-side only)
+
+**Feed tag filter (Session 63):**
+- `activeTags` + `filterQuery`. Search input suggests matching tags (case-insensitive substring); max 6 rows in dropdown; click adds tag and clears input.
+- Active filters: green pills with × dismiss; `clear all` when any tag active.
+- `filteredFeed`: OR across `activeTags`; empty `activeTags` shows full feed.
+- No URL params / no persistence.
+
+**Layout:**
+- Content padding: `120px 48px 160px`. Max-width 760px.
+- Beliefs grid: `gridTemplateColumns: '1fr 1fr'`, `gap: 32`. Left col: statement `rgba(255,255,255,0.85)` 13px 400. Right col: note `rgba(255,255,255,0.4)` 12px 300. Row `borderBottom: rgba(255,255,255,0.05)`.
+- Experiment description and feed body: `text.split('\n\n').map((para) => <p>)` — renders multi-paragraph content.
+- All styling: inline styles only.
+
+**Traffic light rule (site-wide, established Session 61):**
+- Colored dots (`#ff5f57`, `#febc2e`, `#28c840`) = interactive chrome. Red dot navigates/closes.
+- Gray dots (`rgba(255,255,255,0.15)`) = decorative chrome. Card is not closeable.
+- Lab experiment cards and WorkGrid cards use gray dots. Page-level chrome bars and OrbitalCards use colored dots.
+
+**Nav/transition wiring:**
+- `Nav.tsx`: `<Link href="/lab">`
+- `NavWrapper.tsx`: `hasChrome` includes `pathname === '/lab'`
+- `PageTransitionWrapper.tsx`: `isDeepPage` includes `pathname === '/lab'`
+
+**Do NOT:**
+- Rewrite or edit body copy in either data file
+- Use `next/image` in LabView
+- Add colored traffic light dots to non-interactive cards
 
 ## Timeline page — Session 49 (rebuilt Session 51)
 

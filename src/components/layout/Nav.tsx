@@ -38,9 +38,9 @@ export default function Nav() {
       <Link href="/timeline" className="font-mono text-xs font-light text-text-secondary hover:text-accent-neon transition-colors">
         timeline
       </Link>
-      <a href="#lab" className="font-mono text-xs font-light text-text-secondary hover:text-accent-neon transition-colors">
+      <Link href="/lab" className="font-mono text-xs font-light text-text-secondary hover:text-accent-neon transition-colors">
         the lab
-      </a>
+      </Link>
       <div className="w-px h-4 bg-white/20" />
       <button
         type="button"

@@ -8,16 +8,16 @@ export interface Project {
   name: string
   role: string
   image?: string
-  video?: string   // mp4 in /public/projects/ — plays lazily on hover/active. undefined = no video
+  video?: string   // mp4 in /public/projects/: plays lazily on hover/active. undefined = no video
   keywords: string[]
-  url?: string  // case study URL — internal path or external. undefined = not yet built
+  url?: string  // case study URL: internal path or external. undefined = not yet built
 }
 
 export const PROJECTS: Project[] = [
   {
     id: 'waypoint',
     name: 'Waypoint',
-    role: 'Design system for Cohere — built from zero',
+    role: 'Design system for Cohere, built from zero',
     image: '/projects/waypoint.mp4',
     video: '/projects/waypoint.mp4',
     keywords: ['waypoint', 'design system', 'cohere', 'tokens', 'components'],
@@ -76,7 +76,7 @@ export const PROJECTS: Project[] = [
   {
     id: 'kernel',
     name: 'Statespace × Kernel',
-    role: 'Gaming meets neurotech — neural data UX',
+    role: 'Gaming meets neurotech: neural data UX',
     image: '/projects/kernel.mp4',
     keywords: ['kernel', 'neurotech', 'neural', 'brain', 'statespace kernel'],
     url: '/work/kernel',
@@ -84,7 +84,7 @@ export const PROJECTS: Project[] = [
   {
     id: 'wafer',
     name: 'Wafer Systems',
-    role: 'AI-native OS — product, visual and UX design',
+    role: 'AI-native OS: product, visual and UX design',
     image: '/projects/wafer.mp4',
     keywords: ['wafer', 'operating system', 'android', 'ai os'],
     url: '/work/wafer',

@@ -7,7 +7,7 @@ import { TAB_BAR_HEIGHT } from './TabBar'
 
 export default function NavWrapper() {
   const pathname = usePathname()
-  const hasChrome = pathname.startsWith('/work') || pathname === '/about' || pathname === '/timeline'
+  const hasChrome = pathname.startsWith('/work') || pathname === '/about' || pathname === '/timeline' || pathname === '/lab'
 
   // Start at 0 always, then animate to target after mount.
   // Without this, pathname-derived top renders synchronously and the

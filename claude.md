@@ -205,7 +205,7 @@ The old model recalculated position from scratch every frame (`newPos = driftPos
 
 ### The Nav (`src/components/layout/Nav.tsx`) — updated Session 27
 
-Nav links: `case studies` (dropdown) / `about` / `timeline` / `the lab` / "Chat with me" button. Order left to right: case studies ∨ · about · timeline · the lab · [Chat with me]. `about` links to `/about` (built Session 44). `timeline` → `#timeline`, `the lab` → `#lab` (in-page anchors for future sections). "lab" is gone — only "the lab" exists (updated Session 33).
+Nav links: `case studies` (dropdown) / `about` / `timeline` / `the lab` / "Chat with me" button. Order left to right: case studies ∨ · about · timeline · the lab · [Chat with me]. `about` links to `/about` (built Session 44). `timeline` links to `/timeline` (built Session 49). `the lab` links to `/lab` (built Session 60). "lab" is gone — only "the lab" exists (updated Session 33).
 
 The `work` link is replaced by `<CaseStudiesDropdown />` — a hover-triggered frosted glass dropdown with 4 featured projects. `z-index: 50` on the panel — above orbital cards at `z-10`.
 
@@ -282,8 +282,8 @@ Smooth Framer Motion transitions between homepage and case study pages. Swirl an
 - `key={pathname}` — triggers AnimatePresence on every route change
 - `data-scroll-container` attribute on the motion.div — `useEffect` resets `scrollTop` to 0 on pathname change
 - Transition: `duration: 0.45`, `ease: [0.25, 0.46, 0.45, 0.94]` (ease-out-quart)
-- `isDeepPage(pathname)`: `pathname.startsWith('/work') || pathname === '/about' || pathname === '/timeline'` — single helper, replaces all prior `isCaseStudy`/`isWorkIndex`/`isAbout`/`isContentPage` variables
-- Deep pages (`/work`, `/work/*`, `/about`, `/timeline`): enter from above (`y: '-100vh'`), exit downward (`y: '100vh'`); dark bg, z-20, `pointerEvents: 'auto'`, `overflowY: 'auto'`, `top: 0`
+- `isDeepPage(pathname)`: `pathname.startsWith('/work') || pathname === '/about' || pathname === '/timeline' || pathname === '/lab'` — single helper, replaces all prior `isCaseStudy`/`isWorkIndex`/`isAbout`/`isContentPage` variables
+- Deep pages (`/work`, `/work/*`, `/about`, `/timeline`, `/lab`): enter from above (`y: '-100vh'`), exit downward (`y: '100vh'`); dark bg, z-20, `pointerEvents: 'auto'`, `overflowY: 'auto'`, `top: 0`
 - Homepage: enters from below (`y: '100vh'`), exits upward (`y: '-100vh'`); transparent bg, z-10, `pointerEvents: 'none'`, `overflowY: 'hidden'`, `top: 0`
 - `top: 0` for all pages — `TAB_BAR_HEIGHT` offset removed from wrapper; content-level padding handles tab bar / chrome clearance
 - Do NOT reintroduce `top: TAB_BAR_HEIGHT` on the wrapper
@@ -356,7 +356,7 @@ interface Tab {
 
 **NavWrapper (`NavWrapper.tsx`, Session 39, updated Session 46):**
 - `'use client'` — reads `usePathname`
-- `hasChrome = pathname.startsWith('/work') || pathname === '/about' || pathname === '/timeline'` — covers `/work` index, `/work/[slug]`, `/about` (Session 44), and `/timeline` (Session 49)
+- `hasChrome = pathname.startsWith('/work') || pathname === '/about' || pathname === '/timeline' || pathname === '/lab'` — covers `/work` index, `/work/[slug]`, `/about` (Session 44), `/timeline` (Session 49), and `/lab` (Session 60)
 - `top` is `useState(0)` + `useEffect` with 60ms `setTimeout` (Session 46). Nav always mounts at `top: 0` and animates to `TAB_BAR_HEIGHT` after the delay. Without this, the `pathname`-derived value renders synchronously so the CSS transition has no prior state to animate from. `useState(0)` initial value is intentional — do NOT initialize to `hasChrome ? TAB_BAR_HEIGHT : 0`. The delay must stay 50–100ms.
 - `transition: 'top 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)'` — ease-out-quart, matches page transition easing.
 - `pointerEvents: 'none'` on outer div, `pointerEvents: 'auto'` on inner Nav wrapper — preserves nav interactivity
@@ -483,7 +483,7 @@ Para 3: "When I'm not building I'm digging through record bins, watching the Kni
 
 **Connect links:** linkedin / github / email. Hover: `rgba(255,255,255,0.85)`. Terminal green `→` prefix. No `next/link` needed — all external or `mailto:`.
 
-**NavWrapper:** `hasChrome = pathname.startsWith('/work') || pathname === '/about' || pathname === '/timeline'` — nav shifts down by `TAB_BAR_HEIGHT` on `/about` and `/timeline` (same as work pages). `top` is `useState(0)` + `useEffect` with 60ms delay (Session 46) so the CSS transition always has a prior value to animate from.
+**NavWrapper:** `hasChrome = pathname.startsWith('/work') || pathname === '/about' || pathname === '/timeline' || pathname === '/lab'` — nav shifts down by `TAB_BAR_HEIGHT` on `/about`, `/timeline`, and `/lab` (same as work pages). `top` is `useState(0)` + `useEffect` with 60ms delay (Session 46) so the CSS transition always has a prior value to animate from.
 
 **Spotify API routes:**
 - `src/app/api/spotify/callback/route.ts` — OAuth callback. Exchanges `code` for tokens. Returns `refresh_token` in JSON for one-time setup. `redirectUri` hardcoded to `http://localhost:3002/api/spotify/callback`.
@@ -499,10 +499,67 @@ Para 3: "When I'm not building I'm digging through record bins, watching the Kni
 - Show waypoint-sync, design-map.json, the actual pipeline.
 - Glance: striking visual that communicates hybrid fluency. Expand: toggle between the two sides. Immerse: annotated, decisions explained.
 
-### Lab
-- Open notebook. The differentiator section.
-- Glance: "currently experimenting with —" with a live signal. Expand: experiment cards (before/after prompts, what changed, why). Immerse: actual system prompt structure from Sherpa, Pinecone RAG architecture, real evals with results.
-- This is where senior hiring managers spend the most time. Keep it honest and specific.
+### The Lab — Session 60, updated Session 61–63
+
+Live at `/lab`. Open notebook: featured experiments at top, chronological feed below.
+
+**Files:**
+- `src/content/lab-experiments.ts` — `ExperimentStatus` type + `LabExperiment` interface + `LAB_EXPERIMENTS` array (3 entries, expanded in Session 61)
+- `src/content/lab-feed.ts` — `FeedEntryType` type + `FeedEntry` interface + `LAB_FEED` array (14 entries as of Session 61)
+- `src/app/lab/page.tsx` — thin route, renders `<LabView />`
+- `src/components/lab/LabView.tsx` — `'use client'` component
+
+**LabExperiment interface:**
+```ts
+interface LabExperiment {
+  id: string
+  title: string
+  description: string  // supports \n\n for paragraph breaks
+  status: ExperimentStatus  // 'in progress' | 'shipped' | 'archived' | 'ongoing'
+  tags: string[]
+  date: string
+  url?: string
+  notes?: string
+}
+```
+
+**FeedEntry interface:**
+```ts
+interface FeedEntry {
+  id: string
+  type: FeedEntryType  // 'note' | 'prompt' | 'read' | 'tool' | 'eval' | 'experiment'
+  title: string
+  body: string  // supports \n\n for paragraph breaks
+  date: string
+  tags: string[]
+  url?: string
+}
+```
+
+**LabView layout (Session 61):**
+- Terminal chrome: `position: sticky, top: 0, zIndex: 40`, `rgba(10,12,16,0.98)` + `blur(12px)`. Traffic lights. Red → `router.push('/')`. Window title: `lab.exe`.
+- Max-width 760px content column, `padding: '120px 48px 160px'`
+- Page order: header → currently thinking about → divider → things I hold true (7 beliefs) → divider → experiments → divider → feed
+- Header: eyebrow "the lab" + h1 "Open notebook" + subtitle + tagline "The best interface never asks."
+- "Currently thinking about": 4 open questions with `rgba(0,255,159,0.4)` arrow prefix
+- "Things I hold true": 7 beliefs in a two-column grid (`1fr 1fr`, gap 32). Left: statement (`rgba(255,255,255,0.85)`, 13px weight 400). Right: note (`rgba(255,255,255,0.4)`, 12px weight 300). Rows separated by `rgba(255,255,255,0.05)` border-bottom.
+- Experiment cards: terminal chrome with **gray dots** (`rgba(255,255,255,0.15)`) — NOT colored. Cards are not interactive/closeable.
+- Status badge colors: `in progress`/`ongoing` → `rgba(0,255,159,0.7)`, `shipped` → `rgba(0,255,159,0.4)`, `archived` → `rgba(255,255,255,0.25)`
+- Experiment descriptions: `text.split('\n\n').map((para) => <p>)` — renders multi-paragraph bodies correctly
+- Notes field: `borderLeft: '2px solid rgba(0,255,159,0.2)'`, `color: rgba(0,255,159,0.45)`
+- Feed section label + **tag search filter** (Session 63, replaces Session 62 tag wall): `activeTags` + `filterQuery` state. `allTags` = sorted unique from `LAB_FEED`. `filteredFeed` = full feed when `activeTags` empty, else OR-match on `activeTags`. `suggestedTags` = tags whose lowercase name includes trimmed lowercase query, excluding already-active tags; dropdown shows `slice(0, 6)`. UI: dismissible green pills (`#00ff9f`, transparent bg, `rgba(0,255,159,0.2)` border; same fill treatment as feed type badges) + `clear all` when filters active; `filter by tag...` input (`maxWidth: 240`); absolute-positioned suggestion list under input. Selecting a suggestion appends tag, clears query. Client-side only, no URL persistence. Empty filtered list: "No entries match these filters."
+- Feed entries: type badge (terminal green pill), date, title, body. Body split on `\n\n` for multi-paragraph entries.
+- Feed entries with `url` render title as `<a>` that turns `#00ff9f` on hover, with ` →` suffix
+- All styling: inline styles only (no Tailwind)
+
+**Traffic light rule (Session 61 — applies site-wide):**
+- Colored dots (`#ff5f57`, `#febc2e`, `#28c840`) = interactive/closeable chrome. The red dot does something (closes/navigates). Use on: page-level terminal chrome bars, OrbitalCards.
+- Gray dots (`rgba(255,255,255,0.15)`) = decorative chrome only. Card cannot be closed or interacted with as a window. Use on: experiment cards, WorkGrid cards, any non-closeable terminal card.
+
+**Nav/transition wiring:**
+- `NavWrapper.tsx`: `hasChrome` includes `pathname === '/lab'`
+- `PageTransitionWrapper.tsx`: `isDeepPage` includes `pathname === '/lab'`
+- `Nav.tsx`: `the lab` uses `<Link href="/lab">`
 
 ### Timeline — Session 49
 
