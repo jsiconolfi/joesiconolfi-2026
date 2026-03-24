@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import type { CaseStudy } from '@/content/case-studies'
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
 
 export default function CaseStudyView({ caseStudy }: Props) {
   const router = useRouter()
+  const isMobile = useIsMobile()
 
   return (
     <main
@@ -16,14 +18,17 @@ export default function CaseStudyView({ caseStudy }: Props) {
         minHeight: '100vh',
         color: '#ffffff',
         fontFamily: 'var(--font-mono, monospace)',
+        overflowX: 'hidden',
       }}
     >
-      {/* Content — tab bar (38px) + nav (~56px) + breathing room = 120px top */}
+      {/* Content — tab bar + nav; padding tuned for mobile (Session 67) */}
       <div
         style={{
-          maxWidth: 720,
+          maxWidth: isMobile ? '100%' : 720,
           margin: '0 auto',
-          padding: '120px 24px 120px',
+          padding: isMobile ? '20px 20px 80px' : '64px 24px 120px',
+          boxSizing: 'border-box',
+          width: '100%',
         }}
       >
         {/* Hero asset */}
@@ -42,10 +47,11 @@ export default function CaseStudyView({ caseStudy }: Props) {
             {caseStudy.heroAsset.endsWith('.mp4') ? (
               <video
                 src={caseStudy.heroAsset}
-                autoPlay
+                autoPlay={!isMobile}
                 muted
                 loop
                 playsInline
+                preload="metadata"
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
             ) : (
@@ -154,10 +160,11 @@ export default function CaseStudyView({ caseStudy }: Props) {
                     {decision.artifact.endsWith('.mp4') ? (
                       <video
                         src={decision.artifact}
-                        autoPlay
+                        autoPlay={!isMobile}
                         muted
                         loop
                         playsInline
+                        preload="metadata"
                         style={{ width: '100%', display: 'block' }}
                       />
                     ) : (
@@ -201,6 +208,7 @@ export default function CaseStudyView({ caseStudy }: Props) {
               next
             </p>
             <button
+              type="button"
               onClick={() => router.push(`/work/${caseStudy.nextSlug}`)}
               style={{
                 background: 'none',
@@ -215,6 +223,10 @@ export default function CaseStudyView({ caseStudy }: Props) {
                 alignItems: 'center',
                 gap: 8,
                 transition: 'border-color 0.2s ease, color 0.2s ease',
+                width: isMobile ? '100%' : undefined,
+                justifyContent: isMobile ? 'center' : undefined,
+                minHeight: isMobile ? 44 : undefined,
+                touchAction: 'manipulation',
               }}
               onMouseEnter={e => {
                 ;(e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.2)'
@@ -260,4 +272,5 @@ const bodyStyle: React.CSSProperties = {
   lineHeight: 1.8,
   color: 'rgba(255,255,255,0.65)',
   margin: 0,
+  wordBreak: 'break-word',
 }

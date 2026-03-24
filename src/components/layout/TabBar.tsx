@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import { useTabs } from '@/context/TabContext'
 import { getCaseStudy } from '@/content/case-studies'
 
@@ -10,6 +11,7 @@ export const TAB_BAR_HEIGHT = 38
 export default function TabBar() {
   const pathname = usePathname()
   const router = useRouter()
+  const isMobile = useIsMobile()
   const { tabs, activeSlug, openTab, closeTab, setActiveSlug } = useTabs()
   const [hoveredTab, setHoveredTab] = useState<string | null>(null)
   const [hoveredClose, setHoveredClose] = useState<string | null>(null)
@@ -65,12 +67,13 @@ export default function TabBar() {
             style={{
               flex: 1,
               minWidth: 0,
-              maxWidth: 200,
+              maxWidth: isMobile ? 120 : 200,
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              padding: '0 8px 0 10px',
+              padding: isMobile ? '0 6px 0 8px' : '0 8px 0 10px',
               cursor: 'pointer',
+              touchAction: 'manipulation',
               backgroundColor: isActive
                 ? 'rgba(255,255,255,0.05)'
                 : isHoveringTab
@@ -84,8 +87,8 @@ export default function TabBar() {
               position: 'relative',
             }}
           >
-            {/* Traffic lights — active tab only, decorative */}
-            {isActive && (
+            {/* Traffic lights — active tab only, decorative; hidden on mobile (Session 67) */}
+            {isActive && !isMobile && (
               <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                 <span style={{ width: 9, height: 9, borderRadius: '50%', backgroundColor: '#ff5f57', display: 'block' }} />
                 <span style={{ width: 9, height: 9, borderRadius: '50%', backgroundColor: '#febc2e', display: 'block' }} />
@@ -117,6 +120,7 @@ export default function TabBar() {
 
             {/* Close button — always visible on active, fades in on hover for inactive */}
             <button
+              type="button"
               onClick={e => {
                 e.stopPropagation()
                 closeTab(tab.slug)
@@ -150,6 +154,9 @@ export default function TabBar() {
                 fontSize: 12,
                 lineHeight: 1,
                 transition: 'opacity 0.15s ease, background 0.15s ease, color 0.15s ease',
+                minWidth: isMobile ? 44 : undefined,
+                minHeight: isMobile ? 44 : undefined,
+                touchAction: 'manipulation',
               }}
             >
               ×

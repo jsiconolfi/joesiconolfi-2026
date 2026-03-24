@@ -331,11 +331,12 @@ Persistent browser-like tab bar visible on all `/work/*` routes.
 - `closeTab` uses `historyRef` (LRU order) to find the most recently active remaining tab. Last tab closed → `router.push('/work')`, state cleared.
 - Tab state is in-memory context only — never URL params, never localStorage.
 
-**TabBar layout (Session 43):**
+**TabBar layout (Session 43, Session 67 mobile):**
 - `hoveredTab: string | null` — tracks which tab body is hovered (bg tint + close button reveal)
 - `hoveredClose: string | null` — tracks which close button is hovered (circle bg + color)
-- Tab inner order: `[traffic lights — active only] [label flex:1] [× close button]`
-- Traffic lights (`#ff5f57`/`#febc2e`/`#28c840`, 9px) on active tab only — decorative, no close action on red dot
+- Tab inner order: `[traffic lights — active only, desktop only] [label flex:1] [× close button]`
+- Traffic lights (`#ff5f57`/`#febc2e`/`#28c840`, 9px) on active tab **when not mobile** — decorative, no close action on red dot
+- **Session 67:** `useIsMobile()` — per-tab `maxWidth: 120` mobile / `200` desktop; row padding `0 6px 0 8px` mobile; close `minWidth`/`minHeight: 44` mobile; `touchAction: 'manipulation'` on tab row + close; close `type="button"`.
 - `×` button: 16px circle, always mounted. `opacity: 1` when active or tab is hovered; `opacity: 0` at rest on inactive tabs. `e.stopPropagation()` on click + mouseenter/mouseleave prevents bubbling to tab click. Circle bg `rgba(255,255,255,0.12)` on hover.
 - Inactive tab on hover: `rgba(255,255,255,0.03)` bg, label brightens to `rgba(255,255,255,0.55)`
 - **Do NOT** put close action on the red traffic light — `×` button handles close for all tabs
@@ -345,7 +346,7 @@ Persistent browser-like tab bar visible on all `/work/*` routes.
 - Tab `z-index: 50` — same level as ChatOverlay but renders behind it (ChatOverlay is rendered after in DOM order).
 - Background: `rgba(10,12,16,0.98)` — slightly darker than panel overlays.
 
-**NavWrapper (Session 66):** `useIsMobile()` — inner wrapper around `<Nav />` uses `width: '100%'` on mobile so the Session 66 nav bar spans available horizontal space.
+**NavWrapper (Session 66, Session 67):** `useIsMobile()` — inner wrapper `width: '100%'` on mobile. **Session 67:** outer fixed padding `isMobile ? '12px 16px' : '12px 24px'`.
 
 **Nav changes (Session 39, updated Session 44):**
 - `Nav.tsx` no longer has `fixed` positioning — `NavWrapper` owns all positioning.
@@ -419,10 +420,36 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 
 **Session 68 — touch targets:** Mobile nav logo link, hamburger, and Chat pill use **minimum 44×44** hit areas where specified in `Nav.tsx`.
 
-## Traffic lights — Session 68 clarification, Session 69 ChatPanel split
+## Mobile content pages — Session 67
 
-- **Colored** (`#ff5f57`, `#febc2e`, `#28c840`): dismissible/interactive window chrome — **`ChatPanel variant="overlay"`**, page-level terminal bars, case study headers, **OrbitalCards**, TabBar lights on active tab.
-- **Gray** (`rgba(255,255,255,0.15)`): non-closeable chrome — **`ChatPanel variant="embedded"`** (homepage), **WorkGrid** card rows, **Lab** experiment cards.
+**Breakpoint:** `768px` via `useIsMobile()` (`src/hooks/useIsMobile.ts`). Applies to **About**, **Timeline**, **Lab**, **Work grid**, **CaseStudyView**, **TabBar**, **NavWrapper**.
+
+**Shared rules:**
+- **Padding pattern** (about / timeline / lab): `padding: isMobile ? '100px 20px 80px' : '120px 48px 160px'`.
+- **Work grid** content: `isMobile ? '100px 20px 80px' : '100px 48px 120px'`.
+- **Case study** content column: `isMobile ? '20px 20px 80px' : '64px 24px 120px'`; `maxWidth: isMobile ? '100%' : 720`.
+- **Touch targets:** interactive controls **`minHeight: 44`** (and width where needed) on mobile — iOS minimum.
+- **`touchAction: 'manipulation'`** on buttons, links, tab rows, filter controls, and other tappable UI on these pages — prevents double-tap zoom.
+- **`overflowX: 'hidden'`** on `<main>` where needed; **`wordBreak: 'break-word'`** on long copy — no horizontal scroll at **390px** width.
+- **Typography:** mobile header **`h1` 22px** where specified (was 28px desktop); never increase sizes on mobile.
+
+**Gray sticky chrome (Session 67):** `AboutView`, `TimelineView`, `LabView`, `WorkGrid` sticky headers use **three 12px gray dots** only — no colored traffic lights, no `router.push` from chrome (use nav to go home).
+
+**Per-file highlights:**
+- **AboutView:** Photo/bio stack vertical on mobile; photo **120×120** centered; name block centered; facts + Spotify stack; facts label width **100** mobile; Spotify link **`maxWidth: '100%'`**; connect + Spotify links touch + 44px height on mobile.
+- **TimelineView:** Resume download link **44px** min height + `touchAction`; **`EraBlock`** receives `isMobile` — summary **`wordBreak: 'break-word'`**; case study **`button`** `minHeight: 44`, `touchAction`, `type="button"`.
+- **LabView:** Beliefs **single column** on mobile (`flex` / `gap: 8`); note **`marginTop: 4`** mobile; filter input **`maxWidth: '100%'`** mobile, **`fontSize: 16`** mobile (iOS); tag/clear/suggestion buttons **44px** + `touchAction`; experiment copy **`wordBreak`**.
+- **WorkGrid:** Grid **`1fr`** mobile; header **22px**; card chrome row **`minHeight: 44`** mobile; whole card **`touchAction: 'manipulation'`**; **`role="button"`** + **`aria-label`** + keyboard **Enter/Space** for a11y.
+- **CaseStudyView:** Hero + decision **mp4**: **`autoPlay={!isMobile}`**, **`preload="metadata"`** — no autoplay on mobile; next CTA **full width**, centered, **44px** min height, **`touchAction`**; shared **`bodyStyle`** includes **`wordBreak`**.
+- **TabBar:** **`isActive && !isMobile`** for traffic lights; tab flex **`maxWidth: isMobile ? 120 : 200`**; row padding **`0 6px 0 8px`** mobile; close **`minWidth`/`minHeight: 44`** mobile; tab row + close **`touchAction: 'manipulation'`**.
+- **NavWrapper:** Outer padding **`isMobile ? '12px 16px' : '12px 24px'`** (Session 67).
+
+## Traffic lights — Session 68 clarification, Session 69 ChatPanel split, **Session 67 content pages**
+
+**Content page chrome (read this first):** Sticky headers **`about.exe`**, **`timeline.exe`**, **`lab.exe`**, and **`case-studies.exe`** use **gray decorative dots only** (`rgba(255,255,255,0.15)`). They are **not** closeable windows. **Navigation back to home is via the logo in the nav bar** (link to `/`) — **never** a red dot on those headers. The **red-dot / full traffic-light** pattern belongs on UI where the window metaphor matches **real** dismiss or close behavior (e.g. **`TabBar`** active tab: tabs are **genuinely closeable** via **×**; lights stay decorative but the row is the browser-tab metaphor). Do not reintroduce a red “close” control on content-page sticky chrome.
+
+- **Colored** (`#ff5f57`, `#febc2e`, `#28c840`): **`ChatPanel variant="overlay"`** (red closes), **OrbitalCards**, **TabBar** active tab **desktop only** (hidden on mobile — Session 67). Individual `/work/[slug]` pages have **no** sticky page chrome in `CaseStudyView` (tab bar + nav only).
+- **Gray** (`rgba(255,255,255,0.15)`): **`ChatPanel variant="embedded"`** (homepage), **WorkGrid** per-card chrome, **Lab** experiment cards, and **all sticky page chrome headers** on content routes — **`AboutView`**, **`TimelineView`**, **`LabView`**, **`WorkGrid`** sticky `*.exe` bars (Session 67). Decorative only; **home = nav logo**, not chrome.
 
 ## Nav (Session 7 — updated Session 33, Session 65, Session 66, Session 68, Session 69)
 
@@ -475,13 +502,13 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 - `src/app/work/page.tsx` — thin route, renders `<WorkGrid />`
 - `src/components/case-study/WorkGrid.tsx` — `'use client'` grid component
 
-**WorkGrid rules (Session 64 updates):**
-- **Sticky terminal chrome header (Session 41):** `position: sticky, top: 0, zIndex: 40`, `rgba(10,12,16,0.98)` + `blur(12px)`, `padding: 10px 20px`. Traffic lights 12px circles (`#ff5f57`/`#febc2e`/`#28c840`). Window title: `case-studies.exe`. Red dot: `onClick → router.push('/')` (always goes to homepage, not `router.back()`). Yellow/green: hover shows `−`/`+` glyphs, no action. Hover state via `useState` booleans (`closeHovered`, `yellowHovered`, `greenHovered`).
+**WorkGrid rules (Session 64 updates, Session 67 mobile):**
+- **Sticky terminal chrome header:** `position: sticky, top: 0, zIndex: 40`, `rgba(10,12,16,0.98)` + `blur(12px)`, `padding: 10px 20px`. **Session 67:** three **gray** 12px dots `rgba(255,255,255,0.15)` only — decorative (home via nav). Window title: `case-studies.exe`.
+- **`useIsMobile()`** — content padding `isMobile ? '100px 20px 80px' : '100px 48px 120px'`; grid `1fr` mobile / `repeat(auto-fill, minmax(280px, 1fr))` desktop; h1 **22** mobile / **28** desktop; card chrome row **`minHeight: 44`** mobile; cards **`touchAction: 'manipulation'`**, **`role="button"`**, **`aria-label`**, keyboard Enter/Space; `<main overflowX: hidden>`.
 - **Grid card chrome:** three 8px dots, all `rgba(255,255,255,0.15)` — decorative only (not closeable windows); do not use colored traffic lights on card rows.
 - **`GridThumbnail` helper** (in `WorkGrid.tsx`): wraps the 16/9 area with `onMouseEnter` / `onMouseLeave`. Mp4: `videoRef`, `preload="metadata"`, `muted` + `playsInline` + `loop`, `onLoadedMetadata` seeks to 0; hover calls `play().catch(() => {})`, leave pauses and resets `currentTime` to 0. Static images: raw `<img>` with `eslint-disable-next-line @next/next/no-img-element`. Placeholder grid when no `heroAsset`.
-- Responsive grid: `repeat(auto-fill, minmax(280px, 1fr))`, `gap: 16`
+- `gap: 16`
 - No `textTransform: uppercase` on the "case study" label at the bottom of each card
-- Content padding: `100px 48px 120px` (breathing room below nav + sticky `case-studies.exe` chrome)
 - PageTransitionWrapper treats `/work` as a content page: dark bg `rgba(14,16,21,0.97)`, z-20, scrollable, `top: 0` (no tab bar offset — tab bar only renders on `/work/*`)
 
 **PageTransitionWrapper update (Session 40, superseded Session 47):**
@@ -506,17 +533,14 @@ Dynamic pages at `/work/[slug]` for all 10 projects.
 
 **Quick takes (4)**: waypoint-sync, kernel, mushroom, cohere-labs — no `hardPart`, section label "what I did"
 
-**CaseStudyView rules:**
-- Sticky chrome header: traffic lights match orbital card exactly (`#ff5f57`/`#febc2e`/`#28c840`), `rgba(14,16,21,0.95)` + `blur(12px)`. Red light = `router.back()`. No type badge in the header — traffic lights + filename only.
-- Traffic light hover behavior (Session 38): `closeHovered`/`yellowHovered`/`greenHovered` `useState` booleans. On hover, red shows `×`, yellow shows `−`, green shows `+` — each as an inline `<span>` child, `fontSize: 8`, dark text `rgba(0,0,0,0.5–0.6)`.
+**CaseStudyView rules (Session 34, Session 67 mobile):**
+- Sticky page chrome **removed** (Session 39) — tab bar + nav only.
 - Role line: `fontSize: 12`, `color: rgba(0,255,159,0.7)`, `fontWeight: 300` — NO `textTransform: uppercase`, NO `letterSpacing`. Sentence case.
-- Content: `maxWidth: 720`, `margin: '0 auto'`
-- Hero + decision artifact videos use `autoPlay` — this is intentional for case study pages (exception to the site-wide "no autoPlay" rule for orbital/thumbnail videos)
-- All styling: inline styles only — this is a scrollable document page, not the fixed overlay system
-- `<video>` elements in case study pages are ambient/decorative — no `eslint-disable` needed (jsx-a11y/media-has-caption rule is not active in this project)
-- `eslint-disable-next-line @next/next/no-img-element` on all raw `<img>` elements (same exception as OrbitalCard)
-
-**Do NOT add `preload="none"` to case study page videos** — they autoplay on load (different from orbital card/thumbnail videos where `preload="none"` is required).
+- **`useIsMobile()`** — content: `maxWidth: isMobile ? '100%' : 720`, `padding: isMobile ? '20px 20px 80px' : '64px 24px 120px'`, `width: '100%'`, `boxSizing`. `<main overflowX: hidden>`.
+- Hero + decision **mp4:** `autoPlay={!isMobile}`, `preload="metadata"`, `muted`, `loop`, `playsInline` — **desktop** ambient autoplay; **mobile** no autoplay (Session 67).
+- Next CTA: `type="button"`, full width + centered on mobile, `minHeight: 44` mobile, `touchAction: 'manipulation'`. Body copy via `bodyStyle` includes `wordBreak: 'break-word'`.
+- All styling: inline styles only — scrollable document page
+- `eslint-disable-next-line @next/next/no-img-element` on raw `<img>` elements (same exception as OrbitalCard)
 
 **Next case study chain (loops):** waypoint → statespace → channel → seudo → wafer → sherpa → waypoint-sync → kernel → mushroom → cohere-labs → waypoint
 
@@ -530,9 +554,9 @@ Live at `/about`. Scrollable content page, same visual system as case study page
 - `src/app/api/spotify/callback/route.ts` — OAuth callback, one-time token exchange
 - `src/app/api/spotify/now-playing/route.ts` — fetches currently-playing or recently-played
 
-**Layout:** 880px max-width, `padding: '120px 48px 120px'` — 120px top accounts for about.exe chrome (38px) + nav (~56px) + breathing room (updated Session 45). Two-section layout: photo+bio grid on top, facts+Spotify+connect grid below (2-col, 1fr each).
+**Layout (Session 67):** 880px max-width, `padding: isMobile ? '100px 20px 80px' : '120px 48px 160px'`, `width: '100%'`, `boxSizing`. Photo+bio: stack on mobile (flex column, 120px photo centered); facts+Spotify stack on mobile; see **Mobile content pages — Session 67** in this file.
 
-**Terminal chrome:** sticky top, `zIndex: 40`, `rgba(10,12,16,0.98)` + `blur(12px)`. Traffic lights `#ff5f57`/`#febc2e`/`#28c840` (12px circles). Red → `router.push('/')`. Hover glyphs: `×`/`−`/`+`. Title: `about.exe`.
+**Terminal chrome:** sticky, `zIndex: 40`, `rgba(10,12,16,0.98)` + `blur(12px)`. **Three gray dots** `rgba(255,255,255,0.15)` — decorative only. Title: `about.exe`.
 
 **Photo:** `/joe.png` — raw `<img>` with `eslint-disable-next-line @next/next/no-img-element`, 200×200, `objectFit: cover`, `borderRadius: 8`.
 

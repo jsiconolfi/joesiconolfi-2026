@@ -4,12 +4,11 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { TIMELINE } from '@/content/timeline'
 import type { TimelineEra } from '@/content/timeline'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 export default function TimelineView() {
   const router = useRouter()
-  const [closeHovered, setCloseHovered] = useState(false)
-  const [yellowHovered, setYellowHovered] = useState(false)
-  const [greenHovered, setGreenHovered] = useState(false)
+  const isMobile = useIsMobile()
   const [activeId, setActiveId] = useState<string | null>(null)
   const eraRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
@@ -48,9 +47,9 @@ export default function TimelineView() {
   }, [])
 
   return (
-    <main style={{ minHeight: '100vh', fontFamily: 'var(--font-mono, monospace)' }}>
+    <main style={{ minHeight: '100vh', fontFamily: 'var(--font-mono, monospace)', overflowX: 'hidden' }}>
 
-      {/* Terminal chrome */}
+      {/* Terminal chrome — gray dots only */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 40,
         backgroundColor: 'rgba(10, 12, 16, 0.98)',
@@ -58,44 +57,9 @@ export default function TimelineView() {
         borderBottom: '1px solid rgba(255,255,255,0.06)',
         padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 6,
       }}>
-        <button
-          onClick={() => router.push('/')}
-          onMouseEnter={() => setCloseHovered(true)}
-          onMouseLeave={() => setCloseHovered(false)}
-          style={{
-            width: 12, height: 12, borderRadius: '50%', backgroundColor: '#ff5f57',
-            border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          {closeHovered && (
-            <span style={{ fontSize: 8, lineHeight: 1, color: 'rgba(0,0,0,0.65)', fontWeight: 700, userSelect: 'none' }}>
-              ×
-            </span>
-          )}
-        </button>
-        <span
-          onMouseEnter={() => setYellowHovered(true)}
-          onMouseLeave={() => setYellowHovered(false)}
-          style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#febc2e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-        >
-          {yellowHovered && (
-            <span style={{ fontSize: 8, lineHeight: 1, color: 'rgba(0,0,0,0.5)', fontWeight: 700, userSelect: 'none' }}>
-              −
-            </span>
-          )}
-        </span>
-        <span
-          onMouseEnter={() => setGreenHovered(true)}
-          onMouseLeave={() => setGreenHovered(false)}
-          style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#28c840', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-        >
-          {greenHovered && (
-            <span style={{ fontSize: 8, lineHeight: 1, color: 'rgba(0,0,0,0.5)', fontWeight: 700, userSelect: 'none' }}>
-              +
-            </span>
-          )}
-        </span>
+        <span style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', flexShrink: 0, display: 'block' }} />
+        <span style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', flexShrink: 0, display: 'block' }} />
+        <span style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', flexShrink: 0, display: 'block' }} />
         <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 10, fontWeight: 300 }}>
           timeline.exe
         </span>
@@ -103,14 +67,20 @@ export default function TimelineView() {
       </div>
 
       {/* Page content */}
-      <div style={{ maxWidth: 760, margin: '0 auto', padding: '120px 48px 160px' }}>
+      <div style={{
+        maxWidth: 760,
+        margin: '0 auto',
+        padding: isMobile ? '100px 20px 80px' : '120px 48px 160px',
+        boxSizing: 'border-box',
+        width: '100%',
+      }}>
 
         {/* Header */}
         <div style={{ marginBottom: 80, paddingLeft: 48 }}>
           <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', letterSpacing: '0.12em', margin: '0 0 12px' }}>
             timeline
           </p>
-          <h1 style={{ fontSize: 28, fontWeight: 400, margin: '0 0 8px', letterSpacing: '-0.02em', color: 'rgba(255,255,255,0.9)' }}>
+          <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 400, margin: '0 0 8px', letterSpacing: '-0.02em', color: 'rgba(255,255,255,0.9)' }}>
             15+ years of building
           </h1>
           <p style={{ fontSize: 13, fontWeight: 300, color: 'rgba(255,255,255,0.4)', margin: 0, lineHeight: 1.6 }}>
@@ -130,6 +100,8 @@ export default function TimelineView() {
               textDecoration: 'none',
               fontFamily: 'var(--font-mono)',
               transition: 'color 0.2s ease',
+              minHeight: isMobile ? 44 : undefined,
+              touchAction: 'manipulation',
             }}
             onMouseEnter={e => (e.currentTarget.style.color = '#00ff9f')}
             onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}
@@ -160,6 +132,7 @@ export default function TimelineView() {
                 key={era.id}
                 era={era}
                 isActive={activeId === era.id}
+                isMobile={isMobile}
                 onRef={el => {
                   if (el) eraRefs.current.set(era.id, el)
                   else eraRefs.current.delete(era.id)
@@ -171,7 +144,7 @@ export default function TimelineView() {
         </div>
 
         {/* Footer — marginLeft: 11 aligns border with rail, paddingLeft: 37 keeps text at content column (11+37=48) */}
-        <div style={{ marginTop: 64, paddingTop: 40, marginLeft: 11, paddingLeft: 37, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ marginTop: 64, paddingTop: 40, marginLeft: 11, paddingLeft: 37, borderTop: '1px solid rgba(255,255,255,0.06)', wordBreak: 'break-word' }}>
           <p style={{
             fontSize: 11,
             fontWeight: 300,
@@ -190,11 +163,12 @@ export default function TimelineView() {
 interface EraBlockProps {
   era: TimelineEra
   isActive: boolean
+  isMobile: boolean
   onRef: (el: HTMLDivElement | null) => void
   onCaseStudy?: () => void
 }
 
-function EraBlock({ era, isActive, onRef, onCaseStudy }: EraBlockProps) {
+function EraBlock({ era, isActive, isMobile, onRef, onCaseStudy }: EraBlockProps) {
   const isCompact = era.type === 'compact'
   const isCurrent = era.id === 'cohere'
 
@@ -226,7 +200,7 @@ function EraBlock({ era, isActive, onRef, onCaseStudy }: EraBlockProps) {
       </div>
 
       {/* Content column */}
-      <div style={{ paddingBottom: isCompact ? 32 : 56 }}>
+      <div style={{ paddingBottom: isCompact ? 32 : 56, minWidth: 0 }}>
 
         {/* Year + company */}
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: isCompact ? 4 : 10 }}>
@@ -282,6 +256,7 @@ function EraBlock({ era, isActive, onRef, onCaseStudy }: EraBlockProps) {
           color: isActive ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)',
           margin: isCompact ? '0' : '0 0 16px',
           transition: 'color 0.35s ease',
+          wordBreak: 'break-word',
         }}>
           {era.summary}
         </p>
@@ -306,6 +281,8 @@ function EraBlock({ era, isActive, onRef, onCaseStudy }: EraBlockProps) {
                   fontWeight: 300,
                   color: isActive ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.18)',
                   transition: 'color 0.35s ease',
+                  wordBreak: 'break-word',
+                  minWidth: 0,
                 }}>
                   {artifact.value}
                 </span>
@@ -336,9 +313,10 @@ function EraBlock({ era, isActive, onRef, onCaseStudy }: EraBlockProps) {
         {/* Case study link */}
         {onCaseStudy && (
           <button
+            type="button"
             onClick={onCaseStudy}
             style={{
-              background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+              background: 'none', border: 'none', cursor: 'pointer', padding: isMobile ? '10px 0' : 0,
               fontSize: 10,
               color: isActive ? 'rgba(0,255,159,0.55)' : 'rgba(0,255,159,0.15)',
               fontFamily: 'var(--font-mono)',
@@ -346,6 +324,10 @@ function EraBlock({ era, isActive, onRef, onCaseStudy }: EraBlockProps) {
               letterSpacing: '0.06em',
               transition: 'color 0.2s ease',
               textTransform: 'uppercase',
+              minHeight: isMobile ? 44 : undefined,
+              display: isMobile ? 'inline-flex' : undefined,
+              alignItems: isMobile ? 'center' : undefined,
+              touchAction: 'manipulation',
             }}
             onMouseEnter={e => (e.currentTarget.style.color = '#00ff9f')}
             onMouseLeave={e => (e.currentTarget.style.color = isActive ? 'rgba(0,255,159,0.55)' : 'rgba(0,255,159,0.15)')}

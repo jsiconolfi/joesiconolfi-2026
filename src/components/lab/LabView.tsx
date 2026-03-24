@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import { LAB_EXPERIMENTS } from '@/content/lab-experiments'
 import { LAB_FEED } from '@/content/lab-feed'
 import type { FeedEntryType } from '@/content/lab-feed'
@@ -63,10 +63,7 @@ const THINKING = [
 ]
 
 export default function LabView() {
-  const router = useRouter()
-  const [closeHovered, setCloseHovered] = useState(false)
-  const [yellowHovered, setYellowHovered] = useState(false)
-  const [greenHovered, setGreenHovered] = useState(false)
+  const isMobile = useIsMobile()
   const [activeTags, setActiveTags] = useState<string[]>([])
   const [filterQuery, setFilterQuery] = useState('')
 
@@ -89,9 +86,9 @@ export default function LabView() {
     : []
 
   return (
-    <main style={{ minHeight: '100vh', fontFamily: 'var(--font-mono, monospace)' }}>
+    <main style={{ minHeight: '100vh', fontFamily: 'var(--font-mono, monospace)', overflowX: 'hidden' }}>
 
-      {/* Terminal chrome */}
+      {/* Terminal chrome — gray dots only */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 40,
         backgroundColor: 'rgba(10, 12, 16, 0.98)',
@@ -99,46 +96,29 @@ export default function LabView() {
         borderBottom: '1px solid rgba(255,255,255,0.06)',
         padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 6,
       }}>
-        <button
-          onClick={() => router.push('/')}
-          onMouseEnter={() => setCloseHovered(true)}
-          onMouseLeave={() => setCloseHovered(false)}
-          style={{
-            width: 12, height: 12, borderRadius: '50%', backgroundColor: '#ff5f57',
-            border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          {closeHovered && <span style={{ fontSize: 8, lineHeight: 1, color: 'rgba(0,0,0,0.65)', fontWeight: 700, userSelect: 'none' }}>x</span>}
-        </button>
-        <span
-          onMouseEnter={() => setYellowHovered(true)}
-          onMouseLeave={() => setYellowHovered(false)}
-          style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#febc2e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-        >
-          {yellowHovered && <span style={{ fontSize: 8, lineHeight: 1, color: 'rgba(0,0,0,0.5)', fontWeight: 700, userSelect: 'none' }}>-</span>}
-        </span>
-        <span
-          onMouseEnter={() => setGreenHovered(true)}
-          onMouseLeave={() => setGreenHovered(false)}
-          style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#28c840', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-        >
-          {greenHovered && <span style={{ fontSize: 8, lineHeight: 1, color: 'rgba(0,0,0,0.5)', fontWeight: 700, userSelect: 'none' }}>+</span>}
-        </span>
+        <span style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', flexShrink: 0, display: 'block' }} />
+        <span style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', flexShrink: 0, display: 'block' }} />
+        <span style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', flexShrink: 0, display: 'block' }} />
         <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 10, fontWeight: 300 }}>
           lab.exe
         </span>
       </div>
 
       {/* Content */}
-      <div style={{ maxWidth: 760, margin: '0 auto', padding: '120px 48px 160px' }}>
+      <div style={{
+        maxWidth: 760,
+        margin: '0 auto',
+        padding: isMobile ? '100px 20px 80px' : '120px 48px 160px',
+        boxSizing: 'border-box',
+        width: '100%',
+      }}>
 
         {/* Header */}
         <div style={{ marginBottom: 56 }}>
           <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', letterSpacing: '0.12em', margin: '0 0 12px' }}>
             the lab
           </p>
-          <h1 style={{ fontSize: 28, fontWeight: 400, margin: '0 0 8px', letterSpacing: '-0.02em', color: 'rgba(255,255,255,0.9)' }}>
+          <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 400, margin: '0 0 8px', letterSpacing: '-0.02em', color: 'rgba(255,255,255,0.9)' }}>
             Open notebook
           </h1>
           <p style={{ fontSize: 13, fontWeight: 300, color: 'rgba(255,255,255,0.4)', margin: '0 0 6px', lineHeight: 1.6 }}>
@@ -164,6 +144,8 @@ export default function LabView() {
                   color: 'rgba(255,255,255,0.55)',
                   margin: 0,
                   lineHeight: 1.6,
+                  wordBreak: 'break-word',
+                  minWidth: 0,
                 }}>
                   {question}
                 </p>
@@ -187,9 +169,10 @@ export default function LabView() {
                 style={{
                   padding: '20px 0',
                   borderBottom: '1px solid rgba(255,255,255,0.05)',
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: 32,
+                  display: isMobile ? 'flex' : 'grid',
+                  flexDirection: isMobile ? 'column' : undefined,
+                  gridTemplateColumns: isMobile ? undefined : '1fr 1fr',
+                  gap: isMobile ? 8 : 32,
                   alignItems: 'start',
                 }}
               >
@@ -199,6 +182,7 @@ export default function LabView() {
                   color: 'rgba(255,255,255,0.85)',
                   margin: 0,
                   lineHeight: 1.5,
+                  wordBreak: 'break-word',
                 }}>
                   {item.belief}
                 </p>
@@ -208,6 +192,8 @@ export default function LabView() {
                   color: 'rgba(255,255,255,0.4)',
                   margin: 0,
                   lineHeight: 1.7,
+                  marginTop: isMobile ? 4 : 0,
+                  wordBreak: 'break-word',
                 }}>
                   {item.note}
                 </p>
@@ -236,6 +222,7 @@ export default function LabView() {
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 8,
                   padding: '8px 14px',
+                  minHeight: isMobile ? 44 : undefined,
                   backgroundColor: 'rgba(14,16,21,0.8)',
                   borderBottom: '1px solid rgba(255,255,255,0.05)',
                 }}>
@@ -254,7 +241,7 @@ export default function LabView() {
 
                 {/* Card content */}
                 <div style={{ padding: '16px 14px 18px' }}>
-                  <h3 style={{ fontSize: 13, fontWeight: 400, color: 'rgba(255,255,255,0.9)', margin: '0 0 12px' }}>
+                  <h3 style={{ fontSize: 13, fontWeight: 400, color: 'rgba(255,255,255,0.9)', margin: '0 0 12px', wordBreak: 'break-word' }}>
                     {exp.title}
                   </h3>
                   {exp.description.split('\n\n').map((para, i, arr) => (
@@ -262,6 +249,7 @@ export default function LabView() {
                       fontSize: 12, fontWeight: 300, lineHeight: 1.75,
                       color: 'rgba(255,255,255,0.55)',
                       margin: i < arr.length - 1 ? '0 0 12px' : '0 0 14px',
+                      wordBreak: 'break-word',
                     }}>
                       {para}
                     </p>
@@ -273,6 +261,7 @@ export default function LabView() {
                       margin: '0 0 14px',
                       paddingLeft: 10,
                       borderLeft: '2px solid rgba(0,255,159,0.2)',
+                      wordBreak: 'break-word',
                     }}>
                       {exp.notes}
                     </p>
@@ -331,6 +320,8 @@ export default function LabView() {
                       alignItems: 'center',
                       gap: 5,
                       transition: 'border-color 0.15s ease',
+                      minHeight: isMobile ? 44 : undefined,
+                      touchAction: 'manipulation',
                     }}
                     onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,255,159,0.35)' }}
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,255,159,0.2)' }}
@@ -352,6 +343,8 @@ export default function LabView() {
                     padding: '2px 8px',
                     cursor: 'pointer',
                     transition: 'color 0.15s ease',
+                    minHeight: isMobile ? 44 : undefined,
+                    touchAction: 'manipulation',
                   }}
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#00ff9f' }}
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.25)' }}
@@ -369,18 +362,20 @@ export default function LabView() {
                 placeholder="filter by tag..."
                 style={{
                   width: '100%',
-                  maxWidth: 240,
+                  maxWidth: isMobile ? '100%' : 240,
                   backgroundColor: 'transparent',
                   border: '1px solid rgba(255,255,255,0.08)',
                   borderRadius: 4,
                   padding: '6px 10px',
-                  fontSize: 11,
+                  fontSize: isMobile ? 16 : 11,
                   fontWeight: 300,
                   fontFamily: 'var(--font-mono, monospace)',
                   color: 'rgba(255,255,255,0.6)',
                   outline: 'none',
                   boxSizing: 'border-box',
                   transition: 'border-color 0.15s ease',
+                  minHeight: isMobile ? 44 : undefined,
+                  touchAction: 'manipulation',
                 }}
                 onFocus={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,255,159,0.3)' }}
                 onBlur={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.08)' }}
@@ -421,6 +416,8 @@ export default function LabView() {
                         padding: '8px 12px',
                         cursor: 'pointer',
                         transition: 'color 0.15s ease, background 0.15s ease',
+                        minHeight: isMobile ? 44 : undefined,
+                        touchAction: 'manipulation',
                       }}
                       onMouseEnter={e => {
                         (e.currentTarget as HTMLElement).style.color = '#00ff9f'
@@ -484,6 +481,9 @@ export default function LabView() {
                       textDecoration: 'none',
                       display: 'block', marginBottom: 8,
                       transition: 'color 0.2s ease',
+                      minHeight: isMobile ? 44 : undefined,
+                      touchAction: 'manipulation',
+                      wordBreak: 'break-word',
                     }}
                     onMouseEnter={e => (e.currentTarget.style.color = '#00ff9f')}
                     onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.85)')}
@@ -502,6 +502,7 @@ export default function LabView() {
                     fontSize: 12, fontWeight: 300, lineHeight: 1.8,
                     color: 'rgba(255,255,255,0.5)',
                     margin: i < arr.length - 1 ? '0 0 10px' : '0 0 12px',
+                    wordBreak: 'break-word',
                   }}>
                     {para}
                   </p>

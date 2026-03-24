@@ -365,19 +365,22 @@ interface Tab {
 - `TAB_BAR_HEIGHT = 38` — exported constant, used by NavWrapper and PageTransitionWrapper
 - `useEffect` on `pathname` — registers current case study as a tab via `openTab` + `setActiveSlug`
 - **Tab layout (Session 43):** `[traffic lights — active only] [label flex:1] [× close button]`. Traffic lights are decorative on active tab (no close action on red). `×` button is always mounted on right: `opacity:1` when active or hovered, `opacity:0` at rest on inactive. `e.stopPropagation()` on close button events.
+- **Session 67 (mobile):** `useIsMobile()` — traffic lights **hidden** when mobile (`isActive && !isMobile`). Per-tab `maxWidth: isMobile ? 120 : 200`; row padding `isMobile ? '0 6px 0 8px' : '0 8px 0 10px'`; close button `minWidth`/`minHeight: 44` on mobile; tab row + close `touchAction: 'manipulation'`. Close is `type="button"`.
 - `hoveredTab` and `hoveredClose` state control bg tint, label brightness, and close button visibility
-- `flex: 1, maxWidth: 200px` per tab — tabs compress automatically as more open; label truncates with ellipsis
+- `flex: 1, maxWidth: 200px` per tab on desktop — tabs compress automatically as more open; label truncates with ellipsis
 - `z-index: 50` — above orbital cards and nav
 - Background: `rgba(10,12,16,0.98)` + `blur(12px)`, border-bottom `rgba(255,255,255,0.06)`
 - Active tab: `rgba(255,255,255,0.05)` bg, `borderBottom: '1px solid #161a22'` (merges with content)
 - Inactive tab: no bg, `rgba(255,255,255,0.35)` label color
 
-**NavWrapper (`NavWrapper.tsx`, Session 39, updated Session 46):**
-- `'use client'` — reads `usePathname`
+**NavWrapper (`NavWrapper.tsx`, Session 39, updated Session 46, Session 67):**
+- `'use client'` — reads `usePathname` + **`useIsMobile()`** (Session 66, Session 67)
 - `hasChrome = pathname.startsWith('/work') || pathname === '/about' || pathname === '/timeline' || pathname === '/lab'` — covers `/work` index, `/work/[slug]`, `/about` (Session 44), `/timeline` (Session 49), and `/lab` (Session 60)
+- **Session 67:** outer fixed wrapper `padding: isMobile ? '12px 16px' : '12px 24px'`
 - `top` is `useState(0)` + `useEffect` with 60ms `setTimeout` (Session 46). Nav always mounts at `top: 0` and animates to `TAB_BAR_HEIGHT` after the delay. Without this, the `pathname`-derived value renders synchronously so the CSS transition has no prior state to animate from. `useState(0)` initial value is intentional — do NOT initialize to `hasChrome ? TAB_BAR_HEIGHT : 0`. The delay must stay 50–100ms.
 - `transition: 'top 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)'` — ease-out-quart, matches page transition easing.
 - `pointerEvents: 'none'` on outer div, `pointerEvents: 'auto'` on inner Nav wrapper — preserves nav interactivity
+- Inner wrapper **`width: '100%'`** when mobile (Session 66)
 - `Nav` no longer sets its own fixed position — NavWrapper owns all positioning
 
 **Nav changes (Session 39):**
@@ -406,7 +409,7 @@ Case study pages are now live at `/work/[slug]` for all 10 projects.
 **Files (Session 34, updated Session 40):**
 - `src/content/case-studies.ts` — `CaseStudy` interface + `CASE_STUDIES` array (10 entries) + `getCaseStudy(slug)` + `getAllSlugs()` helpers
 - `src/app/work/page.tsx` — `/work` index page, renders `<WorkGrid />` (Session 40)
-- `src/components/case-study/WorkGrid.tsx` — `'use client'` grid of all 10 case studies. Sticky terminal chrome header (`case-studies.exe`, colored traffic lights — red goes to `/`). **Per-card** terminal chrome uses **gray dots** `rgba(255,255,255,0.15)` only (non-closeable window chrome, Session 64). 16/9 thumbnails via `GridThumbnail`: `preload="metadata"`, first frame at rest; **hover** on thumbnail plays mp4 (`play()`), **mouse leave** pauses and resets `currentTime` to 0 — no `autoPlay`. Static image heroes unchanged. Content padding `100px 48px 120px` (Session 64 — clearance under nav + sticky chrome). Responsive `auto-fill minmax(280px,1fr)` grid.
+- `src/components/case-study/WorkGrid.tsx` — `'use client'` grid of all 10 case studies. **Session 67:** Sticky header uses **three gray dots** `rgba(255,255,255,0.15)` only (decorative — home via nav), title `case-studies.exe`. **Per-card** chrome: gray dots (Session 64). **`useIsMobile()`** — content padding `isMobile ? '100px 20px 80px' : '100px 48px 120px'`; grid `1fr` on mobile vs `auto-fill minmax(280px,1fr)`; h1 **22px** mobile / **28px** desktop; card chrome row **`minHeight: 44`** mobile; cards **`touchAction: 'manipulation'`**, **`role="button"`**, **`aria-label`**, Enter/Space keyboard. 16/9 thumbnails via `GridThumbnail`: `preload="metadata"`, hover play mp4, leave pause/reset. `<main overflowX: hidden>`.
 - `src/app/work/[slug]/page.tsx` — async dynamic route, `generateStaticParams` for all 10 slugs, calls `notFound()` for unknown slugs. **Next.js 15+:** `params` typed as `Promise<{ slug: string }>`, awaited before use. Page function is `async`.
 - `src/components/case-study/CaseStudyView.tsx` — `'use client'` component rendering the full case study page
 
@@ -433,22 +436,20 @@ interface CaseStudy {
 - `'full'` (6 entries): waypoint, statespace, channel, seudo, wafer, sherpa — includes `hardPart` section
 - `'quick'` (4 entries): waypoint-sync, kernel, mushroom, cohere-labs — no `hardPart` section
 
-**CaseStudyView layout (updated Session 39):**
+**CaseStudyView layout (updated Session 39, Session 67):**
 - Sticky terminal chrome header **removed** — replaced by the persistent tab bar (`TabBar`) at the top of the viewport.
-- 720px max-width content column, `0 auto` centered
-- Content padding: `120px 24px 120px` — 120px top accounts for tab bar (38px) + nav (~56px) + breathing room
-- Hero asset (if present): `16/9` aspect ratio, `borderRadius: 8`, autoplay muted loop for video
+- **`useIsMobile()`** — content column `maxWidth: isMobile ? '100%' : 720`, `padding: isMobile ? '20px 20px 80px' : '64px 24px 120px'`, `width: '100%'`, `boxSizing: 'border-box'`. `<main overflowX: hidden>`.
+- Hero asset (if present): `16/9` aspect ratio, `borderRadius: 8`. **Video:** `autoPlay={!isMobile}`, `muted`, `loop`, `playsInline`, **`preload="metadata"`** — **no autoplay on mobile** (Session 67); desktop keeps ambient autoplay.
 - Header block: year (muted, uppercase) → name (h1, 32px) → tagline → role (terminal green `rgba(0,255,159,0.7)`, 12px, fontWeight 300, sentence case — no uppercase, no letterSpacing)
 - Sections in order: `the problem` (hook) → `the hard part` (full only) → `key decisions` or `what I did` → `outcome`
-- Decision artifacts render inline below each decision body — video autoplay muted loop, img static
-- Next case study: `[nextSlug].exe →` button at bottom, hover brightens border + text
-- Body copy: 13px, `fontWeight: 300`, `lineHeight: 1.8`, `rgba(255,255,255,0.65)`
+- Decision artifact videos: same as hero — **`autoPlay={!isMobile}`**, **`preload="metadata"`** (Session 67)
+- Next case study: **`type="button"`** — full width on mobile, `justifyContent: center`, `minHeight: 44` mobile, `touchAction: 'manipulation'`
+- Body copy: 13px, `fontWeight: 300`, `lineHeight: 1.8`, `rgba(255,255,255,0.65)` — shared **`bodyStyle`** includes **`wordBreak: 'break-word'`**
 - All styling: inline styles only (no Tailwind — this is a scrollable page, not the fixed overlay system)
 
-**Video rule exception for case study pages:**
-- Hero videos and decision artifact videos autoplay muted loop — this is intentional and correct for case study pages
-- This differs from orbital cards (hover/active only) and thumbnails (hover only)
-- Case study page videos have `autoPlay` — this is the one place this is allowed
+**Video rule for case study pages (Session 67 update):**
+- **Desktop:** hero and decision artifact mp4s autoplay muted loop — ambient case-study treatment.
+- **Mobile:** **`autoPlay={false}`** (via `!isMobile`) + **`preload="metadata"`** — avoids jarring autoplay and saves battery; differs from orbital cards (hover/active) and thumbnails (hover only).
 
 **URL wiring (Session 34):**
 - All 10 projects in `projects.ts` now have `url: '/work/[slug]'`
@@ -471,12 +472,13 @@ Live at `/about`. Scrollable content page with terminal chrome header.
 - `src/app/about/page.tsx` — thin route, renders `<AboutView />`
 - `src/components/about/AboutView.tsx` — `'use client'` component
 
-**Layout:**
-- Terminal chrome header: `position: sticky, top: 0, zIndex: 40`, `rgba(10,12,16,0.98)` + `blur(12px)`. Traffic lights `#ff5f57`/`#febc2e`/`#28c840`. Red → `router.push('/')`. Window title: `about.exe`. Yellow/green hover shows `−`/`+` glyphs, no action.
-- Max-width 880px content column, `padding: '120px 48px 120px'` — 120px top accounts for about.exe chrome (38px) + nav (~56px) + breathing room (updated Session 45)
-- Two-column grid (200px photo col + 1fr bio col), `gap: 48`, `marginBottom: 72`
-- Photo: `/joe.png` (200×200, `borderRadius: 8`, `objectFit: cover`). Raw `<img>` with `eslint-disable-next-line @next/next/no-img-element`.
-- Name/role below photo: name 14px 400 weight, role `rgba(0,255,159,0.7)` 11px 300, location `rgba(255,255,255,0.35)` 11px 300
+**Layout (Session 67 mobile):**
+- Terminal chrome header: `position: sticky, top: 0, zIndex: 40`, `rgba(10,12,16,0.98)` + `blur(12px)`. **Three gray dots** `rgba(255,255,255,0.15)` only — decorative (home via nav). Window title: `about.exe`.
+- **`useIsMobile()`** — content `padding: isMobile ? '100px 20px 80px' : '120px 48px 160px'`, `maxWidth: 880`, `width: '100%'`, `boxSizing: 'border-box'`. `<main overflowX: hidden>`.
+- Photo + bio: **mobile** — `flex` column, `gap: 32`; **desktop** — grid `200px 1fr`, `gap: 48`. `marginBottom: 72`.
+- Photo: **mobile** `120×120`, `margin: 0 auto`; **desktop** `200×200`. `/joe.png`, `borderRadius: 8`, `objectFit: cover`. Raw `<img>` with `eslint-disable-next-line @next/next/no-img-element`.
+- Name/role below photo: **`marginTop: 12`**, **`textAlign: center`** on mobile / left desktop. name 14px 400 weight, role `rgba(0,255,159,0.7)` 11px 300, location `rgba(255,255,255,0.35)` 11px 300
+- Facts + Spotify: **mobile** single column `flex`; **desktop** grid `1fr 1fr`, `gap: 48`. Facts label width **100** mobile / **120** desktop. Spotify link **`maxWidth: '100%'`** mobile; connect + Spotify links **`minHeight: 44`** + **`touchAction: 'manipulation'`** on mobile.
 - Bio: 3 paragraphs, 13px fontWeight 300 lineHeight 1.8 `rgba(255,255,255,0.65)`. Copy is **verbatim** — never rewrite.
 - Horizontal divider `rgba(255,255,255,0.06)` separates bio from bottom section
 - Bottom two-column grid (1fr 1fr): facts left, Spotify + connect right
@@ -557,25 +559,25 @@ interface FeedEntry {
 }
 ```
 
-**LabView layout (Session 61):**
-- Terminal chrome: `position: sticky, top: 0, zIndex: 40`, `rgba(10,12,16,0.98)` + `blur(12px)`. Traffic lights. Red → `router.push('/')`. Window title: `lab.exe`.
-- Max-width 760px content column, `padding: '120px 48px 160px'`
+**LabView layout (Session 61, Session 67 mobile):**
+- Terminal chrome: `position: sticky, top: 0, zIndex: 40`, `rgba(10,12,16,0.98)` + `blur(12px)`. **Three gray dots** `rgba(255,255,255,0.15)` only. Window title: `lab.exe`.
+- **`useIsMobile()`** — content `padding: isMobile ? '100px 20px 80px' : '120px 48px 160px'`, `maxWidth: 760`, `width: '100%'`, `boxSizing`. `<main overflowX: hidden>`.
 - Page order: header → currently thinking about → divider → things I hold true (7 beliefs) → divider → experiments → divider → feed
-- Header: eyebrow "the lab" + h1 "Open notebook" + subtitle + tagline "The best interface never asks."
-- "Currently thinking about": 4 open questions with `rgba(0,255,159,0.4)` arrow prefix
-- "Things I hold true": 7 beliefs in a two-column grid (`1fr 1fr`, gap 32). Left: statement (`rgba(255,255,255,0.85)`, 13px weight 400). Right: note (`rgba(255,255,255,0.4)`, 12px weight 300). Rows separated by `rgba(255,255,255,0.05)` border-bottom.
+- Header: eyebrow "the lab" + h1 **22px mobile / 28px desktop** "Open notebook" + subtitle + tagline "The best interface never asks."
+- "Currently thinking about": questions with **`wordBreak: 'break-word'`** on mobile-narrow viewports
+- "Things I hold true": **mobile** — single column `flex`, `gap: 8`, note col **`marginTop: 4`**; **desktop** — two-column grid (`1fr 1fr`, gap 32). Left: statement (`rgba(255,255,255,0.85)`, 13px weight 400). Right: note (`rgba(255,255,255,0.4)`, 12px weight 300). Rows separated by `rgba(255,255,255,0.05)` border-bottom.
 - Experiment cards: terminal chrome with **gray dots** (`rgba(255,255,255,0.15)`) — NOT colored. Cards are not interactive/closeable.
 - Status badge colors: `in progress`/`ongoing` → `rgba(0,255,159,0.7)`, `shipped` → `rgba(0,255,159,0.4)`, `archived` → `rgba(255,255,255,0.25)`
 - Experiment descriptions: `text.split('\n\n').map((para) => <p>)` — renders multi-paragraph bodies correctly
 - Notes field: `borderLeft: '2px solid rgba(0,255,159,0.2)'`, `color: rgba(0,255,159,0.45)`
-- Feed section label + **tag search filter** (Session 63, replaces Session 62 tag wall): `activeTags` + `filterQuery` state. `allTags` = sorted unique from `LAB_FEED`. `filteredFeed` = full feed when `activeTags` empty, else OR-match on `activeTags`. `suggestedTags` = tags whose lowercase name includes trimmed lowercase query, excluding already-active tags; dropdown shows `slice(0, 6)`. UI: dismissible green pills (`#00ff9f`, transparent bg, `rgba(0,255,159,0.2)` border; same fill treatment as feed type badges) + `clear all` when filters active; `filter by tag...` input (`maxWidth: 240`); absolute-positioned suggestion list under input. Selecting a suggestion appends tag, clears query. Client-side only, no URL persistence. Empty filtered list: "No entries match these filters."
+- Feed section label + **tag search filter** (Session 63, Session 67): `activeTags` + `filterQuery`; `filteredFeed` OR across active tags; suggestions `slice(0, 6)`; client-side only, no URL persistence. **Mobile:** filter input **`maxWidth: '100%'`**, **`fontSize: 16`** (iOS), **`minHeight: 44`**; tag pills + clear + suggestion rows **`minHeight: 44`** + **`touchAction: 'manipulation'`**. Experiment card chrome row **`minHeight: 44`** mobile; titles/body **`wordBreak: 'break-word'`**.
 - Feed entries: type badge (terminal green pill), date, title, body. Body split on `\n\n` for multi-paragraph entries.
 - Feed entries with `url` render title as `<a>` that turns `#00ff9f` on hover, with ` →` suffix
 - All styling: inline styles only (no Tailwind)
 
-**Traffic light rule (Session 61, clarified Session 68, Session 69):**
-- **Colored dots** (`#ff5f57`, `#febc2e`, `#28c840`) = dismissible/interactive window chrome. Use on: **`ChatPanel variant="overlay"`** (red → `close()`), case study **TabBar** active tab (decorative lights; tab close is `×`), about / timeline / lab / work **index** sticky chrome, case study page chrome, **OrbitalCards**.
-- **Gray dots** (`rgba(255,255,255,0.15)`) = non-closeable decorative chrome: **`ChatPanel variant="embedded"`** (homepage — not closable from header), **WorkGrid** per-card rows, **Lab** experiment cards.
+**Traffic light rule (Session 61, clarified Session 68–69, **Session 67**):**
+- **Colored dots** (`#ff5f57`, `#febc2e`, `#28c840`) = **`ChatPanel variant="overlay"`** (red → `close()`), **OrbitalCards**, **TabBar** active tab **desktop only** (lights **hidden on mobile** — Session 67). `CaseStudyView` has **no** page chrome (tab bar only).
+- **Gray dots** (`rgba(255,255,255,0.15)`) = **`ChatPanel variant="embedded"`**, **WorkGrid** per-card rows + **WorkGrid sticky `case-studies.exe` header**, **Lab** experiment cards, **About / Timeline / Lab sticky `*.exe` headers** (Session 67 — all decorative; home via nav).
 
 **Nav/transition wiring:**
 - `NavWrapper.tsx`: `hasChrome` includes `pathname === '/lab'`
@@ -609,12 +611,13 @@ interface TimelineEra {
 
 **10 eras in order:** maxq, progressive, spongecell, viacom, logic (compact), statespace-1, statespace-2 (full), mushroom, channel, cohere (full)
 
-**Layout (Session 51 + Session 52, updated Session 58):**
-- Terminal chrome: `position: sticky, top: 0, zIndex: 40`, `rgba(10,12,16,0.98)` + `blur(12px)`. Traffic lights. Red → `router.push('/')`. Window title: `timeline.exe`.
-- Max-width 760px content column, `padding: '120px 48px 160px'`
+**Layout (Session 51 + Session 52, updated Session 58, Session 67):**
+- Terminal chrome: `position: sticky, top: 0, zIndex: 40`, `rgba(10,12,16,0.98)` + `blur(12px)`. **Three gray dots** `rgba(255,255,255,0.15)` only. Window title: `timeline.exe`.
+- **`useIsMobile()`** — content `padding: isMobile ? '100px 20px 80px' : '120px 48px 160px'`, `width: '100%'`, `boxSizing`. `<main overflowX: hidden>`.
 - Header div: `paddingLeft: 48` (Session 59) — aligns header text with era content column (24px dot + 24px gap)
-- Header h1: "15+ years of building" (updated Session 58)
-- Resume download link below subtitle: `<a href="/JoeSiconolfi_Resume-2026.pdf" download>` — `marginTop: 20`, `fontSize: 11`, `fontWeight: 300`, `color: rgba(255,255,255,0.4)`. Hover → `#00ff9f`. `↓` arrow prefix in `rgba(0,255,159,0.5)`. PDF served from `/public/`.
+- Header h1: **22px mobile / 28px desktop** — "15+ years of building" (Session 58, Session 67)
+- Resume download link: **`minHeight: 44`** mobile + **`touchAction: 'manipulation'`**. `<a href="/JoeSiconolfi_Resume-2026.pdf" download>` — `marginTop: 20`, `fontSize: 11`, `fontWeight: 300`, `color: rgba(255,255,255,0.4)`. Hover → `#00ff9f`. `↓` arrow prefix in `rgba(0,255,159,0.5)`. PDF served from `/public/`.
+- **`EraBlock`:** receives `isMobile` — summary + artifact values **`wordBreak: 'break-word'`**; content col **`minWidth: 0`**; case study **`type="button"`**, **`minHeight: 44`** mobile, **`touchAction: 'manipulation'`**. Footer wrapper **`wordBreak: 'break-word'`**.
 - Each `EraBlock`: `display: grid, gridTemplateColumns: '24px 1fr', gap: '0 24px'`
   - Column 1 (24px): dot only (`position: relative, zIndex: 1`) — sits above the static rail
   - Column 2 (1fr): all text content
@@ -638,7 +641,7 @@ interface TimelineEra {
 - Inactive dots: `rgba(255,255,255,0.12)`
 - No `position: relative` or `zIndex` on the dot element — redundant, the era list flex container already provides the stacking context
 - No `marginLeft`, `marginRight`, or `marginTop` on the dot — `alignItems: 'center'` on the dot column handles centering
-- No thread legend in the header — terminal chrome is traffic lights + `timeline.exe` only
+- No thread legend in the header — terminal chrome is gray dots + `timeline.exe` only (Session 67)
 
 **Era types:**
 - `compact` — dot 6px, smaller text (12px company, 10px role, 11px summary), `paddingBottom: 32px` in content col, `minHeight: 32px` line, no artifacts/tech/case-study rendered

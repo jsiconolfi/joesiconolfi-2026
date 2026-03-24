@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 interface NowPlaying {
   isPlaying: boolean
@@ -36,10 +36,7 @@ const LINKS = [
 ]
 
 export default function AboutView() {
-  const router = useRouter()
-  const [closeHovered, setCloseHovered] = useState(false)
-  const [yellowHovered, setYellowHovered] = useState(false)
-  const [greenHovered, setGreenHovered] = useState(false)
+  const isMobile = useIsMobile()
   const [nowPlaying, setNowPlaying] = useState<NowPlaying | null>(null)
   const [spotifyLoading, setSpotifyLoading] = useState(true)
   const pollRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
@@ -62,9 +59,9 @@ export default function AboutView() {
   }, [])
 
   return (
-    <main style={{ minHeight: '100vh', fontFamily: 'var(--font-mono, monospace)' }}>
+    <main style={{ minHeight: '100vh', fontFamily: 'var(--font-mono, monospace)', overflowX: 'hidden' }}>
 
-      {/* Terminal chrome */}
+      {/* Terminal chrome — gray dots only (non-closeable page window) */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 40,
         backgroundColor: 'rgba(10, 12, 16, 0.98)',
@@ -72,54 +69,48 @@ export default function AboutView() {
         borderBottom: '1px solid rgba(255,255,255,0.06)',
         padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 6,
       }}>
-        <button
-          onClick={() => router.push('/')}
-          onMouseEnter={() => setCloseHovered(true)}
-          onMouseLeave={() => setCloseHovered(false)}
-          style={{
-            width: 12, height: 12, borderRadius: '50%', backgroundColor: '#ff5f57',
-            border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          {closeHovered && <span style={{ fontSize: 8, lineHeight: 1, color: 'rgba(0,0,0,0.65)', fontWeight: 700, userSelect: 'none' }}>×</span>}
-        </button>
-        <span
-          onMouseEnter={() => setYellowHovered(true)}
-          onMouseLeave={() => setYellowHovered(false)}
-          style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#febc2e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-        >
-          {yellowHovered && <span style={{ fontSize: 8, lineHeight: 1, color: 'rgba(0,0,0,0.5)', fontWeight: 700, userSelect: 'none' }}>−</span>}
-        </span>
-        <span
-          onMouseEnter={() => setGreenHovered(true)}
-          onMouseLeave={() => setGreenHovered(false)}
-          style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#28c840', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-        >
-          {greenHovered && <span style={{ fontSize: 8, lineHeight: 1, color: 'rgba(0,0,0,0.5)', fontWeight: 700, userSelect: 'none' }}>+</span>}
-        </span>
+        <span style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', flexShrink: 0, display: 'block' }} />
+        <span style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', flexShrink: 0, display: 'block' }} />
+        <span style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', flexShrink: 0, display: 'block' }} />
         <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 10, fontWeight: 300 }}>
           about.exe
         </span>
       </div>
 
       {/* Page content */}
-      <div style={{ maxWidth: 880, margin: '0 auto', padding: '120px 48px 120px' }}>
+      <div style={{
+        maxWidth: 880,
+        margin: '0 auto',
+        padding: isMobile ? '100px 20px 80px' : '120px 48px 160px',
+        boxSizing: 'border-box',
+        width: '100%',
+      }}>
 
         {/* Photo + bio */}
-        <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: 48, marginBottom: 72, alignItems: 'start' }}>
+        <div style={{
+          display: isMobile ? 'flex' : 'grid',
+          flexDirection: isMobile ? 'column' : undefined,
+          gridTemplateColumns: isMobile ? undefined : '200px 1fr',
+          gap: isMobile ? 32 : 48,
+          marginBottom: 72,
+          alignItems: 'start',
+        }}>
 
           {/* Photo column */}
           <div>
             <div style={{
-              width: 200, height: 200, borderRadius: 8, overflow: 'hidden',
+              width: isMobile ? 120 : 200,
+              height: isMobile ? 120 : 200,
+              margin: isMobile ? '0 auto' : undefined,
+              borderRadius: 8,
+              overflow: 'hidden',
               border: '1px solid rgba(255,255,255,0.08)',
               backgroundColor: 'rgba(255,255,255,0.03)',
             }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/joe.png" alt="Joe Siconolfi" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
             </div>
-            <div style={{ marginTop: 16 }}>
+            <div style={{ marginTop: 12, textAlign: isMobile ? 'center' : 'left' }}>
               <p style={{ fontSize: 14, fontWeight: 400, color: 'rgba(255,255,255,0.9)', margin: '0 0 4px' }}>Joe Siconolfi</p>
               <p style={{ fontSize: 11, fontWeight: 300, color: 'rgba(0,255,159,0.7)', margin: '0 0 4px' }}>Staff Design Engineer</p>
               <p style={{ fontSize: 11, fontWeight: 300, color: 'rgba(255,255,255,0.35)', margin: 0 }}>Cohere · San Francisco Bay</p>
@@ -133,7 +124,7 @@ export default function AboutView() {
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               {BIO.map((para, i) => (
-                <p key={i} style={{ fontSize: 13, fontWeight: 300, lineHeight: 1.8, color: 'rgba(255,255,255,0.65)', margin: 0 }}>
+                <p key={i} style={{ fontSize: 13, fontWeight: 300, lineHeight: 1.8, color: 'rgba(255,255,255,0.65)', margin: 0, wordBreak: 'break-word' }}>
                   {para}
                 </p>
               ))}
@@ -145,7 +136,12 @@ export default function AboutView() {
         <div style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginBottom: 56 }} />
 
         {/* Facts + Spotify + Connect */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48 }}>
+        <div style={{
+          display: isMobile ? 'flex' : 'grid',
+          flexDirection: isMobile ? 'column' : undefined,
+          gridTemplateColumns: isMobile ? undefined : '1fr 1fr',
+          gap: 48,
+        }}>
 
           {/* Facts */}
           <div>
@@ -155,10 +151,10 @@ export default function AboutView() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {FACTS.map(item => (
                 <div key={item.label} style={{ display: 'flex', gap: 16, alignItems: 'baseline' }}>
-                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', letterSpacing: '0.08em', flexShrink: 0, width: 120 }}>
+                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', letterSpacing: '0.08em', flexShrink: 0, width: isMobile ? 100 : 120 }}>
                     {item.label}
                   </span>
-                  <span style={{ fontSize: 12, fontWeight: 300, color: 'rgba(255,255,255,0.65)' }}>
+                  <span style={{ fontSize: 12, fontWeight: 300, color: 'rgba(255,255,255,0.65)', wordBreak: 'break-word', minWidth: 0 }}>
                     {item.value}
                   </span>
                 </div>
@@ -191,6 +187,11 @@ export default function AboutView() {
                     backgroundColor: 'rgba(255,255,255,0.02)',
                     textDecoration: 'none',
                     transition: 'border-color 0.2s ease, background 0.2s ease',
+                    maxWidth: isMobile ? '100%' : undefined,
+                    width: isMobile ? '100%' : undefined,
+                    boxSizing: 'border-box',
+                    minHeight: isMobile ? 44 : undefined,
+                    touchAction: 'manipulation',
                   }}
                   onMouseEnter={e => {
                     ;(e.currentTarget as HTMLElement).style.borderColor = 'rgba(30,215,96,0.3)'
@@ -245,6 +246,8 @@ export default function AboutView() {
                       fontSize: 12, fontWeight: 300, color: 'rgba(255,255,255,0.4)',
                       textDecoration: 'none', transition: 'color 0.2s ease',
                       display: 'flex', alignItems: 'center', gap: 8,
+                      minHeight: isMobile ? 44 : undefined,
+                      touchAction: 'manipulation',
                     }}
                     onMouseEnter={e => (e.currentTarget.style.color = '#00ff9f')}
                     onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}

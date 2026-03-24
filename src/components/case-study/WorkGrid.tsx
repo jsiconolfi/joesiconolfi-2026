@@ -1,7 +1,8 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import { CASE_STUDIES, type CaseStudy } from '@/content/case-studies'
 
 function GridThumbnail({ cs }: { cs: CaseStudy }) {
@@ -93,14 +94,12 @@ function GridThumbnail({ cs }: { cs: CaseStudy }) {
 
 export default function WorkGrid() {
   const router = useRouter()
-  const [closeHovered, setCloseHovered] = useState(false)
-  const [yellowHovered, setYellowHovered] = useState(false)
-  const [greenHovered, setGreenHovered] = useState(false)
+  const isMobile = useIsMobile()
 
   return (
-    <main style={{ minHeight: '100vh', fontFamily: 'var(--font-mono, monospace)' }}>
+    <main style={{ minHeight: '100vh', fontFamily: 'var(--font-mono, monospace)', overflowX: 'hidden' }}>
 
-      {/* Terminal chrome header */}
+      {/* Terminal chrome header — gray dots only */}
       <div
         style={{
           position: 'sticky',
@@ -116,59 +115,9 @@ export default function WorkGrid() {
           gap: 6,
         }}
       >
-        {/* Red — close, go home */}
-        <button
-          onClick={() => router.push('/')}
-          onMouseEnter={() => setCloseHovered(true)}
-          onMouseLeave={() => setCloseHovered(false)}
-          style={{
-            width: 12, height: 12, borderRadius: '50%',
-            backgroundColor: '#ff5f57',
-            border: 'none', cursor: 'pointer', padding: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0,
-          }}
-        >
-          {closeHovered && (
-            <span style={{
-              fontSize: 8, lineHeight: 1,
-              color: 'rgba(0,0,0,0.65)',
-              fontWeight: 700, userSelect: 'none',
-            }}>×</span>
-          )}
-        </button>
-
-        {/* Yellow — no action */}
-        <span
-          onMouseEnter={() => setYellowHovered(true)}
-          onMouseLeave={() => setYellowHovered(false)}
-          style={{
-            width: 12, height: 12, borderRadius: '50%',
-            backgroundColor: '#febc2e', display: 'flex',
-            alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0, cursor: 'default',
-          }}
-        >
-          {yellowHovered && (
-            <span style={{ fontSize: 8, lineHeight: 1, color: 'rgba(0,0,0,0.5)', fontWeight: 700, userSelect: 'none' }}>−</span>
-          )}
-        </span>
-
-        {/* Green — no action */}
-        <span
-          onMouseEnter={() => setGreenHovered(true)}
-          onMouseLeave={() => setGreenHovered(false)}
-          style={{
-            width: 12, height: 12, borderRadius: '50%',
-            backgroundColor: '#28c840', display: 'flex',
-            alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0, cursor: 'default',
-          }}
-        >
-          {greenHovered && (
-            <span style={{ fontSize: 8, lineHeight: 1, color: 'rgba(0,0,0,0.5)', fontWeight: 700, userSelect: 'none' }}>+</span>
-          )}
-        </span>
+        <span style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', flexShrink: 0, display: 'block' }} />
+        <span style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', flexShrink: 0, display: 'block' }} />
+        <span style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', flexShrink: 0, display: 'block' }} />
 
         {/* Window title */}
         <span style={{
@@ -183,7 +132,12 @@ export default function WorkGrid() {
       </div>
 
       {/* Content */}
-      <div style={{ padding: '100px 48px 120px' }}>
+      <div style={{
+        padding: isMobile ? '100px 20px 80px' : '100px 48px 120px',
+        boxSizing: 'border-box',
+        width: '100%',
+        maxWidth: '100%',
+      }}>
 
         {/* Header */}
         <div style={{ maxWidth: 960, margin: '0 auto 64px' }}>
@@ -197,7 +151,7 @@ export default function WorkGrid() {
             case studies
           </p>
           <h1 style={{
-            fontSize: 28,
+            fontSize: isMobile ? 22 : 28,
             fontWeight: 400,
             margin: '0 0 8px',
             letterSpacing: '-0.02em',
@@ -221,13 +175,22 @@ export default function WorkGrid() {
             maxWidth: 960,
             margin: '0 auto',
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+            gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))',
             gap: 16,
           }}
         >
           {CASE_STUDIES.map(cs => (
             <div
               key={cs.id}
+              role="button"
+              tabIndex={0}
+              aria-label={`Open case study ${cs.name}`}
+              onKeyDown={e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  router.push(`/work/${cs.slug}`)
+                }
+              }}
               onClick={() => router.push(`/work/${cs.slug}`)}
               style={{
                 borderRadius: 8,
@@ -237,6 +200,7 @@ export default function WorkGrid() {
                 backdropFilter: 'blur(5px)',
                 cursor: 'pointer',
                 transition: 'border-color 0.2s ease, background 0.2s ease',
+                touchAction: 'manipulation',
               }}
               onMouseEnter={e => {
                 (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.14)'
@@ -253,6 +217,7 @@ export default function WorkGrid() {
                 alignItems: 'center',
                 gap: 5,
                 padding: '8px 12px',
+                minHeight: isMobile ? 44 : undefined,
                 backgroundColor: 'rgba(14,16,21,0.8)',
                 borderBottom: '1px solid rgba(255,255,255,0.05)',
               }}>
@@ -281,7 +246,7 @@ export default function WorkGrid() {
                     {cs.year}
                   </p>
                 </div>
-                <p style={{ fontSize: 11, fontWeight: 300, color: 'rgba(255,255,255,0.4)', margin: '0 0 10px', lineHeight: 1.4 }}>
+                <p style={{ fontSize: 11, fontWeight: 300, color: 'rgba(255,255,255,0.4)', margin: '0 0 10px', lineHeight: 1.4, wordBreak: 'break-word' }}>
                   {cs.tagline}
                 </p>
                 <p style={{

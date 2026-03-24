@@ -35,7 +35,7 @@ export default function NavWrapper() {
         zIndex: 40,
         display: 'flex',
         justifyContent: 'center',
-        padding: '12px 24px',
+        padding: isMobile ? '12px 16px' : '12px 24px',
         transition: 'top 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
         pointerEvents: 'none',
       }}
