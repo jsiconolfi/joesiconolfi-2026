@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { IBM_Plex_Mono } from 'next/font/google'
 import Swirl from '@/components/ui/Swirl'
 import OrbitalSystem from '@/components/ui/OrbitalSystem'
@@ -26,6 +26,14 @@ export const metadata: Metadata = {
     description: 'Design engineer by trade and a creative cosmonaut by nature',
     type: 'website',
   },
+}
+
+/** iOS: prevents input-focus zoom + stuck zoom after keyboard (Session 70). */
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

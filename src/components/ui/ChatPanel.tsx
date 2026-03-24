@@ -121,9 +121,21 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
   const idCounter = useRef(100)
   const sendMessageRef = useRef<(content: string) => void>(() => {})
 
-  useEffect(() => {
+  function scrollToBottom() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  useEffect(() => {
+    scrollToBottom()
   }, [messages])
+
+  function handleInputFocus() {
+    if (isMobile) {
+      window.setTimeout(scrollToBottom, 300)
+    }
+  }
+
+  const mobileTouch = isMobile ? ({ touchAction: 'manipulation' as const }) : {}
 
   useEffect(() => {
     // Phase 1: show thinking state for 1.5s
@@ -230,6 +242,17 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
         border: '1px solid rgba(255, 255, 255, 0.06)',
       }}
     >
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          flex: 1,
+          minHeight: 0,
+          height: isMobile ? '100%' : '100%',
+          maxHeight: isMobile ? '100%' : '100%',
+          overflow: 'hidden',
+        }}
+      >
       {/* Terminal chrome — gray (embedded / not closeable) vs colored (overlay / dismissible) */}
       <div
         className="flex items-center gap-2 px-4 py-3 flex-shrink-0"
@@ -259,6 +282,7 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                ...mobileTouch,
               }}
             >
               {closeHovered && (
@@ -380,6 +404,8 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
           flex: 1,
           minHeight: 0,
           overflowY: 'auto',
+          overscrollBehavior: 'contain',
+          WebkitOverflowScrolling: 'touch',
         }}
       >
         {/* Phases 1 + 2: mounted until greeting message lands — no gap between phases */}
@@ -461,16 +487,17 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
           </div>
         )}
 
-        <div ref={messagesEndRef} />
+        <div ref={messagesEndRef} style={{ height: 1 }} />
       </div>
 
       {/* Input bar — pinned below scrollable messages */}
       <div
-        className={`flex-shrink-0 pt-3 pb-3 flex flex-col gap-2.5 ${isMobile ? 'px-0' : 'px-4'}`}
+        className={`flex-shrink-0 pt-3 flex flex-col gap-2.5 ${isMobile ? 'px-0' : 'px-4'}`}
         style={{
           flexShrink: 0,
           backgroundColor: 'rgba(14, 16, 21, 0.6)',
           borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+          paddingBottom: isMobile ? 'calc(12px + env(safe-area-inset-bottom, 0px))' : 12,
         }}
       >
         {/* Persistent suggestion chips */}
@@ -490,6 +517,7 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
               style={{
                 backgroundColor: 'transparent',
                 border: '1px solid rgba(255, 255, 255, 0.15)',
+                ...mobileTouch,
               }}
             >
               {chip}
@@ -507,11 +535,22 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
               window.dispatchEvent(new CustomEvent('swirl:keypress'))
             }}
             onKeyDown={handleKeyDown}
+            onFocus={handleInputFocus}
             placeholder="ask me anything..."
             aria-label="Ask about Joe's work or approach"
             autoFocus
-            className="flex-1 bg-transparent font-mono text-sm font-light text-white placeholder:text-text-hint focus:outline-none"
-            style={{ caretColor: '#00ff9f' }}
+            className={
+              isMobile
+                ? 'flex-1 bg-transparent font-mono font-light text-white placeholder:text-text-hint focus:outline-none'
+                : 'flex-1 bg-transparent font-mono text-sm font-light text-white placeholder:text-text-hint focus:outline-none'
+            }
+            style={{
+              caretColor: '#00ff9f',
+              fontFamily: 'var(--font-mono)',
+              fontWeight: 300,
+              fontSize: isMobile ? '16px' : '13px',
+              ...mobileTouch,
+            }}
           />
           <button
             type="button"
@@ -526,6 +565,7 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
               minHeight: isMobile ? 44 : undefined,
               border: '1px solid rgba(255,255,255,0.2)',
               backgroundColor: 'rgba(255,255,255,0.05)',
+              ...mobileTouch,
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'
@@ -545,6 +585,7 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
             </svg>
           </button>
         </div>
+      </div>
       </div>
     </div>
   )

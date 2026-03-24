@@ -32,6 +32,7 @@ src/
 
 ## Next.js 15+ rules
 
+- **`viewport` export (Session 70):** In `src/app/layout.tsx`, `export const viewport: Viewport` from `next` sets `maximumScale: 1` and `userScalable: false` for mobile chat / form UX (iOS). Do not rely on a raw `<meta name="viewport">` if the export is present.
 - **Dynamic route `params` are Promises.** Any page component receiving `params` must type it as `Promise<{ ... }>` and `await` it before use. The page function itself must be `async`. This applies to all `/app/**/[slug]/page.tsx` files. Synchronous access to `params` works in static builds but breaks under Turbopack dev mode.
 
 ```tsx
@@ -164,13 +165,16 @@ Two RAF-loop dot grid components live in `src/components/ui/`:
 - `rafRef` typed as `useRef<number | undefined>(undefined)` — cleanup on unmount
 - `prefers-reduced-motion`: static snapshot state, no animation
 
-## AI / chat panel (Session 7 — updated Session 11, Session 66, Session 68, Session 69)
+## AI / chat panel (Session 7 — updated Session 11, Session 66, Session 68, Session 69, Session 70)
 
 The prompt bar has been replaced by a full `ChatPanel` component — the primary interface of the homepage. Rules:
 - `src/components/ui/ChatPanel.tsx` — `variant?: 'embedded' | 'overlay'` (default **`embedded`**). Homepage uses embedded; **`ChatOverlay`** passes **`variant="overlay"`**.
 - **Chrome (Session 69):** **Embedded** — three **gray** dots `rgba(255,255,255,0.15)` `10px`, no close control; **`id="chat-panel"`** on root. **Overlay** — **colored** traffic lights, red closes via **`useChatContext().close()`**; **no** `id` on root.
 - Panel dimensions: desktop `width` / `maxWidth` `560px`, `height: 75vh`, `maxHeight: 80vh`; mobile `width: calc(100vw - 32px)`, `maxWidth: 100%`, **`height` and `maxHeight: calc(100dvh - 140px)`** — **`dvh` not `vh`** on mobile (Session 68). Outer panel `display: flex; flexDirection: column; minHeight: 0` so the messages region scrolls.
-- Messages column: `flex: 1`, `minHeight: 0`, `overflowY: auto` (inline style) — chips + input wrapper `flexShrink: 0` so they stay pinned below the thread.
+- Inner column wrapper (Session 70): `flex: 1`, `minHeight: 0`, `height/maxHeight: 100%`, `overflow: hidden` — fills the outer panel so header / messages / input distribute correctly on mobile.
+- Messages column: `flex: 1`, `minHeight: 0`, `overflowY: auto` — **`overscrollBehavior: 'contain'`** (no scroll chaining to page), **`WebkitOverflowScrolling: 'touch'`** (iOS momentum). Chips + input `flexShrink: 0`; input stack **`paddingBottom: calc(12px + env(safe-area-inset-bottom, 0px))`** on mobile.
+- **iOS input (Session 70):** `fontSize: '16px'` on mobile (**mandatory** — below 16px triggers auto-zoom); `'13px'` desktop. `fontFamily: 'var(--font-mono)'`, `fontWeight: 300`. **`onFocus`:** mobile → `setTimeout(scrollToBottom, 300)` after keyboard. Sentinel at thread end: `<div ref={messagesEndRef} style={{ height: 1 }} />`. **`touchAction: 'manipulation'`** on mobile for chips, text input, send button, overlay red close.
+- **Root `viewport` export (Session 70):** `src/app/layout.tsx` — `maximumScale: 1`, `userScalable: false` with `device-width` / `initialScale: 1` (Next.js `export const viewport`).
 - Glass treatment uses **inline styles only** (not Tailwind backdrop-blur classes):
   - Outer panel: `backgroundColor: rgba(22,26,34,0.7)`, `backdropFilter: blur(5px)`, `boxShadow: 0 8px 32px rgba(0,0,0,0.3)`, `border: 1px solid rgba(255,255,255,0.06)`
   - Header / input bar: `backgroundColor: rgba(14,16,21,0.8)`, `borderBottom/Top: 1px solid rgba(255,255,255,0.06)`

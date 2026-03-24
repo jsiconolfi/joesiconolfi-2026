@@ -32,7 +32,7 @@ Every section uses the same interaction grammar: glance → expand → immerse. 
 The homepage is a fixed overlay composition — not a scrollable section:
 - **Swirl**: `fixed inset-0 z-0`, fills entire viewport, bleeds through the glass panel
 - **Nav**: via `NavWrapper` at `z-40` — desktop: pill frosted glass, centered; **mobile (Session 66)**: full-width bar, logo + hamburger + Chat (see Nav)
-- **ChatPanel**: `z-20` — desktop: `560px` wide, `height: 75vh`, `maxHeight: 80vh`, viewport-centered; **mobile**: `width: calc(100vw - 32px)`, `height` / `maxHeight: calc(100dvh - 140px)` (**`dvh` not `vh`** — Session 68); messages column `flex: 1` + `minHeight: 0` + `overflowY: auto`; chips + input `flexShrink: 0`
+- **ChatPanel**: `z-20` — desktop: `560px` wide, `height: 75vh`, `maxHeight: 80vh`, viewport-centered; **mobile**: `width: calc(100vw - 32px)`, `height` / `maxHeight: calc(100dvh - 140px)` (**`dvh` not `vh`** — Session 68); inner flex column fills panel; messages `flex: 1` + `minHeight: 0` + `overflowY: auto` + **`overscrollBehavior: contain`** + **`WebkitOverflowScrolling: touch`** (Session 70); chips + input `flexShrink: 0`, input bar **`paddingBottom: calc(12px + env(safe-area-inset-bottom))`** on mobile (Session 70); text input **`fontSize: 16px`** on mobile (**required** — iOS avoids focus zoom), `13px` desktop; **`touchAction: manipulation`** on chips, input, send, overlay close (Session 70); **`scrollToBottom`** on `messages` change + **`onFocus`** delayed scroll on mobile (Session 70)
 - **Name block**: desktop `bottom: 32px` `left: 32px`; **mobile**: `bottom: 100px` `left: 16px` (clears mobile nav)
 
 **Homepage file (`src/app/page.tsx`, Session 66, Session 68):** `'use client'` — `useIsMobile()` drives chat wrapper + name block offsets. Chat wrapper **Session 68 mobile:** `position: fixed; top: 80px; left: 0; right: 0; bottom: 0;` + `padding: 16px` (sides/top/bottom); desktop: `top: 0`, centered flex. `pointer-events: none` with `zIndex: 20`.
@@ -277,6 +277,8 @@ New RAF-loop animation primitives (Session 10):
 `#161a22` must be set in **two places** — both are required:
 1. `globals.css`: `html, body { background-color: #161a22; margin: 0; padding: 0; }` — handles initial paint before JS hydrates
 2. `layout.tsx` body inline style: `backgroundColor: '#161a22'` — handles the hydrated state
+
+**Viewport (Session 70):** `src/app/layout.tsx` exports `viewport` (`next` `Viewport` type): `width: 'device-width'`, `initialScale: 1`, `maximumScale: 1`, `userScalable: false` — prevents iOS Safari input-focus zoom and stuck zoom after the keyboard dismisses (pairs with **16px** mobile input in `ChatPanel`).
 
 Do NOT use `#0e1015` on `<body>` — that's the darker panel/overlay color, not the body background. Do NOT use `#000000`.
 
