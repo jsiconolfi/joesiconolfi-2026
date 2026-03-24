@@ -4,9 +4,6 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Project } from '@/content/projects'
 
-const CARD_W = 220
-const CARD_H = 160
-
 interface OrbitalCardProps {
   project: Project
   homeX: number

@@ -394,7 +394,7 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 - Delayed measure ensures `chat-panel` element is found after the 450ms transition animation completes
 - Cards stay rendered (behind opaque overlay) on case study pages — no visibility toggle needed
 
-## Nav (Session 7 — updated Session 33)
+## Nav (Session 7 — updated Session 33, Session 65)
 
 `src/components/layout/Nav.tsx` — pill nav, frosted glass, centered top, `'use client'`:
 - Links left to right: `case studies` (dropdown) / `about` / `timeline` / `the lab` / "Chat with me" button
@@ -402,10 +402,11 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 - "lab" is gone — only "the lab" exists. `about` links to `/about`. `timeline` links to `/timeline` (live, Session 49). `the lab` links to `/lab` (live, Session 60).
 - The `work` link was replaced in Session 27 with `<CaseStudiesDropdown />` — a button that opens a `320px` frosted-glass dropdown with 4 featured projects + hover-play video thumbnails
 - Glass: inline styles (`backdropFilter: blur(12px)`, `backgroundColor: rgba(255,255,255,0.05)`, `border: 1px solid rgba(255,255,255,0.1)`)
-- All type: `font-mono text-xs font-light`, hover → `accent.warm`
+- **Active route (Session 65):** `usePathname()` + `isActive(href)` (`/` exact match; else `pathname.startsWith(href)`). Text links: idle `rgba(255,255,255,0.6)`; current route or hover → `#00ff9f` (via `NavTextLink` + hover state). Logo has no active color.
 - "Chat with me" button at the right: warm amber pill containing `<HiDotGrid dotSize={4} gap={2.5} speed={1.2} />`, border brightens on hover — grid animates continuously regardless of hover
 
-**CaseStudiesDropdown (`src/components/ui/CaseStudiesDropdown.tsx`, Session 27, updated Session 40):**
+**CaseStudiesDropdown (`src/components/ui/CaseStudiesDropdown.tsx`, Session 27, updated Session 40, Session 65):**
+- `usePathname()`: `pathname.startsWith('/work')` → trigger `#00ff9f`; else open → `rgba(255,255,255,0.9)`; else `rgba(255,255,255,0.6)`.
 - "See all case studies" footer row: `onClick` now calls `router.push('/work')` (Session 40). Previously only closed the dropdown.
 - Opens on **hover**, not click. `onMouseEnter` on the wrapper div sets `open: true`; `onMouseLeave` starts a 120ms `closeTimer` before setting `open: false`. Moving cursor from trigger into the panel clears the timer, keeping it open.
 - `closeTimer` typed as `useRef<ReturnType<typeof setTimeout> | undefined>(undefined)`
@@ -442,15 +443,13 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 - `src/app/work/page.tsx` — thin route, renders `<WorkGrid />`
 - `src/components/case-study/WorkGrid.tsx` — `'use client'` grid component
 
-**WorkGrid rules:**
+**WorkGrid rules (Session 64 updates):**
 - **Sticky terminal chrome header (Session 41):** `position: sticky, top: 0, zIndex: 40`, `rgba(10,12,16,0.98)` + `blur(12px)`, `padding: 10px 20px`. Traffic lights 12px circles (`#ff5f57`/`#febc2e`/`#28c840`). Window title: `case-studies.exe`. Red dot: `onClick → router.push('/')` (always goes to homepage, not `router.back()`). Yellow/green: hover shows `−`/`+` glyphs, no action. Hover state via `useState` booleans (`closeHovered`, `yellowHovered`, `greenHovered`).
-- Terminal chrome cards (traffic lights `#ff5f57`/`#febc2e`/`#28c840`) — identical to orbital cards
-- Thumbnails use `preload="metadata"` (not `preload="none"`) so the first frame paints as a poster without autoplay
-- `<video>` elements in WorkGrid: `muted playsInline loop preload="metadata"` — no `autoPlay`
-- Raw `<img>` requires `eslint-disable-next-line @next/next/no-img-element` (same exception as OrbitalCard)
+- **Grid card chrome:** three 8px dots, all `rgba(255,255,255,0.15)` — decorative only (not closeable windows); do not use colored traffic lights on card rows.
+- **`GridThumbnail` helper** (in `WorkGrid.tsx`): wraps the 16/9 area with `onMouseEnter` / `onMouseLeave`. Mp4: `videoRef`, `preload="metadata"`, `muted` + `playsInline` + `loop`, `onLoadedMetadata` seeks to 0; hover calls `play().catch(() => {})`, leave pauses and resets `currentTime` to 0. Static images: raw `<img>` with `eslint-disable-next-line @next/next/no-img-element`. Placeholder grid when no `heroAsset`.
 - Responsive grid: `repeat(auto-fill, minmax(280px, 1fr))`, `gap: 16`
 - No `textTransform: uppercase` on the "case study" label at the bottom of each card
-- Content padding: `64px 48px 120px` (top accounts for sticky chrome header, not nav)
+- Content padding: `100px 48px 120px` (breathing room below nav + sticky `case-studies.exe` chrome)
 - PageTransitionWrapper treats `/work` as a content page: dark bg `rgba(14,16,21,0.97)`, z-20, scrollable, `top: 0` (no tab bar offset — tab bar only renders on `/work/*`)
 
 **PageTransitionWrapper update (Session 40, superseded Session 47):**
@@ -489,7 +488,7 @@ Dynamic pages at `/work/[slug]` for all 10 projects.
 
 **Next case study chain (loops):** waypoint → statespace → channel → seudo → wafer → sherpa → waypoint-sync → kernel → mushroom → cohere-labs → waypoint
 
-## About page (Session 44)
+## About page (Session 44, bio Session 65)
 
 Live at `/about`. Scrollable content page, same visual system as case study pages.
 
@@ -505,7 +504,7 @@ Live at `/about`. Scrollable content page, same visual system as case study page
 
 **Photo:** `/joe.png` — raw `<img>` with `eslint-disable-next-line @next/next/no-img-element`, 200×200, `objectFit: cover`, `borderRadius: 8`.
 
-**Bio copy:** 3 paragraphs, verbatim. Never rewrite. 13px, fontWeight 300, lineHeight 1.8, `rgba(255,255,255,0.65)`.
+**Bio copy:** 3 paragraphs in `BIO` in `AboutView.tsx`, verbatim (Session 65 — Long Island / 15+ years overlap; AI-native product + agency; records, Knicks/Mets, MySpace CSS arc). No em dashes in about bio. Never rewrite. 13px, fontWeight 300, lineHeight 1.8, `rgba(255,255,255,0.65)`.
 
 **Spotify widget:**
 - Calls `/api/spotify/now-playing` on mount + every 30s (via `setInterval`)
@@ -629,8 +628,17 @@ These files are retained as valid TypeScript stubs (return null, no props) to ke
 
 ## Code quality
 
-- Run `tsc --noEmit` before considering any task complete. Zero type errors.
-- ESLint must pass with no warnings.
+### Lint and TypeScript standard (project-wide)
+
+- `eslint src/` must pass clean at all times — **never** scope lint to a single file to work around failures.
+- `tsc --noEmit` must pass clean at all times.
+- Fix real violations when found, even if outside the current session’s scope.
+- **No refs read during render** — use `useState(() => computeInitialValue())` to pin values at mount when a value must stay fixed for that component instance (e.g. page transition tier).
+- **No unused variables or constants** — remove them when found.
+
+### Other conventions
+
+- Run `tsc --noEmit` and `eslint src/` before considering a task complete.
 - No `console.log` left in committed code — use a `logger` utility if needed.
 - Images: use `next/image` for standard page content. **Exception:** `OrbitalCard.tsx`, `CaseStudyThumbnail.tsx`, and `AboutView.tsx` use raw `<img>` — fixed-size or externally-hosted media where `next/image` optimization caused silent failures or is not applicable (e.g. Spotify album art URLs). All exceptions are documented with `eslint-disable-next-line @next/next/no-img-element` comments.
 - All `<video>` elements in the project must have `preload="none"`, `muted`, `playsInline`, and `loop`. Never use `autoPlay` or `preload="auto"` — video only loads on user interaction.

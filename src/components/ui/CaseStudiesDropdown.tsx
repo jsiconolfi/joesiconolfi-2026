@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { FEATURED_PROJECTS } from '@/content/featured-projects'
 import CaseStudyThumbnail from './CaseStudyThumbnail'
 
@@ -11,7 +11,9 @@ export default function CaseStudiesDropdown() {
   const dropdownRef = useRef<HTMLDivElement>(null)
   const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const pathname = usePathname()
   const router = useRouter()
+  const workActive = pathname.startsWith('/work')
 
   function handleMouseEnter() {
     clearTimeout(closeTimer.current)
@@ -45,7 +47,7 @@ export default function CaseStudiesDropdown() {
           fontFamily: 'var(--font-mono, monospace)',
           fontSize: '13px',
           fontWeight: 300,
-          color: open ? '#00ff9f' : '#eeeeee',
+          color: workActive ? '#00ff9f' : open ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)',
           background: 'none',
           border: 'none',
           cursor: 'default',

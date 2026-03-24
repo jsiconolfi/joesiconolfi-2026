@@ -13,9 +13,9 @@ interface NowPlaying {
 }
 
 const BIO = [
-  "I'm a design engineer based in San Francisco, originally from New York (pizza in my veins, West Coast since 22). For the past 15 years I've been building at the intersection of design and engineering, mostly at companies where the product didn't exist yet and someone had to figure out what it should be.",
-  "My focus is AI-native product, not AI as a feature bolted onto something, but experiences built from the ground up around what AI actually makes possible. I care about the human side of that equation: how do you make a system that learns feel empowering rather than opaque? How do you design for capability without designing away agency? That's the problem I keep coming back to.",
-  "When I'm not building I'm digging through record bins, watching the Knicks and Mets find new ways to break my heart, or deep in some side project that started as a two-hour experiment. I believe the best products are built by people who can't stop making things, and I haven't been able to stop since I was customizing MySpace layouts in middle school.",
+  "I'm a design engineer based in San Francisco, originally from Long Island. Pizza in my veins, West Coast since 22. For 15+ years I've been building where design and engineering overlap, mostly at companies where the product didn't exist yet and someone had to figure out what it should be.",
+  "My focus is AI-native product. Not AI as a feature bolted onto something, but experiences built from the ground up around what AI actually makes possible. I care about the human side of that: how do you make a system that learns feel empowering rather than opaque? How do you design for capability without designing away agency? That's the problem I keep returning to.",
+  "When I'm not building, I'm digging through record bins or watching the Knicks and Mets find new ways to break my heart. I started with MySpace CSS in middle school and the habit never left. Fifteen years later the tools are different, the problems are bigger, and I still can't stop making things.",
 ]
 
 const FACTS = [

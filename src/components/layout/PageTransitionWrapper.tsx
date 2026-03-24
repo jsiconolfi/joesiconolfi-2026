@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 
@@ -14,12 +14,10 @@ interface PageContentProps {
 }
 
 // Inner component keyed by pathname in AnimatePresence.
-// deep is captured via useRef at first mount and never changes for this instance —
-// even if AnimatePresence re-renders it with a new pathname prop during exit,
-// the initial/exit directions and style values stay correct for this page tier.
+// `deep` is fixed at mount via lazy useState — parent pathname can update during exit;
+// tier (homepage vs deep page) must not flip mid-transition.
 function PageContent({ pathname, children }: PageContentProps) {
-  const deepRef = useRef(isDeepPage(pathname))
-  const deep = deepRef.current
+  const [deep] = useState(() => isDeepPage(pathname))
 
   useEffect(() => {
     const container = document.querySelector('[data-scroll-container]')

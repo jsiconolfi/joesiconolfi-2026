@@ -58,6 +58,8 @@ const THINKING = [
   'How do you design a feedback loop that makes the model better without making the user feel like a trainer?',
   'At what point does a design system become self-modifying, where usage patterns inform what components should exist?',
   'If voice is the most natural input, why does every AI product still default to text?',
+  'What does the next evolution of the AI interface look like?',
+  'Can the Knicks really win the championship this year?',
 ]
 
 export default function LabView() {

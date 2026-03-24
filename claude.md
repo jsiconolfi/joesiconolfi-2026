@@ -203,16 +203,23 @@ The old model recalculated position from scratch every frame (`newPos = driftPos
 **`@keyframes pulse`** remains in `globals.css` (not used by cards currently)
 **`@keyframes thinking-shimmer`** in `globals.css` — used by `ThinkingText`: `0%/100% { color: #555555 }`, `50% { color: #aaaaaa }`, 1.6s ease-in-out infinite. Each character has an 80ms stagger delay.
 
-### The Nav (`src/components/layout/Nav.tsx`) — updated Session 27
+### The Nav (`src/components/layout/Nav.tsx`) — updated Session 27, Session 65
 
 Nav links: `case studies` (dropdown) / `about` / `timeline` / `the lab` / "Chat with me" button. Order left to right: case studies ∨ · about · timeline · the lab · [Chat with me]. `about` links to `/about` (built Session 44). `timeline` links to `/timeline` (built Session 49). `the lab` links to `/lab` (built Session 60). "lab" is gone — only "the lab" exists (updated Session 33).
 
+**Active route highlighting (Session 65):**
+- `usePathname()` from `next/navigation` in `Nav.tsx`. Helper `isActive(href)`: if `href === '/'` then `pathname === '/'`, else `pathname.startsWith(href)`.
+- Text links (`about`, `timeline`, `the lab`): resting color `rgba(255,255,255,0.6)`; **active** (current route) or **hover** → `#00ff9f`. Implemented via small `NavTextLink` wrapper with local hover state so inline `color` does not block hover.
+- Homepage `/`: no text nav link uses active green (logo/home link has no active styling).
+- `CaseStudiesDropdown` uses its own `usePathname()`: when `pathname.startsWith('/work')`, trigger label is `#00ff9f`; when not on work, open dropdown → `rgba(255,255,255,0.9)`, closed → `rgba(255,255,255,0.6)`.
+
 The `work` link is replaced by `<CaseStudiesDropdown />` — a hover-triggered frosted glass dropdown with 4 featured projects. `z-index: 50` on the panel — above orbital cards at `z-10`.
 
-**CaseStudiesDropdown (`src/components/ui/CaseStudiesDropdown.tsx`, Session 27, updated Session 30):**
+**CaseStudiesDropdown (`src/components/ui/CaseStudiesDropdown.tsx`, Session 27, updated Session 30, Session 65):**
 - Opens on **hover**, not click. `onMouseEnter` / `onMouseLeave` on the wrapper div. 120ms close delay prevents accidental close when cursor moves from trigger to panel.
 - `closeTimer` typed as `useRef<ReturnType<typeof setTimeout> | undefined>(undefined)`
 - Button trigger is a non-interactive label (`cursor: 'default'`, no `onClick`). No outside-click or Escape handlers.
+- Trigger text color: `/work` and `/work/*` → `#00ff9f`; else `open` → `rgba(255,255,255,0.9)`; else `rgba(255,255,255,0.6)` (Session 65).
 - Chevron: path draws downward ∨ at rest. Open: `rotate(180deg)` → ∧.
 - Panel: `320px` wide, `rgba(14,16,21,0.97)` + `blur(12px)`, `borderRadius: 12px`, `zIndex: 50`
 - Panel: `top: calc(100% + 20px)`, `left: 0` — left-aligns to trigger, 20px gap below nav
@@ -388,7 +395,7 @@ Case study pages are now live at `/work/[slug]` for all 10 projects.
 **Files (Session 34, updated Session 40):**
 - `src/content/case-studies.ts` — `CaseStudy` interface + `CASE_STUDIES` array (10 entries) + `getCaseStudy(slug)` + `getAllSlugs()` helpers
 - `src/app/work/page.tsx` — `/work` index page, renders `<WorkGrid />` (Session 40)
-- `src/components/case-study/WorkGrid.tsx` — `'use client'` grid of all 10 case studies. Sticky terminal chrome header (`case-studies.exe`, traffic lights — red goes to `/`). Terminal chrome cards, 16/9 thumbnails (`preload="metadata"` for first-frame paint), responsive `auto-fill minmax(280px,1fr)` grid. No `autoPlay` (Session 40, updated Session 41)
+- `src/components/case-study/WorkGrid.tsx` — `'use client'` grid of all 10 case studies. Sticky terminal chrome header (`case-studies.exe`, colored traffic lights — red goes to `/`). **Per-card** terminal chrome uses **gray dots** `rgba(255,255,255,0.15)` only (non-closeable window chrome, Session 64). 16/9 thumbnails via `GridThumbnail`: `preload="metadata"`, first frame at rest; **hover** on thumbnail plays mp4 (`play()`), **mouse leave** pauses and resets `currentTime` to 0 — no `autoPlay`. Static image heroes unchanged. Content padding `100px 48px 120px` (Session 64 — clearance under nav + sticky chrome). Responsive `auto-fill minmax(280px,1fr)` grid.
 - `src/app/work/[slug]/page.tsx` — async dynamic route, `generateStaticParams` for all 10 slugs, calls `notFound()` for unknown slugs. **Next.js 15+:** `params` typed as `Promise<{ slug: string }>`, awaited before use. Page function is `async`.
 - `src/components/case-study/CaseStudyView.tsx` — `'use client'` component rendering the full case study page
 
@@ -445,7 +452,7 @@ Card grid. Glance: title + one-line thesis only. Expand: problem, decision, outc
 - Key projects: Waypoint design system, Sherpa Figma plugin (RAG-based, Pinecone + Cohere models), waypoint-sync (Figma-to-code token sync), Channel AI, Statespace/Aimlab.
 - Frame each as a bet made at the right time, not a list of deliverables.
 
-### About page — Session 44
+### About page — Session 44, bio finalized Session 65
 
 Live at `/about`. Scrollable content page with terminal chrome header.
 
@@ -463,11 +470,14 @@ Live at `/about`. Scrollable content page with terminal chrome header.
 - Horizontal divider `rgba(255,255,255,0.06)` separates bio from bottom section
 - Bottom two-column grid (1fr 1fr): facts left, Spotify + connect right
 
-**BIO copy (verbatim — do not modify):**
-```
-Para 1: "I'm a design engineer based in San Francisco, originally from New York (pizza in my veins, West Coast since 22)..."
-Para 2: "My focus is AI-native product, not AI as a feature bolted onto something..."
-Para 3: "When I'm not building I'm digging through record bins, watching the Knicks and Mets find new ways to break my heart..."
+**BIO copy (verbatim — do not modify; Session 65, align with `content-voice-guidelines.md`):** Stored as the `BIO` string array in `AboutView.tsx`. Three paragraphs; **no em dashes** in the about-page bio.
+
+```tsx
+const BIO = [
+  "I'm a design engineer based in San Francisco, originally from Long Island. Pizza in my veins, West Coast since 22. For 15+ years I've been building where design and engineering overlap, mostly at companies where the product didn't exist yet and someone had to figure out what it should be.",
+  "My focus is AI-native product. Not AI as a feature bolted onto something, but experiences built from the ground up around what AI actually makes possible. I care about the human side of that: how do you make a system that learns feel empowering rather than opaque? How do you design for capability without designing away agency? That's the problem I keep returning to.",
+  "When I'm not building, I'm digging through record bins or watching the Knicks and Mets find new ways to break my heart. I started with MySpace CSS in middle school and the habit never left. Fifteen years later the tools are different, the problems are bigger, and I still can't stop making things.",
+]
 ```
 
 **Facts (verbatim — do not modify):** hometown / based / years in tech / first code / record collection / sports / education / currently building
@@ -700,6 +710,14 @@ No purple gradients on white. No generic AI aesthetics. Two accents are now defi
 - Text on load: characters resolve/assemble, don't just fade
 - Scroll reveals: `whileInView` with Framer Motion, one direction, no bounce
 - Always include `prefers-reduced-motion` fallbacks
+
+### Lint and code quality standard (project-wide)
+
+- `eslint src/` must pass clean at all times — never scope lint to a single file to work around failures.
+- `tsc --noEmit` must pass clean at all times.
+- Fix real violations when found, even if outside the current session’s scope.
+- No refs read during render — use `useState(() => computeInitialValue())` to pin values at mount when a value must stay fixed for that component instance.
+- No unused variables or constants — remove them when found.
 
 ## What to never do
 

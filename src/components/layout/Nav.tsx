@@ -1,12 +1,35 @@
 'use client'
 
+import { useState, type ReactNode } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import HiDotGrid from '@/components/ui/HiDotGrid'
 import CaseStudiesDropdown from '@/components/ui/CaseStudiesDropdown'
 import { useChatContext } from '@/context/ChatContext'
 
+function isActive(pathname: string, href: string): boolean {
+  if (href === '/') return pathname === '/'
+  return pathname.startsWith(href)
+}
+
+function NavTextLink({ href, active, children }: { href: string; active: boolean; children: ReactNode }) {
+  const [hovered, setHovered] = useState(false)
+  return (
+    <Link
+      href={href}
+      className="font-mono text-xs font-light transition-colors"
+      style={{ color: active || hovered ? '#00ff9f' : 'rgba(255,255,255,0.6)' }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {children}
+    </Link>
+  )
+}
+
 export default function Nav() {
+  const pathname = usePathname()
   const { toggle } = useChatContext()
   return (
     <nav
@@ -32,15 +55,15 @@ export default function Nav() {
       </Link>
       <div className="w-px h-4 bg-white/20" />
       <CaseStudiesDropdown />
-      <Link href="/about" className="font-mono text-xs font-light text-text-secondary hover:text-accent-neon transition-colors">
+      <NavTextLink href="/about" active={isActive(pathname, '/about')}>
         about
-      </Link>
-      <Link href="/timeline" className="font-mono text-xs font-light text-text-secondary hover:text-accent-neon transition-colors">
+      </NavTextLink>
+      <NavTextLink href="/timeline" active={isActive(pathname, '/timeline')}>
         timeline
-      </Link>
-      <Link href="/lab" className="font-mono text-xs font-light text-text-secondary hover:text-accent-neon transition-colors">
+      </NavTextLink>
+      <NavTextLink href="/lab" active={isActive(pathname, '/lab')}>
         the lab
-      </Link>
+      </NavTextLink>
       <div className="w-px h-4 bg-white/20" />
       <button
         type="button"

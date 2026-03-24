@@ -1,8 +1,95 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CASE_STUDIES } from '@/content/case-studies'
+import { CASE_STUDIES, type CaseStudy } from '@/content/case-studies'
+
+function GridThumbnail({ cs }: { cs: CaseStudy }) {
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  function handleEnter() {
+    const video = videoRef.current
+    if (!video || !cs.heroAsset?.endsWith('.mp4')) return
+    video.currentTime = 0
+    void video.play().catch(() => {})
+  }
+
+  function handleLeave() {
+    const video = videoRef.current
+    if (!video) return
+    video.pause()
+    video.currentTime = 0
+  }
+
+  return (
+    <div
+      onMouseEnter={handleEnter}
+      onMouseLeave={handleLeave}
+      style={{
+        width: '100%',
+        aspectRatio: '16/9',
+        backgroundColor: 'rgba(255,255,255,0.03)',
+        overflow: 'hidden',
+        position: 'relative',
+      }}
+    >
+      {cs.heroAsset ? (
+        cs.heroAsset.endsWith('.mp4') ? (
+          <video
+            ref={videoRef}
+            src={cs.heroAsset}
+            muted
+            playsInline
+            loop
+            preload="metadata"
+            onLoadedMetadata={e => {
+              ;(e.currentTarget as HTMLVideoElement).currentTime = 0
+            }}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              display: 'block',
+            }}
+          />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={cs.heroAsset}
+            alt={cs.name}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+        )
+      ) : (
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)
+          `,
+            backgroundSize: '20px 20px',
+          }}
+        >
+          <span
+            style={{
+              fontSize: 9,
+              color: 'rgba(255,255,255,0.12)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+            }}
+          >
+            {cs.slug}
+          </span>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function WorkGrid() {
   const router = useRouter()
@@ -96,7 +183,7 @@ export default function WorkGrid() {
       </div>
 
       {/* Content */}
-      <div style={{ padding: '64px 48px 120px' }}>
+      <div style={{ padding: '100px 48px 120px' }}>
 
         {/* Header */}
         <div style={{ maxWidth: 960, margin: '0 auto 64px' }}>
@@ -169,9 +256,9 @@ export default function WorkGrid() {
                 backgroundColor: 'rgba(14,16,21,0.8)',
                 borderBottom: '1px solid rgba(255,255,255,0.05)',
               }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#ff5f57', display: 'block' }} />
-                <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#febc2e', display: 'block' }} />
-                <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#28c840', display: 'block' }} />
+                <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', display: 'block' }} />
+                <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', display: 'block' }} />
+                <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', display: 'block' }} />
                 <span style={{
                   fontSize: 10,
                   color: 'rgba(255,255,255,0.4)',
@@ -182,59 +269,7 @@ export default function WorkGrid() {
                 </span>
               </div>
 
-              {/* Thumbnail */}
-              <div style={{
-                width: '100%',
-                aspectRatio: '16/9',
-                backgroundColor: 'rgba(255,255,255,0.03)',
-                overflow: 'hidden',
-                position: 'relative',
-              }}>
-                {cs.heroAsset ? (
-                  cs.heroAsset.endsWith('.mp4') ? (
-                    <video
-                      src={cs.heroAsset}
-                      muted
-                      playsInline
-                      loop
-                      preload="metadata"
-                      onLoadedMetadata={e => {
-                        (e.currentTarget as HTMLVideoElement).currentTime = 0
-                      }}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                    />
-                  ) : (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={cs.heroAsset}
-                      alt={cs.name}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                    />
-                  )
-                ) : (
-                  <div style={{
-                    width: '100%',
-                    height: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundImage: `
-                      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-                      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)
-                    `,
-                    backgroundSize: '20px 20px',
-                  }}>
-                    <span style={{
-                      fontSize: 9,
-                      color: 'rgba(255,255,255,0.12)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.1em',
-                    }}>
-                      {cs.slug}
-                    </span>
-                  </div>
-                )}
-              </div>
+              <GridThumbnail cs={cs} />
 
               {/* Info */}
               <div style={{ padding: '12px 14px 14px' }}>
