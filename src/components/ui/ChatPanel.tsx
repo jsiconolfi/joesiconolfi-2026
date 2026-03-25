@@ -393,6 +393,7 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
                       color: 'rgba(0,0,0,0.65)',
                       fontWeight: 700,
                       userSelect: 'none',
+                      pointerEvents: 'none',
                     }}
                   >
                     ×
@@ -422,6 +423,7 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
                       color: 'rgba(0,0,0,0.5)',
                       fontWeight: 700,
                       userSelect: 'none',
+                      pointerEvents: 'none',
                     }}
                   >
                     −

@@ -8,6 +8,150 @@ import { getCaseStudy } from '@/content/case-studies'
 
 export const TAB_BAR_HEIGHT = 38
 
+/** Active-tab traffic lights only; own state so hover resets when this row unmounts (Session 81). */
+function TabActiveTrafficLights({ onClose }: { onClose: () => void }) {
+  const [hoveredRed, setHoveredRed] = useState(false)
+  const [hoveredYellow, setHoveredYellow] = useState(false)
+  const [hoveredGreen, setHoveredGreen] = useState(false)
+
+  return (
+    <div
+      style={{ display: 'flex', gap: 4, flexShrink: 0 }}
+      onClick={e => e.stopPropagation()}
+    >
+      <button
+        type="button"
+        title="Close tab"
+        onClick={e => {
+          e.stopPropagation()
+          onClose()
+        }}
+        onMouseEnter={e => {
+          e.stopPropagation()
+          setHoveredRed(true)
+        }}
+        onMouseLeave={e => {
+          e.stopPropagation()
+          setHoveredRed(false)
+        }}
+        style={{
+          width: 12,
+          height: 12,
+          borderRadius: '50%',
+          backgroundColor: '#ff5f57',
+          border: 'none',
+          cursor: 'pointer',
+          padding: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          touchAction: 'manipulation',
+        }}
+      >
+        {hoveredRed && (
+          <span
+            style={{
+              fontSize: 8,
+              lineHeight: 1,
+              color: 'rgba(0,0,0,0.65)',
+              fontWeight: 700,
+              userSelect: 'none',
+              pointerEvents: 'none',
+            }}
+          >
+            ×
+          </span>
+        )}
+      </button>
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-hidden
+        onClick={e => e.stopPropagation()}
+        onMouseEnter={e => {
+          e.stopPropagation()
+          setHoveredYellow(true)
+        }}
+        onMouseLeave={e => {
+          e.stopPropagation()
+          setHoveredYellow(false)
+        }}
+        style={{
+          width: 12,
+          height: 12,
+          borderRadius: '50%',
+          backgroundColor: '#febc2e',
+          border: 'none',
+          padding: 0,
+          cursor: 'default',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+        }}
+      >
+        {hoveredYellow && (
+          <span
+            style={{
+              fontSize: 8,
+              lineHeight: 1,
+              color: 'rgba(0,0,0,0.5)',
+              fontWeight: 700,
+              userSelect: 'none',
+              pointerEvents: 'none',
+            }}
+          >
+            −
+          </span>
+        )}
+      </button>
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-hidden
+        onClick={e => e.stopPropagation()}
+        onMouseEnter={e => {
+          e.stopPropagation()
+          setHoveredGreen(true)
+        }}
+        onMouseLeave={e => {
+          e.stopPropagation()
+          setHoveredGreen(false)
+        }}
+        style={{
+          width: 12,
+          height: 12,
+          borderRadius: '50%',
+          backgroundColor: '#28c840',
+          border: 'none',
+          padding: 0,
+          cursor: 'default',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+        }}
+      >
+        {hoveredGreen && (
+          <span
+            style={{
+              fontSize: 8,
+              lineHeight: 1,
+              color: 'rgba(0,0,0,0.5)',
+              fontWeight: 700,
+              userSelect: 'none',
+              pointerEvents: 'none',
+            }}
+          >
+            +
+          </span>
+        )}
+      </button>
+    </div>
+  )
+}
+
 export default function TabBar() {
   const pathname = usePathname()
   const router = useRouter()
@@ -87,13 +231,9 @@ export default function TabBar() {
               position: 'relative',
             }}
           >
-            {/* Traffic lights — active tab only, decorative; hidden on mobile (Session 67) */}
+            {/* Traffic lights — active tab only, desktop; red closes tab (Session 81); hidden on mobile (Session 67) */}
             {isActive && !isMobile && (
-              <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                <span style={{ width: 9, height: 9, borderRadius: '50%', backgroundColor: '#ff5f57', display: 'block' }} />
-                <span style={{ width: 9, height: 9, borderRadius: '50%', backgroundColor: '#febc2e', display: 'block' }} />
-                <span style={{ width: 9, height: 9, borderRadius: '50%', backgroundColor: '#28c840', display: 'block' }} />
-              </div>
+              <TabActiveTrafficLights onClose={() => closeTab(tab.slug)} />
             )}
 
             {/* Tab label */}
@@ -159,7 +299,7 @@ export default function TabBar() {
                 touchAction: 'manipulation',
               }}
             >
-              ×
+              <span style={{ pointerEvents: 'none', lineHeight: 1, fontSize: 12 }}>×</span>
             </button>
           </div>
         )

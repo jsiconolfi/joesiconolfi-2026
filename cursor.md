@@ -169,7 +169,7 @@ Two RAF-loop dot grid components live in `src/components/ui/`:
 
 The prompt bar has been replaced by a full `ChatPanel` component — the primary interface of the homepage. Rules:
 - `src/components/ui/ChatPanel.tsx` — `variant?: 'embedded' | 'overlay'` (default **`embedded`**). Homepage uses embedded; **`ChatOverlay`** passes **`variant="overlay"`**.
-- **Chrome (Session 69, **Session 79**):** **Embedded** — first two **gray** dots `rgba(255,255,255,0.15)` `10px` (non-interactive); **third gray dot** is a `<button type="button">` — **`useChatContext().resetConversation()`**, `title` / `aria-label` "New conversation"; **`id="chat-panel"`** on root. **Overlay** — red closes via **`useChatContext().close()`**; **green** is a `<button>` — **`resetConversation()`** (inner `+` glyph **`pointerEvents: 'none'`**); **no** `id` on root.
+- **Chrome (Session 69, **Session 79**, **Session 81**):** **Embedded** — first two **gray** dots `rgba(255,255,255,0.15)` `10px` (non-interactive); **third gray dot** is a `<button type="button">` — **`useChatContext().resetConversation()`**, `title` / `aria-label` "New conversation"; **`id="chat-panel"`** on root. **Overlay** — red closes via **`useChatContext().close()`**; **green** is a `<button>` — **`resetConversation()`**; **red / yellow / green** hover glyphs (**`×` `−` `+`**) all **`pointerEvents: 'none'`** on inner **`<span>`**s (**Session 81**); **no** `id` on root.
 - **Session 79 — `ChatContext.tsx`:** Exports **`Message`**, **`ChatCard`**, **`INITIAL_MESSAGE`**, **`cloneGreetingMessage()`**. **`ChatProvider`** state: **`messages`**, **`setMessages`**, **`isLoading`**, **`setIsLoading`**, **`streamingGreetingContent`**, plus existing **`isOpen` / `open` / `close` / `toggle`**. **`ChatPanel`** must not keep **`messages`** or **`isLoading`** in component state. Greeting sequence (thinking → stream → commit) runs **once** inside **`ChatProvider`** when **`messages.length === 0`** so embedded + overlay never double-schedule timers. **`resetConversation()`** replaces thread with **`cloneGreetingMessage()`** and clears the greeting stream buffer. No **localStorage** — refresh resets the thread.
 - **Session 80 — Session message cap (`ChatContext.tsx` + `ChatPanel.tsx`):** **`messageCount`** + **`incrementMessageCount()`** + **`isLimitReached`**; **`MESSAGE_LIMIT` = 30** user sends per browser session (chips and typed sends both increment). **Not** cleared by **`resetConversation()`** — only a full page refresh resets the count. When **`isLimitReached`**, **`handleSend`** returns early; the **entire** chips + input footer is replaced by a short mono note to refresh (no disabled input left visible). **`429`** from **`POST /api/chat`**: streaming assistant row is filled with a human-readable cooldown message (**not** a separate error UI); **`finally`** still clears **`isResponseLoading`**.
 - Panel dimensions (**Session 75**): desktop **`width`** = **`desktopNavWidthPx`** from **`NavWidthContext`** (nav pill measured in **`NavWrapper`** via **`ResizeObserver`** on the shrink-wrap div; fallback **`DEFAULT_DESKTOP_NAV_WIDTH_PX` = 560** in `NavWidthContext.tsx`). `maxWidth: 100%`. `height: 75vh`, `maxHeight: 80vh`; mobile `width: calc(100vw - 32px)`, **`height` and `maxHeight: calc(100dvh - 140px)`** — **`dvh` not `vh`** on mobile (Session 68). Outer panel `display: flex; flexDirection: column; minHeight: 0` so the messages region scrolls.
@@ -347,15 +347,14 @@ Persistent browser-like tab bar visible on all `/work/*` routes.
 - `closeTab` uses `historyRef` (LRU order) to find the most recently active remaining tab. Last tab closed → `router.push('/work')`, state cleared.
 - Tab state is in-memory context only — never URL params, never localStorage.
 
-**TabBar layout (Session 43, Session 67 mobile):**
+**TabBar layout (Session 43, Session 67 mobile, **Session 81**):**
 - `hoveredTab: string | null` — tracks which tab body is hovered (bg tint + close button reveal)
-- `hoveredClose: string | null` — tracks which close button is hovered (circle bg + color)
+- `hoveredClose: string | null` — tracks which right-hand close button is hovered (circle bg + color)
 - Tab inner order: `[traffic lights — active only, desktop only] [label flex:1] [× close button]`
-- Traffic lights (`#ff5f57`/`#febc2e`/`#28c840`, 9px) on active tab **when not mobile** — decorative, no close action on red dot
+- **Session 81:** Traffic lights (`#ff5f57`/`#febc2e`/`#28c840`, **12px** buttons) on active tab **when not mobile** — **red `<button>` calls `closeTab(slug)`** (macOS-style); yellow/green **`stopPropagation` only** (decorative). Hover **`×` / `−` / `+`** render inside **`<span style={{ pointerEvents: 'none' }}>`** so the parent button keeps stable hit testing (no flicker). **`TabActiveTrafficLights`** child holds red/yellow/green hover state (resets on unmount when active tab changes).
 - **Session 67:** `useIsMobile()` — per-tab `maxWidth: 120` mobile / `200` desktop; row padding `0 6px 0 8px` mobile; close `minWidth`/`minHeight: 44` mobile; `touchAction: 'manipulation'` on tab row + close; close `type="button"`.
-- `×` button: 16px circle, always mounted. `opacity: 1` when active or tab is hovered; `opacity: 0` at rest on inactive tabs. `e.stopPropagation()` on click + mouseenter/mouseleave prevents bubbling to tab click. Circle bg `rgba(255,255,255,0.12)` on hover.
+- Right `×` button: 16px circle, always mounted. `opacity: 1` when active or tab is hovered; `opacity: 0` at rest on inactive tabs. `e.stopPropagation()` on click + mouseenter/mouseleave. Glyph wrapped in **`pointerEvents: 'none'`** span. Circle bg `rgba(255,255,255,0.12)` on hover.
 - Inactive tab on hover: `rgba(255,255,255,0.03)` bg, label brightens to `rgba(255,255,255,0.55)`
-- **Do NOT** put close action on the red traffic light — `×` button handles close for all tabs
 
 **TabBar constants:**
 - `TAB_BAR_HEIGHT = 38` — used in TabBar, NavWrapper, PageTransitionWrapper. Do NOT change this value without updating all three.
@@ -461,12 +460,14 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 - **TabBar:** **`isActive && !isMobile`** for traffic lights; tab flex **`maxWidth: isMobile ? 120 : 200`**; row padding **`0 6px 0 8px`** mobile; close **`minWidth`/`minHeight: 44`** mobile; tab row + close **`touchAction: 'manipulation'`**.
 - **NavWrapper:** Outer padding **`isMobile ? '12px 16px' : '12px 24px'`** (Session 67).
 
-## Traffic lights — Session 68–69 ChatPanel split, **Session 71** page chrome + overlay
+## Traffic lights — Session 68–69 ChatPanel split, **Session 71** page chrome + overlay, **Session 81** hit targets
+
+**Global rule (Session 81):** Any **hover-revealed glyph** (`×`, `−`, `+`) inside a traffic-light **`<button>`** must sit in a **`<span style={{ pointerEvents: 'none' }}>`** (or equivalent). Otherwise the span captures the pointer, the button fires **`mouseLeave`**, the glyph unmounts, and hover **flickers** / **clicks fail**.
 
 **Colored dots** (`#ff5f57`, `#febc2e`, `#28c840`) — use on **closeable / page-level** window chrome and any surface with a real dismiss:
 - **Sticky page headers:** **`about.exe`**, **`timeline.exe`**, **`lab.exe`**, **`case-studies.exe`** — red **`<button type="button">`** → **`router.push('/')`**, hover **`×`**; yellow/green hover **`−`** / **`+`** only; glyph spans **`pointerEvents: 'none'`**.
-- **`ChatPanel variant="overlay"`** — red closes via **`useChatContext().close()`** (see `ChatPanel.tsx`).
-- **Orbital project cards**, **`TabBar`** active tab (**desktop only**; lights hidden on mobile — Session 67).
+- **`ChatPanel variant="overlay"`** — red closes via **`useChatContext().close()`**; red/yellow/green hover glyphs all **`pointerEvents: 'none'`** (**Session 81**).
+- **Orbital project cards**, **`TabBar`** active tab (**desktop only**; lights hidden on mobile — Session 67) — **Session 81:** TabBar **red dot closes tab**; glyphs **`pointerEvents: 'none'`**.
 
 **Gray dots** (`rgba(255,255,255,0.15)`) — **informational cards only** (clicking dots does nothing):
 - **`ChatPanel variant="embedded"`** (homepage)
@@ -641,10 +642,10 @@ Live at `/lab`. Open notebook with beliefs, open questions, experiments, and a c
 - Experiment description and feed body: `text.split('\n\n').map((para) => <p>)` — renders multi-paragraph content.
 - All styling: inline styles only.
 
-**Traffic light rule (site-wide, Session 61, Session 68–69, **Session 71**):**
-- **Colored dots** = page-level closeable chrome, **`ChatPanel variant="overlay"`**, OrbitalCards, TabBar; sticky **`*.exe`** bars on about / timeline / lab / work index (**red → `router.push('/')`**).
+**Traffic light rule (site-wide, Session 61, Session 68–69, **Session 71**, **Session 81**):**
+- **Colored dots** = page-level closeable chrome, **`ChatPanel variant="overlay"`**, OrbitalCards, TabBar; sticky **`*.exe`** bars on about / timeline / lab / work index (**red → `router.push('/')`**). **Session 81:** TabBar **red** closes the active tab; **all** colored-dot hover glyphs use **`pointerEvents: 'none'`** on inner spans.
 - **Gray dots** = informational cards only — **`ChatPanel variant="embedded"`**, WorkGrid **per-card** rows, Lab **experiment** cards.
-- See **Traffic lights — Session 68–69 ChatPanel split, Session 71 page chrome + overlay** above.
+- See **Traffic lights — Session 68–69 ChatPanel split, Session 71 page chrome + overlay, Session 81 hit targets** above.
 
 **Nav/transition wiring:**
 - `Nav.tsx`: `<Link href="/lab">`

@@ -381,7 +381,7 @@ export default function LabView() {
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,255,159,0.2)' }}
                   >
                     {tag}
-                    <span style={{ fontSize: 10, opacity: 0.6 }}>×</span>
+                    <span style={{ fontSize: 10, opacity: 0.6, pointerEvents: 'none' }}>×</span>
                   </button>
                 ))}
                 <button
