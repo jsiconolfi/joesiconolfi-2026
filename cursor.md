@@ -165,12 +165,12 @@ Two RAF-loop dot grid components live in `src/components/ui/`:
 - `rafRef` typed as `useRef<number | undefined>(undefined)` — cleanup on unmount
 - `prefers-reduced-motion`: static snapshot state, no animation
 
-## AI / chat panel (Session 7 — updated Session 11, Session 66, Session 68, Session 69, Session 70, **Session 72**)
+## AI / chat panel (Session 7 — updated Session 11, Session 66, Session 68, Session 69, Session 70, **Session 72**, **Session 75**)
 
 The prompt bar has been replaced by a full `ChatPanel` component — the primary interface of the homepage. Rules:
 - `src/components/ui/ChatPanel.tsx` — `variant?: 'embedded' | 'overlay'` (default **`embedded`**). Homepage uses embedded; **`ChatOverlay`** passes **`variant="overlay"`**.
 - **Chrome (Session 69):** **Embedded** — three **gray** dots `rgba(255,255,255,0.15)` `10px`, no close control; **`id="chat-panel"`** on root. **Overlay** — **colored** traffic lights, red closes via **`useChatContext().close()`**; **no** `id` on root.
-- Panel dimensions: desktop `width` / `maxWidth` `560px`, `height: 75vh`, `maxHeight: 80vh`; mobile `width: calc(100vw - 32px)`, `maxWidth: 100%`, **`height` and `maxHeight: calc(100dvh - 140px)`** — **`dvh` not `vh`** on mobile (Session 68). Outer panel `display: flex; flexDirection: column; minHeight: 0` so the messages region scrolls.
+- Panel dimensions (**Session 75**): desktop **`width`** = **`desktopNavWidthPx`** from **`NavWidthContext`** (nav pill measured in **`NavWrapper`** via **`ResizeObserver`** on the shrink-wrap div; fallback **`DEFAULT_DESKTOP_NAV_WIDTH_PX` = 560** in `NavWidthContext.tsx`). `maxWidth: 100%`. `height: 75vh`, `maxHeight: 80vh`; mobile `width: calc(100vw - 32px)`, **`height` and `maxHeight: calc(100dvh - 140px)`** — **`dvh` not `vh`** on mobile (Session 68). Outer panel `display: flex; flexDirection: column; minHeight: 0` so the messages region scrolls.
 - Inner column wrapper (Session 70): `flex: 1`, `minHeight: 0`, `height/maxHeight: 100%`, `overflow: hidden` — fills the outer panel so header / messages / input distribute correctly on mobile.
 - Messages column: `flex: 1`, `minHeight: 0`, `overflowY: auto` — **`overscrollBehavior: 'contain'`** (no scroll chaining to page), **`WebkitOverflowScrolling: 'touch'`** (iOS momentum). Chips + input `flexShrink: 0`; input stack **`paddingBottom: calc(12px + env(safe-area-inset-bottom, 0px))`** on mobile.
 - **iOS input (Session 70):** `fontSize: '16px'` on mobile (**mandatory** — below 16px triggers auto-zoom); `'13px'` desktop. `fontFamily: 'var(--font-mono)'`, `fontWeight: 300`. **`onFocus`:** mobile → `setTimeout(scrollToBottom, 300)` after keyboard. Sentinel at thread end: `<div ref={messagesEndRef} style={{ height: 1 }} />`. **`touchAction: 'manipulation'`** on mobile for chips, text input, send button, overlay red close.
@@ -180,7 +180,7 @@ The prompt bar has been replaced by a full `ChatPanel` component — the primary
   - Header / input bar: `backgroundColor: rgba(14,16,21,0.8)`, `borderBottom/Top: 1px solid rgba(255,255,255,0.06)`
   - User message bubble: `rgba(255,255,255,0.08)` bg, `rgba(255,255,255,0.1)` border, `borderRadius: 16px 16px 4px 16px`
   - Suggestion chips: `rgba(255,255,255,0.04)` bg, `rgba(255,255,255,0.12)` border, `borderRadius: 20px`
-- **`ChatOverlay` (Session 69, **Session 71**):** `motion.div` + **`useAnimation()`** — panel enters from **`y: '-100vh'`**, exits to **`y: '100vh'`**, then resets to **`'-100vh'`**; `duration: 0.45`, same ease as page transitions. Outer dialog visibility delay **`0.45s`** on close. **Session 71:** root **no `py-20`** / no desktop horizontal padding; wrapper width **`560px`** / **`calc(100vw - 32px)`** — matches homepage chat centering.
+- **`ChatOverlay` (Session 69, **Session 71**, **Session 75**):** `motion.div` + **`useAnimation()`** — panel enters from **`y: '-100vh'`**, exits to **`y: '100vh'`**, then resets to **`'-100vh'`**; `duration: 0.45`, same ease as page transitions. Outer dialog visibility delay **`0.45s`** on close. **Session 71:** root **no `py-20`** / no desktop horizontal padding. **Session 75:** desktop wrapper width matches **`NavWidthContext`** (same as embedded **`ChatPanel`**); mobile **`calc(100vw - 32px)`**.
 - Mobile send control: `44×44` min touch target (Session 68).
 - AI avatar: logo image in a small circle (`/logo-update.svg`)
 - Input bar: `>` prompt prefix in `#00ff9f` (terminal green), free-form input, up-arrow send button
@@ -332,8 +332,9 @@ Persistent browser-like tab bar visible on all `/work/*` routes.
 
 **Files:**
 - `src/context/TabContext.tsx` — `TabProvider`, `useTabs()` hook. `Tab` interface: `{ slug, name, exe }`.
+- `src/context/NavWidthContext.tsx` (**Session 75**) — `NavWidthProvider`, `useNavWidthContext()`; `desktopNavWidthPx` + `setDesktopNavWidthPx` for desktop chat width = measured nav pill.
 - `src/components/layout/TabBar.tsx` — renders tab strip. Exports `TAB_BAR_HEIGHT = 38`.
-- `src/components/layout/NavWrapper.tsx` — wraps `Nav`, shifts `top` by `TAB_BAR_HEIGHT` on `/work/*`.
+- `src/components/layout/NavWrapper.tsx` — wraps `Nav`, shifts `top` by `TAB_BAR_HEIGHT` on `/work/*`; **Session 75:** `ResizeObserver` on shrink-wrap div (desktop) updates nav width for chat.
 
 **Tab context rules:**
 - `openTab` max 10 tabs (`tabs.length >= 10` guard). If tab already exists, no-op.
@@ -377,21 +378,22 @@ Z-index stack (Session 39): Swirl `z-0` → OrbitalSystem `z-10` → PageTransit
 
 Homepage is a fixed overlay composition — no scrollable hero section.
 
-**Root layout (`src/app/layout.tsx`) — updated Session 39:**
-- `Swirl`, `OrbitalSystem`, `TabBar`, `ChatProvider`, `NavWrapper`, `PageTransitionWrapper`, and `ChatOverlay` all live here — persistent across all navigation
+**Root layout (`src/app/layout.tsx`) — updated Session 39, **Session 75**:**
+- `Swirl`, `OrbitalSystem`, `TabBar`, `ChatProvider`, **`NavWidthProvider`**, `NavWrapper`, `PageTransitionWrapper`, and `ChatOverlay` all live here — persistent across all navigation
 - `TabProvider` wraps everything (outermost)
 - `Swirl`: `fixed inset-0 z-0`
 - `OrbitalSystem`: `fixed inset-0 z-10 pointer-events-none overflow-hidden`
 - `TabBar`: `fixed top-0 z-50` — visible only on `/work/*`
-- `NavWrapper`: `fixed z-40` — shifts `top` by `TAB_BAR_HEIGHT` on work pages; inside `ChatProvider`
+- **`NavWidthProvider` (**Session 75**):** wraps `NavWrapper` + `PageTransitionWrapper` + `ChatOverlay` inside **`ChatProvider`** — desktop chat width tracks measured nav pill (`src/context/NavWidthContext.tsx`).
+- `NavWrapper`: `fixed z-40` — shifts `top` by `TAB_BAR_HEIGHT` on work pages; inside `NavWidthProvider`
 - `PageTransitionWrapper`: wraps `{children}` — `top: TAB_BAR_HEIGHT` on work pages, `top: 0` on homepage
-- `ChatOverlay`: inside `ChatProvider`, `z-50`
+- `ChatOverlay`: inside `NavWidthProvider`, `z-50`
 
 **Homepage (`src/app/page.tsx`) — updated Session 35, Session 66, Session 68:**
 - Only contains ChatPanel wrapper + name block — NO Swirl, OrbitalSystem, or Nav (those moved to layout)
 - `'use client'` + `useIsMobile()` (Session 66)
 - ChatPanel wrapper: `z-20` `pointer-events-none`; desktop `top: 0; inset` horizontal + bottom `0`, `flex` center; **mobile Session 68:** `top: 80px`, `left/right/bottom: 0`, `padding: 16px`, `alignItems: flex-start`
-- Embedded `ChatPanel` root has `id="chat-panel"` and `pointer-events-auto` (overlay instance omits `id` — Session 69); desktop width `560px`, mobile `calc(100vw - 32px)` (see ChatPanel)
+- Embedded `ChatPanel` root has `id="chat-panel"` and `pointer-events-auto` (overlay instance omits `id` — Session 69); desktop width from **`NavWidthContext`** (**Session 75**), mobile `calc(100vw - 32px)` (see ChatPanel)
 - Name block: desktop `bottom: 32px` `left: 32px`; mobile `bottom: 100px` `left: 16px` — `z-10` `pointer-events-none`
 
 **PageTransitionWrapper (`src/components/layout/PageTransitionWrapper.tsx`, Session 35, rewritten Session 47):**
@@ -421,9 +423,9 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 
 - **OrbitalSystem:** `if (isMobile) return null` after all hooks — no cards on mobile; do not partially render. Swirl stays mounted in layout (`Swirl.tsx` unchanged).
 - **Nav:** Desktop pill unchanged. Mobile: full-width bar (logo / hamburger / Chat); hamburger opens fixed overlay `z-index: 45` with large link labels; active route `#00ff9f`; Chat calls `useChatContext().toggle()`. **NavWrapper:** inner `width: 100%` when mobile.
-- **ChatPanel:** Root `width` / `maxWidth` — mobile `calc(100vw - 32px)` / `100%`, desktop `560px`. Mobile height **`calc(100dvh - 140px)`**; flex column + scrollable messages (Session 68). **Embedded** = gray chrome; **overlay** = colored chrome (Session 69).
+- **ChatPanel:** Root `width` / `maxWidth` — mobile `calc(100vw - 32px)` / `100%`, desktop **`desktopNavWidthPx` + `px`** from **`NavWidthContext`** (**Session 75**). Mobile height **`calc(100dvh - 140px)`**; flex column + scrollable messages (Session 68). **Embedded** = gray chrome; **overlay** = colored chrome (Session 69).
 - **Homepage `page.tsx`:** `'use client'` + `useIsMobile` — **Session 68 mobile:** wrapper `top: 80px`, `left/right/bottom: 0`, `padding: 16px`, `alignItems: flex-start`; desktop `top: 0`, centered. Name block `bottom: 100` / `left: 16` on mobile vs `32` desktop.
-- **ChatOverlay (Session 71):** Dialog root **no `py-20`**, **no horizontal padding on desktop**; mobile `paddingLeft`/`paddingRight` `16px` only. Inner wrapper **`width: calc(100vw - 32px)`** mobile / **`560px`** desktop — **no `max-w-2xl`**, matches homepage chat position and width.
+- **ChatOverlay (Session 71, **Session 75**):** Dialog root **no `py-20`**, **no horizontal padding on desktop**; mobile `paddingLeft`/`paddingRight` `16px` only. Inner **`motion.div`** width — mobile **`calc(100vw - 32px)`**; desktop same **`NavWidthContext`** pixel width as embedded chat — **no `max-w-2xl`**, matches homepage chat placement.
 
 **Do not modify** `Swirl.tsx`, `SwirlDotGrid.tsx`, or `HiDotGrid.tsx` for mobile work.
 
@@ -466,7 +468,7 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 
 **`/work/[slug]`:** No second sticky `*.exe` row in **`CaseStudyView`** — colored metaphor is **`TabBar`** (active tab) + nav; body padding **`120px`** top desktop (**Session 71**).
 
-**ChatOverlay (Session 71):** Root **`fixed inset-0`** flex center — **no `py-20`**; mobile horizontal inset **`16px`** each side; panel wrapper **`560px`** desktop / **`calc(100vw - 32px)`** mobile — **no `max-w-2xl`**, matches homepage chat placement.
+**ChatOverlay (Session 71, **Session 75**):** Root **`fixed inset-0`** flex center — **no `py-20`**; mobile horizontal inset **`16px`** each side; desktop panel wrapper width from **`NavWidthContext`** (matches nav pill); mobile **`calc(100vw - 32px)`** — **no `max-w-2xl`**, matches homepage chat placement.
 
 ## Nav (Session 7 — updated Session 33, Session 65, Session 66, Session 68, Session 69)
 

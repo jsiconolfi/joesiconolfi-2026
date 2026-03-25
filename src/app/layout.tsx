@@ -6,6 +6,7 @@ import NavWrapper from '@/components/layout/NavWrapper'
 import TabBar from '@/components/layout/TabBar'
 import PageTransitionWrapper from '@/components/layout/PageTransitionWrapper'
 import { ChatProvider } from '@/context/ChatContext'
+import { NavWidthProvider } from '@/context/NavWidthContext'
 import { TabProvider } from '@/context/TabContext'
 import ChatOverlay from '@/components/ui/ChatOverlay'
 import './globals.css'
@@ -52,14 +53,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <TabBar />
 
           <ChatProvider>
-            {/* Nav — shifts down when tab bar is visible */}
-            <NavWrapper />
+            <NavWidthProvider>
+              {/* Nav — shifts down when tab bar is visible */}
+              <NavWrapper />
 
-            {/* Page content — transitions in/out per route */}
-            <PageTransitionWrapper>{children}</PageTransitionWrapper>
+              {/* Page content — transitions in/out per route */}
+              <PageTransitionWrapper>{children}</PageTransitionWrapper>
 
-            {/* Chat overlay — triggered from Nav "Chat with me" button */}
-            <ChatOverlay />
+              {/* Chat overlay — triggered from Nav "Chat with me" button */}
+              <ChatOverlay />
+            </NavWidthProvider>
           </ChatProvider>
         </TabProvider>
       </body>

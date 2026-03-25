@@ -1,14 +1,17 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import Nav from './Nav'
 import { TAB_BAR_HEIGHT } from './TabBar'
+import { useNavWidthContext } from '@/context/NavWidthContext'
 import { useIsMobile } from '@/hooks/useIsMobile'
 
 export default function NavWrapper() {
   const pathname = usePathname()
   const isMobile = useIsMobile()
+  const { setDesktopNavWidthPx } = useNavWidthContext()
+  const navMeasureRef = useRef<HTMLDivElement>(null)
   const hasChrome = pathname.startsWith('/work') || pathname === '/about' || pathname === '/timeline' || pathname === '/lab'
 
   // Start at 0 always, then animate to target after mount.
@@ -25,6 +28,19 @@ export default function NavWrapper() {
     return () => clearTimeout(timer)
   }, [hasChrome])
 
+  // Desktop: chat panel width tracks the centered nav pill (shrink-wrapped div).
+  useLayoutEffect(() => {
+    if (isMobile) return
+    const el = navMeasureRef.current
+    if (!el) return
+
+    const update = () => setDesktopNavWidthPx(el.offsetWidth)
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [isMobile, setDesktopNavWidthPx])
+
   return (
     <div
       style={{
@@ -40,7 +56,7 @@ export default function NavWrapper() {
         pointerEvents: 'none',
       }}
     >
-      <div style={{ pointerEvents: 'auto', width: isMobile ? '100%' : 'auto' }}>
+      <div ref={navMeasureRef} style={{ pointerEvents: 'auto', width: isMobile ? '100%' : 'auto' }}>
         <Nav />
       </div>
     </div>

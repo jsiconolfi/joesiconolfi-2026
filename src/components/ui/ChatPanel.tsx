@@ -5,6 +5,7 @@ import Image from 'next/image'
 import SwirlDotGrid from '@/components/ui/SwirlDotGrid'
 import { PROJECTS } from '@/content/projects'
 import { useChatContext } from '@/context/ChatContext'
+import { useNavWidthContext } from '@/context/NavWidthContext'
 import { useIsMobile } from '@/hooks/useIsMobile'
 
 function detectProjectMention(text: string): string | null {
@@ -148,6 +149,7 @@ const AssistantAvatar = ({ thinking = false }: AssistantAvatarProps) => (
 export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
   const isMobile = useIsMobile()
   const { close: closeChatOverlay } = useChatContext()
+  const { desktopNavWidthPx } = useNavWidthContext()
   const isOverlay = variant === 'overlay'
   const [closeHovered, setCloseHovered] = useState(false)
   const [yellowHovered, setYellowHovered] = useState(false)
@@ -359,7 +361,7 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
         display: 'flex',
         flexDirection: 'column',
         minHeight: 0,
-        width: isMobile ? 'calc(100vw - 32px)' : '560px',
+        width: isMobile ? 'calc(100vw - 32px)' : `${desktopNavWidthPx}px`,
         maxWidth: '100%',
         height: isMobile ? 'calc(100dvh - 140px)' : '75vh',
         maxHeight: isMobile ? 'calc(100dvh - 140px)' : '80vh',

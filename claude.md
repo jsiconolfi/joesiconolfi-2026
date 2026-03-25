@@ -32,7 +32,7 @@ Every section uses the same interaction grammar: glance → expand → immerse. 
 The homepage is a fixed overlay composition — not a scrollable section:
 - **Swirl**: `fixed inset-0 z-0`, fills entire viewport, bleeds through the glass panel
 - **Nav**: via `NavWrapper` at `z-40` — desktop: pill frosted glass, centered; **mobile (Session 66)**: full-width bar, logo + hamburger + Chat (see Nav)
-- **ChatPanel**: `z-20` — desktop: `560px` wide, `height: 75vh`, `maxHeight: 80vh`, viewport-centered; **mobile**: `width: calc(100vw - 32px)`, `height` / `maxHeight: calc(100dvh - 140px)` (**`dvh` not `vh`** — Session 68); inner flex column fills panel; messages `flex: 1` + `minHeight: 0` + `overflowY: auto` + **`overscrollBehavior: contain`** + **`WebkitOverflowScrolling: touch`** (Session 70); chips + input `flexShrink: 0`, input bar **`paddingBottom: calc(12px + env(safe-area-inset-bottom))`** on mobile (Session 70); text input **`fontSize: 16px`** on mobile (**required** — iOS avoids focus zoom), `13px` desktop; **`touchAction: manipulation`** on chips, input, send, overlay close (Session 70); **`scrollToBottom`** on `messages` change + **`onFocus`** delayed scroll on mobile (Session 70)
+- **ChatPanel**: `z-20` — desktop: **width matches the desktop nav pill** via **`NavWidthContext`** (**Session 75**): `NavWrapper` runs **`ResizeObserver`** on the shrink-wrapped inner div around `<Nav />` and publishes `desktopNavWidthPx`; `ChatPanel` + **`ChatOverlay`** use that value (fallback **`DEFAULT_DESKTOP_NAV_WIDTH_PX` = `560`** in `NavWidthContext.tsx` before measure / on error). `height: 75vh`, `maxHeight: 80vh`, viewport-centered; **mobile**: `width: calc(100vw - 32px)`, `height` / `maxHeight: calc(100dvh - 140px)` (**`dvh` not `vh`** — Session 68); inner flex column fills panel; messages `flex: 1` + `minHeight: 0` + `overflowY: auto` + **`overscrollBehavior: contain`** + **`WebkitOverflowScrolling: touch`** (Session 70); chips + input `flexShrink: 0`, input bar **`paddingBottom: calc(12px + env(safe-area-inset-bottom))`** on mobile (Session 70); text input **`fontSize: 16px`** on mobile (**required** — iOS avoids focus zoom), `13px` desktop; **`touchAction: manipulation`** on chips, input, send, overlay close (Session 70); **`scrollToBottom`** on `messages` change + **`onFocus`** delayed scroll on mobile (Session 70)
 - **Name block**: desktop `bottom: 32px` `left: 32px`; **mobile**: `bottom: 100px` `left: 16px` (clears mobile nav)
 
 **Homepage file (`src/app/page.tsx`, Session 66, Session 68):** `'use client'` — `useIsMobile()` drives chat wrapper + name block offsets. Chat wrapper **Session 68 mobile:** `position: fixed; top: 80px; left: 0; right: 0; bottom: 0;` + `padding: 16px` (sides/top/bottom); desktop: `top: 0`, centered flex. `pointer-events: none` with `zIndex: 20`.
@@ -217,7 +217,7 @@ The old model recalculated position from scratch every frame (`newPos = driftPos
 
 **Mobile (Session 66–69):** Full-width bar with **`position: relative; z-index: 46`** so it stacks **above** the menu overlay (`z-index: 45`). Hamburger: **two** lines, `gap: 6`, morph to **X** via `translateY(±3.75px)` + `rotate(±45deg)` when `menuOpen` (CSS only, `0.25s`). **Menu overlay (Session 69):** always mounted; **`opacity` + `pointerEvents`** toggle (not conditional render) so fade-out can complete; `rgba(14,16,21,0.92)` + `blur(20px)`; nav rows **left-aligned**, `fontSize: 32`, `translateX(-16px)` → `0` with **`transition-delay: i * 60ms`**; bottom **linkedin** / **github** links with extra delay after rows. `useRouter().push` on row click + `setMenuOpen(false)`; **`useEffect` on `pathname`** closes menu (browser back). **Chat** pill: `toggle()` + close menu. **NavWrapper (Session 66):** inner `width: 100%` when mobile.
 
-**ChatOverlay (Session 66, animation Session 69, **Session 71** positioning):** `useIsMobile()`. Renders `<ChatPanel variant="overlay" />`. **Session 71:** Dialog root `fixed inset-0` flex center — **no `py-20`**, **no `px-4` on desktop**; mobile only `paddingLeft`/`paddingRight` `16px` (matches homepage `32px` total horizontal inset with panel `calc(100vw - 32px)`). Inner `motion.div`: **`width: isMobile ? 'calc(100vw - 32px)' : '560px'`** — **no `max-w-2xl`**, so overlay panel centers identically to the homepage chat. **Panel motion:** `useAnimation()` — open from above (`y: '-100vh'` → `0`), close down (`y: '100vh'`), reset to `-100vh`; `duration: 0.45`, same ease as page transitions. Root `opacity` / `visibility` close delay aligned to `0.45s`.
+**ChatOverlay (Session 66, animation Session 69, **Session 71** positioning, **Session 75** width):** `useIsMobile()`. Renders `<ChatPanel variant="overlay" />`. **Session 71:** Dialog root `fixed inset-0` flex center — **no `py-20`**, **no `px-4` on desktop**; mobile only `paddingLeft`/`paddingRight` `16px` (matches homepage `32px` total horizontal inset with panel `calc(100vw - 32px)`). Inner `motion.div`: **`width`** — mobile `calc(100vw - 32px)`; desktop **`desktopNavWidthPx` + `px`** from **`NavWidthContext`** (**Session 75**, same value as embedded `ChatPanel`) — **no `max-w-2xl`**, so overlay panel centers identically to the homepage chat. **Panel motion:** `useAnimation()` — open from above (`y: '-100vh'` → `0`), close down (`y: '100vh'`), reset to `-100vh`; `duration: 0.45`, same ease as page transitions. Root `opacity` / `visibility` close delay aligned to `0.45s`.
 
 **Active route highlighting (Session 65):**
 - `usePathname()` from `next/navigation` in `Nav.tsx`. Helper `isActive(href)`: if `href === '/'` then `pathname === '/'`, else `pathname.startsWith(href)`.
@@ -294,7 +294,7 @@ Smooth Framer Motion transitions between homepage and case study pages. Swirl an
 **Architecture:**
 - `Swirl`, `OrbitalSystem`, and `Nav` moved from `page.tsx` to `layout.tsx` — persistent across all navigation
 - `PageTransitionWrapper` (`src/components/layout/PageTransitionWrapper.tsx`) wraps `{children}` in the layout
-- `ChatProvider` and `ChatOverlay` remain in layout, wrapping Nav + PageTransitionWrapper + ChatOverlay
+- `ChatProvider` wraps **`NavWidthProvider`** → `NavWrapper` + `PageTransitionWrapper` + `ChatOverlay` (**Session 75** — desktop chat width tracks nav via context)
 - `page.tsx` now only contains ChatPanel wrapper + name block — no Swirl, OrbitalSystem, or Nav
 
 **PageTransitionWrapper (rewritten Session 47):**
@@ -327,11 +327,13 @@ Smooth Framer Motion transitions between homepage and case study pages. Swirl an
     <OrbitalSystem />     {/* z-10, persistent */}
     <TabBar />            {/* z-50, fixed top-0, visible on /work/* only */}
     <ChatProvider>
-      <NavWrapper />      {/* z-40, fixed — shifts top by TAB_BAR_HEIGHT on /work/* */}
-      <PageTransitionWrapper>
-        {children}        {/* z-10 (homepage) or z-20 (case study) */}
-      </PageTransitionWrapper>
-      <ChatOverlay />     {/* z-50 */}
+      <NavWidthProvider>  {/* Session 75 — desktop chat width = measured nav pill */}
+        <NavWrapper />      {/* z-40, fixed — shifts top by TAB_BAR_HEIGHT on /work/* */}
+        <PageTransitionWrapper>
+          {children}        {/* z-10 (homepage) or z-20 (case study) */}
+        </PageTransitionWrapper>
+        <ChatOverlay />     {/* z-50 */}
+      </NavWidthProvider>
     </ChatProvider>
   </TabProvider>
 </body>
@@ -343,8 +345,9 @@ Persistent browser-like tab bar that appears on all `/work/*` routes.
 
 **Files:**
 - `src/context/TabContext.tsx` — `TabProvider`, `useTabs()` hook, `Tab` interface
+- `src/context/NavWidthContext.tsx` (**Session 75**) — `NavWidthProvider`, `useNavWidthContext()`; desktop chat width tracks measured nav
 - `src/components/layout/TabBar.tsx` — renders tab strip; exports `TAB_BAR_HEIGHT = 38`
-- `src/components/layout/NavWrapper.tsx` — wraps `Nav`, shifts its `top` by `TAB_BAR_HEIGHT` on `/work/*`
+- `src/components/layout/NavWrapper.tsx` — wraps `Nav`, shifts its `top` by `TAB_BAR_HEIGHT` on `/work/*`; **Session 75:** measures nav pill width for context
 
 **Tab interface:**
 ```ts
@@ -376,15 +379,20 @@ interface Tab {
 - Active tab: `rgba(255,255,255,0.05)` bg, `borderBottom: '1px solid #161a22'` (merges with content)
 - Inactive tab: no bg, `rgba(255,255,255,0.35)` label color
 
-**NavWrapper (`NavWrapper.tsx`, Session 39, updated Session 46, Session 67):**
-- `'use client'` — reads `usePathname` + **`useIsMobile()`** (Session 66, Session 67)
+**NavWrapper (`NavWrapper.tsx`, Session 39, updated Session 46, Session 67, **Session 75**):**
+- `'use client'` — reads `usePathname` + **`useIsMobile()`** (Session 66, Session 67) + **`useNavWidthContext()`** (**Session 75**)
 - `hasChrome = pathname.startsWith('/work') || pathname === '/about' || pathname === '/timeline' || pathname === '/lab'` — covers `/work` index, `/work/[slug]`, `/about` (Session 44), `/timeline` (Session 49), and `/lab` (Session 60)
 - **Session 67:** outer fixed wrapper `padding: isMobile ? '12px 16px' : '12px 24px'`
+- **Session 75:** `navMeasureRef` on the inner shrink-wrap div (`width: auto` desktop) around `<Nav />`; **`useLayoutEffect`** + **`ResizeObserver`** when **`!isMobile`** → `setDesktopNavWidthPx(el.offsetWidth)` so `ChatPanel` / `ChatOverlay` match the nav pill width.
 - `top` is `useState(0)` + `useEffect` with 60ms `setTimeout` (Session 46). Nav always mounts at `top: 0` and animates to `TAB_BAR_HEIGHT` after the delay. Without this, the `pathname`-derived value renders synchronously so the CSS transition has no prior state to animate from. `useState(0)` initial value is intentional — do NOT initialize to `hasChrome ? TAB_BAR_HEIGHT : 0`. The delay must stay 50–100ms.
 - `transition: 'top 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)'` — ease-out-quart, matches page transition easing.
 - `pointerEvents: 'none'` on outer div, `pointerEvents: 'auto'` on inner Nav wrapper — preserves nav interactivity
 - Inner wrapper **`width: '100%'`** when mobile (Session 66)
 - `Nav` no longer sets its own fixed position — NavWrapper owns all positioning
+
+**`NavWidthContext` (`src/context/NavWidthContext.tsx`, Session 75):**
+- **`NavWidthProvider`** wraps `NavWrapper`, `PageTransitionWrapper`, and `ChatOverlay` inside **`ChatProvider`** in `layout.tsx`.
+- **`useNavWidthContext()`** — `desktopNavWidthPx`, `setDesktopNavWidthPx` (internal use from NavWrapper).
 
 **Nav changes (Session 39):**
 - Removed `fixed top-4 left-1/2 -translate-x-1/2 z-30` from Nav className
