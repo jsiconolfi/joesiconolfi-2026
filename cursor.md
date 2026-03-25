@@ -180,7 +180,7 @@ The prompt bar has been replaced by a full `ChatPanel` component — the primary
   - Header / input bar: `backgroundColor: rgba(14,16,21,0.8)`, `borderBottom/Top: 1px solid rgba(255,255,255,0.06)`
   - User message bubble: `rgba(255,255,255,0.08)` bg, `rgba(255,255,255,0.1)` border, `borderRadius: 16px 16px 4px 16px`
   - Suggestion chips: `rgba(255,255,255,0.04)` bg, `rgba(255,255,255,0.12)` border, `borderRadius: 20px`
-- **`ChatOverlay` (Session 69):** `motion.div` + **`useAnimation()`** — panel enters from **`y: '-100vh'`**, exits to **`y: '100vh'`**, then resets to **`'-100vh'`**; `duration: 0.45`, same ease as page transitions. Outer dialog visibility delay **`0.45s`** on close.
+- **`ChatOverlay` (Session 69, **Session 71**):** `motion.div` + **`useAnimation()`** — panel enters from **`y: '-100vh'`**, exits to **`y: '100vh'`**, then resets to **`'-100vh'`**; `duration: 0.45`, same ease as page transitions. Outer dialog visibility delay **`0.45s`** on close. **Session 71:** root **no `py-20`** / no desktop horizontal padding; wrapper width **`560px`** / **`calc(100vw - 32px)`** — matches homepage chat centering.
 - Mobile send control: `44×44` min touch target (Session 68).
 - AI avatar: logo image in a small circle (`/logo-update.svg`)
 - Input bar: `>` prompt prefix in `#00ff9f` (terminal green), free-form input, up-arrow send button
@@ -414,7 +414,7 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 - **Nav:** Desktop pill unchanged. Mobile: full-width bar (logo / hamburger / Chat); hamburger opens fixed overlay `z-index: 45` with large link labels; active route `#00ff9f`; Chat calls `useChatContext().toggle()`. **NavWrapper:** inner `width: 100%` when mobile.
 - **ChatPanel:** Root `width` / `maxWidth` — mobile `calc(100vw - 32px)` / `100%`, desktop `560px`. Mobile height **`calc(100dvh - 140px)`**; flex column + scrollable messages (Session 68). **Embedded** = gray chrome; **overlay** = colored chrome (Session 69).
 - **Homepage `page.tsx`:** `'use client'` + `useIsMobile` — **Session 68 mobile:** wrapper `top: 80px`, `left/right/bottom: 0`, `padding: 16px`, `alignItems: flex-start`; desktop `top: 0`, centered. Name block `bottom: 100` / `left: 16` on mobile vs `32` desktop.
-- **ChatOverlay:** Drop `max-w-2xl` on the inner wrapper when mobile so panel width matches viewport padding.
+- **ChatOverlay (Session 71):** Dialog root **no `py-20`**, **no horizontal padding on desktop**; mobile `paddingLeft`/`paddingRight` `16px` only. Inner wrapper **`width: calc(100vw - 32px)`** mobile / **`560px`** desktop — **no `max-w-2xl`**, matches homepage chat position and width.
 
 **Do not modify** `Swirl.tsx`, `SwirlDotGrid.tsx`, or `HiDotGrid.tsx` for mobile work.
 
@@ -427,13 +427,13 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 **Shared rules:**
 - **Padding pattern** (about / timeline / lab): `padding: isMobile ? '100px 20px 80px' : '120px 48px 160px'`.
 - **Work grid** content: `isMobile ? '100px 20px 80px' : '100px 48px 120px'`.
-- **Case study** content column: `isMobile ? '20px 20px 80px' : '64px 24px 120px'`; `maxWidth: isMobile ? '100%' : 720`.
+- **Case study** content column (**Session 71**): `isMobile ? '20px 20px 80px' : '120px 24px 120px'`; `maxWidth: isMobile ? '100%' : 720`.
 - **Touch targets:** interactive controls **`minHeight: 44`** (and width where needed) on mobile — iOS minimum.
 - **`touchAction: 'manipulation'`** on buttons, links, tab rows, filter controls, and other tappable UI on these pages — prevents double-tap zoom.
 - **`overflowX: 'hidden'`** on `<main>` where needed; **`wordBreak: 'break-word'`** on long copy — no horizontal scroll at **390px** width.
 - **Typography:** mobile header **`h1` 22px** where specified (was 28px desktop); never increase sizes on mobile.
 
-**Gray sticky chrome (Session 67):** `AboutView`, `TimelineView`, `LabView`, `WorkGrid` sticky headers use **three 12px gray dots** only — no colored traffic lights, no `router.push` from chrome (use nav to go home).
+**Page sticky chrome (Session 71):** `AboutView`, `TimelineView`, `LabView`, `WorkGrid` sticky `*.exe` headers use **colored** traffic lights (`#ff5f57` / `#febc2e` / `#28c840`): red `<button type="button">` → `router.push('/')`, shows `×` on hover; yellow/green show `−` / `+` on hover only; **inner glyph spans use `pointerEvents: 'none'`** so the button receives clicks.
 
 **Per-file highlights:**
 - **AboutView:** Photo/bio stack vertical on mobile; photo **120×120** centered; name block centered; facts + Spotify stack; facts label width **100** mobile; Spotify link **`maxWidth: '100%'`**; connect + Spotify links touch + 44px height on mobile.
@@ -444,12 +444,20 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 - **TabBar:** **`isActive && !isMobile`** for traffic lights; tab flex **`maxWidth: isMobile ? 120 : 200`**; row padding **`0 6px 0 8px`** mobile; close **`minWidth`/`minHeight: 44`** mobile; tab row + close **`touchAction: 'manipulation'`**.
 - **NavWrapper:** Outer padding **`isMobile ? '12px 16px' : '12px 24px'`** (Session 67).
 
-## Traffic lights — Session 68 clarification, Session 69 ChatPanel split, **Session 67 content pages**
+## Traffic lights — Session 68–69 ChatPanel split, **Session 71** page chrome + overlay
 
-**Content page chrome (read this first):** Sticky headers **`about.exe`**, **`timeline.exe`**, **`lab.exe`**, and **`case-studies.exe`** use **gray decorative dots only** (`rgba(255,255,255,0.15)`). They are **not** closeable windows. **Navigation back to home is via the logo in the nav bar** (link to `/`) — **never** a red dot on those headers. The **red-dot / full traffic-light** pattern belongs on UI where the window metaphor matches **real** dismiss or close behavior (e.g. **`TabBar`** active tab: tabs are **genuinely closeable** via **×**; lights stay decorative but the row is the browser-tab metaphor). Do not reintroduce a red “close” control on content-page sticky chrome.
+**Colored dots** (`#ff5f57`, `#febc2e`, `#28c840`) — use on **closeable / page-level** window chrome and any surface with a real dismiss:
+- **Sticky page headers:** **`about.exe`**, **`timeline.exe`**, **`lab.exe`**, **`case-studies.exe`** — red **`<button type="button">`** → **`router.push('/')`**, hover **`×`**; yellow/green hover **`−`** / **`+`** only; glyph spans **`pointerEvents: 'none'`**.
+- **`ChatPanel variant="overlay"`** — red closes via **`useChatContext().close()`** (see `ChatPanel.tsx`).
+- **Orbital project cards**, **`TabBar`** active tab (**desktop only**; lights hidden on mobile — Session 67).
 
-- **Colored** (`#ff5f57`, `#febc2e`, `#28c840`): **`ChatPanel variant="overlay"`** (red closes), **OrbitalCards**, **TabBar** active tab **desktop only** (hidden on mobile — Session 67). Individual `/work/[slug]` pages have **no** sticky page chrome in `CaseStudyView` (tab bar + nav only).
-- **Gray** (`rgba(255,255,255,0.15)`): **`ChatPanel variant="embedded"`** (homepage), **WorkGrid** per-card chrome, **Lab** experiment cards, and **all sticky page chrome headers** on content routes — **`AboutView`**, **`TimelineView`**, **`LabView`**, **`WorkGrid`** sticky `*.exe` bars (Session 67). Decorative only; **home = nav logo**, not chrome.
+**Gray dots** (`rgba(255,255,255,0.15)`) — **informational cards only** (clicking dots does nothing):
+- **`ChatPanel variant="embedded"`** (homepage)
+- **WorkGrid** grid **card** chrome rows, **Lab** experiment **card** chrome, **OrbitalCard**-style cards
+
+**`/work/[slug]`:** No second sticky `*.exe` row in **`CaseStudyView`** — colored metaphor is **`TabBar`** (active tab) + nav; body padding **`120px`** top desktop (**Session 71**).
+
+**ChatOverlay (Session 71):** Root **`fixed inset-0`** flex center — **no `py-20`**; mobile horizontal inset **`16px`** each side; panel wrapper **`560px`** desktop / **`calc(100vw - 32px)`** mobile — **no `max-w-2xl`**, matches homepage chat placement.
 
 ## Nav (Session 7 — updated Session 33, Session 65, Session 66, Session 68, Session 69)
 
@@ -502,8 +510,8 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 - `src/app/work/page.tsx` — thin route, renders `<WorkGrid />`
 - `src/components/case-study/WorkGrid.tsx` — `'use client'` grid component
 
-**WorkGrid rules (Session 64 updates, Session 67 mobile):**
-- **Sticky terminal chrome header:** `position: sticky, top: 0, zIndex: 40`, `rgba(10,12,16,0.98)` + `blur(12px)`, `padding: 10px 20px`. **Session 67:** three **gray** 12px dots `rgba(255,255,255,0.15)` only — decorative (home via nav). Window title: `case-studies.exe`.
+**WorkGrid rules (Session 64 updates, Session 67 mobile, **Session 71** chrome):**
+- **Sticky terminal chrome header:** `position: sticky, top: 0, zIndex: 40`, `rgba(10,12,16,0.98)` + `blur(12px)`, `padding: 10px 20px`. **Session 71:** **colored** traffic lights on sticky bar (red → home); **per-card** rows stay **gray** dots. Window title: `case-studies.exe`.
 - **`useIsMobile()`** — content padding `isMobile ? '100px 20px 80px' : '100px 48px 120px'`; grid `1fr` mobile / `repeat(auto-fill, minmax(280px, 1fr))` desktop; h1 **22** mobile / **28** desktop; card chrome row **`minHeight: 44`** mobile; cards **`touchAction: 'manipulation'`**, **`role="button"`**, **`aria-label`**, keyboard Enter/Space; `<main overflowX: hidden>`.
 - **Grid card chrome:** three 8px dots, all `rgba(255,255,255,0.15)` — decorative only (not closeable windows); do not use colored traffic lights on card rows.
 - **`GridThumbnail` helper** (in `WorkGrid.tsx`): wraps the 16/9 area with `onMouseEnter` / `onMouseLeave`. Mp4: `videoRef`, `preload="metadata"`, `muted` + `playsInline` + `loop`, `onLoadedMetadata` seeks to 0; hover calls `play().catch(() => {})`, leave pauses and resets `currentTime` to 0. Static images: raw `<img>` with `eslint-disable-next-line @next/next/no-img-element`. Placeholder grid when no `heroAsset`.
@@ -533,10 +541,10 @@ Dynamic pages at `/work/[slug]` for all 10 projects.
 
 **Quick takes (4)**: waypoint-sync, kernel, mushroom, cohere-labs — no `hardPart`, section label "what I did"
 
-**CaseStudyView rules (Session 34, Session 67 mobile):**
-- Sticky page chrome **removed** (Session 39) — tab bar + nav only.
+**CaseStudyView rules (Session 34, Session 67 mobile, **Session 71**):**
+- Sticky page chrome **removed** (Session 39) — tab bar + nav only; **`TabBar`** carries colored tab metaphor on **`/work/*`**.
 - Role line: `fontSize: 12`, `color: rgba(0,255,159,0.7)`, `fontWeight: 300` — NO `textTransform: uppercase`, NO `letterSpacing`. Sentence case.
-- **`useIsMobile()`** — content: `maxWidth: isMobile ? '100%' : 720`, `padding: isMobile ? '20px 20px 80px' : '64px 24px 120px'`, `width: '100%'`, `boxSizing`. `<main overflowX: hidden>`.
+- **`useIsMobile()`** — content: `maxWidth: isMobile ? '100%' : 720`, `padding: isMobile ? '20px 20px 80px' : '120px 24px 120px'`, `width: '100%'`, `boxSizing`. `<main overflowX: hidden>`.
 - Hero + decision **mp4:** `autoPlay={!isMobile}`, `preload="metadata"`, `muted`, `loop`, `playsInline` — **desktop** ambient autoplay; **mobile** no autoplay (Session 67).
 - Next CTA: `type="button"`, full width + centered on mobile, `minHeight: 44` mobile, `touchAction: 'manipulation'`. Body copy via `bodyStyle` includes `wordBreak: 'break-word'`.
 - All styling: inline styles only — scrollable document page
@@ -556,7 +564,7 @@ Live at `/about`. Scrollable content page, same visual system as case study page
 
 **Layout (Session 67):** 880px max-width, `padding: isMobile ? '100px 20px 80px' : '120px 48px 160px'`, `width: '100%'`, `boxSizing`. Photo+bio: stack on mobile (flex column, 120px photo centered); facts+Spotify stack on mobile; see **Mobile content pages — Session 67** in this file.
 
-**Terminal chrome:** sticky, `zIndex: 40`, `rgba(10,12,16,0.98)` + `blur(12px)`. **Three gray dots** `rgba(255,255,255,0.15)` — decorative only. Title: `about.exe`.
+**Terminal chrome:** sticky, `zIndex: 40`, `rgba(10,12,16,0.98)` + `blur(12px)`. **Session 71:** **colored** traffic lights (red → `/`). Title: `about.exe`.
 
 **Photo:** `/joe.png` — raw `<img>` with `eslint-disable-next-line @next/next/no-img-element`, 200×200, `objectFit: cover`, `borderRadius: 8`.
 
@@ -616,10 +624,10 @@ Live at `/lab`. Open notebook with beliefs, open questions, experiments, and a c
 - Experiment description and feed body: `text.split('\n\n').map((para) => <p>)` — renders multi-paragraph content.
 - All styling: inline styles only.
 
-**Traffic light rule (site-wide, Session 61, clarified Session 68–69):**
-- **Colored dots** = dismissible window metaphor. **`ChatPanel variant="overlay"`** only (red → `close()`). Plus page chrome, OrbitalCards, case study chrome, TabBar.
-- **Gray dots** = non-closeable — **`ChatPanel variant="embedded"`**, WorkGrid card rows, Lab experiment cards.
-- See **Traffic lights — Session 68 clarification, Session 69 ChatPanel split** above.
+**Traffic light rule (site-wide, Session 61, Session 68–69, **Session 71**):**
+- **Colored dots** = page-level closeable chrome, **`ChatPanel variant="overlay"`**, OrbitalCards, TabBar; sticky **`*.exe`** bars on about / timeline / lab / work index (**red → `router.push('/')`**).
+- **Gray dots** = informational cards only — **`ChatPanel variant="embedded"`**, WorkGrid **per-card** rows, Lab **experiment** cards.
+- See **Traffic lights — Session 68–69 ChatPanel split, Session 71 page chrome + overlay** above.
 
 **Nav/transition wiring:**
 - `Nav.tsx`: `<Link href="/lab">`

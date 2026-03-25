@@ -68,8 +68,10 @@ export default function ChatOverlay() {
       aria-modal="true"
       aria-label="Chat panel"
       role="dialog"
-      className="fixed inset-0 z-50 flex items-center justify-center px-4 py-20"
+      className="fixed inset-0 z-50 flex items-center justify-center"
       style={{
+        paddingLeft: isMobile ? 16 : 0,
+        paddingRight: isMobile ? 16 : 0,
         opacity: isOpen ? 1 : 0,
         visibility: isOpen ? 'visible' : 'hidden',
         transition: isOpen
@@ -90,8 +92,11 @@ export default function ChatOverlay() {
 
       <motion.div
         animate={panelControls}
-        className={isMobile ? 'relative z-10 w-full' : 'relative z-10 w-full max-w-2xl'}
-        style={{ willChange: 'transform' }}
+        className="relative z-10"
+        style={{
+          willChange: 'transform',
+          width: isMobile ? 'calc(100vw - 32px)' : '560px',
+        }}
       >
         <ChatPanel variant="overlay" />
       </motion.div>

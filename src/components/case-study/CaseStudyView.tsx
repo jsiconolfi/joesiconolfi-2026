@@ -26,7 +26,7 @@ export default function CaseStudyView({ caseStudy }: Props) {
         style={{
           maxWidth: isMobile ? '100%' : 720,
           margin: '0 auto',
-          padding: isMobile ? '20px 20px 80px' : '64px 24px 120px',
+          padding: isMobile ? '20px 20px 80px' : '120px 24px 120px',
           boxSizing: 'border-box',
           width: '100%',
         }}

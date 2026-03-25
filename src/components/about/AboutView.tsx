@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { useIsMobile } from '@/hooks/useIsMobile'
 
 interface NowPlaying {
@@ -36,7 +37,11 @@ const LINKS = [
 ]
 
 export default function AboutView() {
+  const router = useRouter()
   const isMobile = useIsMobile()
+  const [closeHovered, setCloseHovered] = useState(false)
+  const [yellowHovered, setYellowHovered] = useState(false)
+  const [greenHovered, setGreenHovered] = useState(false)
   const [nowPlaying, setNowPlaying] = useState<NowPlaying | null>(null)
   const [spotifyLoading, setSpotifyLoading] = useState(true)
   const pollRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
@@ -61,7 +66,7 @@ export default function AboutView() {
   return (
     <main style={{ minHeight: '100vh', fontFamily: 'var(--font-mono, monospace)', overflowX: 'hidden' }}>
 
-      {/* Terminal chrome — gray dots only (non-closeable page window) */}
+      {/* Terminal chrome — colored traffic lights; red → home (Session 71) */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 40,
         backgroundColor: 'rgba(10, 12, 16, 0.98)',
@@ -69,9 +74,58 @@ export default function AboutView() {
         borderBottom: '1px solid rgba(255,255,255,0.06)',
         padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 6,
       }}>
-        <span style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', flexShrink: 0, display: 'block' }} />
-        <span style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', flexShrink: 0, display: 'block' }} />
-        <span style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', flexShrink: 0, display: 'block' }} />
+        <button
+          type="button"
+          title="Home"
+          onClick={() => router.push('/')}
+          onMouseEnter={() => setCloseHovered(true)}
+          onMouseLeave={() => setCloseHovered(false)}
+          style={{
+            width: 12, height: 12, borderRadius: '50%',
+            backgroundColor: '#ff5f57',
+            border: 'none', cursor: 'pointer', padding: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+            touchAction: 'manipulation',
+          }}
+        >
+          {closeHovered && (
+            <span style={{
+              fontSize: 8, lineHeight: 1,
+              color: 'rgba(0,0,0,0.65)',
+              fontWeight: 700, userSelect: 'none',
+              pointerEvents: 'none',
+            }}>×</span>
+          )}
+        </button>
+        <span
+          onMouseEnter={() => setYellowHovered(true)}
+          onMouseLeave={() => setYellowHovered(false)}
+          style={{
+            width: 12, height: 12, borderRadius: '50%',
+            backgroundColor: '#febc2e',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0, cursor: 'default',
+          }}
+        >
+          {yellowHovered && (
+            <span style={{ fontSize: 8, lineHeight: 1, color: 'rgba(0,0,0,0.5)', fontWeight: 700, userSelect: 'none', pointerEvents: 'none' }}>−</span>
+          )}
+        </span>
+        <span
+          onMouseEnter={() => setGreenHovered(true)}
+          onMouseLeave={() => setGreenHovered(false)}
+          style={{
+            width: 12, height: 12, borderRadius: '50%',
+            backgroundColor: '#28c840',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0, cursor: 'default',
+          }}
+        >
+          {greenHovered && (
+            <span style={{ fontSize: 8, lineHeight: 1, color: 'rgba(0,0,0,0.5)', fontWeight: 700, userSelect: 'none', pointerEvents: 'none' }}>+</span>
+          )}
+        </span>
         <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 10, fontWeight: 300 }}>
           about.exe
         </span>
