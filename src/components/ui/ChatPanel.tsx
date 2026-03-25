@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import SwirlDotGrid from '@/components/ui/SwirlDotGrid'
 import { PROJECTS } from '@/content/projects'
@@ -38,7 +39,7 @@ const INITIAL_MESSAGE: Message = {
   id: 'greeting',
   role: 'assistant',
   content:
-    "Hi, I'm Joe's portfolio assistant. Ask me about his work, approach, or background — or just explore.",
+    "Hi! I'm Joe, a design engineer by trade and a creative cosmonaut by nature. What would you like to explore?",
   cards: [
     {
       key: 'work',
@@ -147,6 +148,7 @@ const AssistantAvatar = ({ thinking = false }: AssistantAvatarProps) => (
 )
 
 export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
+  const router = useRouter()
   const isMobile = useIsMobile()
   const { close: closeChatOverlay } = useChatContext()
   const { desktopNavWidthPx } = useNavWidthContext()
@@ -350,8 +352,15 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
     }
   }
 
-  const showChips = !messages.some(m => m.role === 'user')
   const chipDisabled = isLoading || isResponseLoading || messages.length === 0
+
+  function openCardHref(href: string) {
+    if (href.startsWith('mailto') || href.endsWith('.pdf')) {
+      window.open(href, '_blank')
+    } else {
+      router.push(href)
+    }
+  }
 
   return (
     <div
@@ -617,81 +626,73 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
                             style={{
                               display: 'flex',
                               flexDirection: 'column',
-                              gap: 8,
-                              marginTop: 12,
+                              gap: 6,
+                              marginTop: 10,
                             }}
                           >
                             {message.cards.map(card => (
-                              <a
+                              <div
                                 key={card.key}
-                                href={card.href}
-                                target={
-                                  card.type === 'action' &&
-                                  card.href.startsWith('mailto')
-                                    ? '_blank'
-                                    : undefined
-                                }
-                                rel="noopener noreferrer"
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => openCardHref(card.href)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault()
+                                    openCardHref(card.href)
+                                  }
+                                }}
                                 style={{
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'space-between',
-                                  padding: '10px 14px',
-                                  backgroundColor: 'rgba(255,255,255,0.04)',
+                                  padding: '8px 12px',
+                                  backgroundColor: 'rgba(255,255,255,0.03)',
                                   border: '1px solid rgba(255,255,255,0.08)',
                                   borderRadius: 6,
-                                  textDecoration: 'none',
-                                  transition:
-                                    'border-color 0.2s ease, background 0.2s ease',
                                   cursor: 'pointer',
                                 }}
                                 onMouseEnter={e => {
                                   const el = e.currentTarget as HTMLElement
-                                  el.style.borderColor = 'rgba(0,255,159,0.3)'
-                                  el.style.backgroundColor = 'rgba(0,255,159,0.04)'
+                                  const title = el.querySelector('.card-title') as HTMLElement | null
+                                  const arrow = el.querySelector('.card-arrow') as HTMLElement | null
+                                  if (title) title.style.color = '#00ff9f'
+                                  if (arrow) arrow.style.color = '#00ff9f'
                                 }}
                                 onMouseLeave={e => {
                                   const el = e.currentTarget as HTMLElement
-                                  el.style.borderColor = 'rgba(255,255,255,0.08)'
-                                  el.style.backgroundColor = 'rgba(255,255,255,0.04)'
+                                  const title = el.querySelector('.card-title') as HTMLElement | null
+                                  const arrow = el.querySelector('.card-arrow') as HTMLElement | null
+                                  if (title) title.style.color = 'rgba(255,255,255,0.7)'
+                                  if (arrow) arrow.style.color = 'rgba(0,255,159,0.5)'
                                 }}
                               >
-                                <div>
-                                  <p
-                                    style={{
-                                      fontSize: 11,
-                                      fontWeight: 400,
-                                      color: 'rgba(255,255,255,0.85)',
-                                      margin: '0 0 2px',
-                                      fontFamily: 'var(--font-mono)',
-                                    }}
-                                  >
-                                    {card.label}
-                                  </p>
-                                  <p
-                                    style={{
-                                      fontSize: 10,
-                                      fontWeight: 300,
-                                      color: 'rgba(255,255,255,0.35)',
-                                      margin: 0,
-                                      fontFamily: 'var(--font-mono)',
-                                    }}
-                                  >
-                                    {card.description}
-                                  </p>
-                                </div>
                                 <span
+                                  className="card-title"
+                                  style={{
+                                    fontSize: 11,
+                                    fontWeight: 300,
+                                    color: 'rgba(255,255,255,0.7)',
+                                    fontFamily: 'var(--font-mono)',
+                                    transition: 'color 0.15s ease',
+                                  }}
+                                >
+                                  {card.label}
+                                </span>
+                                <span
+                                  className="card-arrow"
                                   style={{
                                     fontSize: 11,
                                     color: 'rgba(0,255,159,0.5)',
                                     fontFamily: 'var(--font-mono)',
                                     flexShrink: 0,
                                     marginLeft: 12,
+                                    transition: 'color 0.15s ease',
                                   }}
                                 >
                                   →
                                 </span>
-                              </a>
+                              </div>
                             ))}
                           </div>
                         )}
@@ -719,7 +720,7 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
 
         {/* Input bar — pinned below scrollable messages */}
         <div
-          className={`flex-shrink-0 pt-3 flex flex-col gap-2.5 ${isMobile ? 'px-0' : 'px-4'}`}
+          className="flex-shrink-0 pt-3 flex flex-col gap-2.5 px-0"
           style={{
             flexShrink: 0,
             backgroundColor: 'rgba(14, 16, 21, 0.6)',
@@ -727,34 +728,32 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
             paddingBottom: isMobile ? 'calc(12px + env(safe-area-inset-bottom, 0px))' : 12,
           }}
         >
-          {/* Persistent suggestion chips */}
-          {showChips && (
-            <div
-              className="flex flex-wrap"
-              style={{
-                gap: 8,
-                padding: isMobile ? '10px 16px' : '0',
-              }}
-            >
-              {CHIPS.map(chip => (
-                <button
-                  key={chip.label}
-                  type="button"
-                  disabled={chipDisabled}
-                  onClick={() => handleSend(chip.message)}
-                  className="chip-button font-mono text-xs font-light px-3 py-1.5 rounded-full disabled:opacity-30 disabled:cursor-not-allowed"
-                  style={{
-                    backgroundColor: 'transparent',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                    ...mobileTouch,
-                  }}
-                >
-                  {chip.label}
-                </button>
-              ))}
-            </div>
-          )}
-          <div className={`flex items-center gap-3 ${isMobile ? 'px-4' : ''}`}>
+          {/* Chips — always visible, never hidden */}
+          <div
+            className="flex flex-wrap"
+            style={{
+              gap: 8,
+              padding: '10px 16px 0',
+            }}
+          >
+            {CHIPS.map(chip => (
+              <button
+                key={chip.label}
+                type="button"
+                disabled={chipDisabled}
+                onClick={() => handleSend(chip.message)}
+                className="chip-button font-mono text-xs font-light px-3 py-1.5 rounded-full disabled:opacity-30 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: 'transparent',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  ...mobileTouch,
+                }}
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-3 px-4">
             <span
               className="font-mono text-xs flex-shrink-0 select-none"
               style={{ color: '#00ff9f' }}

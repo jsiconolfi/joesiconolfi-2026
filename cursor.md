@@ -165,7 +165,7 @@ Two RAF-loop dot grid components live in `src/components/ui/`:
 - `rafRef` typed as `useRef<number | undefined>(undefined)` — cleanup on unmount
 - `prefers-reduced-motion`: static snapshot state, no animation
 
-## AI / chat panel (Session 7 — updated Session 11, Session 66, Session 68, Session 69, Session 70, **Session 72**, **Session 75**)
+## AI / chat panel (Session 7 — updated Session 11, Session 66, Session 68, Session 69, Session 70, **Session 72**, **Session 74**, **Session 75**, **Session 76**)
 
 The prompt bar has been replaced by a full `ChatPanel` component — the primary interface of the homepage. Rules:
 - `src/components/ui/ChatPanel.tsx` — `variant?: 'embedded' | 'overlay'` (default **`embedded`**). Homepage uses embedded; **`ChatOverlay`** passes **`variant="overlay"`**.
@@ -191,14 +191,14 @@ The prompt bar has been replaced by a full `ChatPanel` component — the primary
 Three-phase load sequence on every page visit:
 1. **Thinking** (1500ms) — `AssistantAvatar thinking={true}` (SwirlDotGrid animates inside the circle) + `<ThinkingText />` inline to the right, vertically centered. `isLoading: true`. Each character of "thinking..." has a staggered shimmer via `thinking-shimmer` CSS keyframe.
 2. **Streaming** — `isLoading` flips false; avatar crossfades to icon (`opacity 0.4s ease`); **`INITIAL_MESSAGE.content`** streams character by character at `STREAM_SPEED = 28` ms/char; a `2px × 13px` `#00ff9f` cursor blinks at `0.8s step-end`.
-3. **Complete** — 300ms after last character: `streamingContent` clears, **`INITIAL_MESSAGE`** (greeting + starter `cards` for `work` and `about`) lands in `messages`.
+3. **Complete** — 300ms after last character: `streamingContent` clears, **`INITIAL_MESSAGE`** (greeting + starter `cards` for `work` and `about`) lands in `messages`. **Session 75** greeting: `Hi! I'm Joe, a design engineer by trade and a creative cosmonaut by nature. What would you like to explore?` (no em dash).
 
 State shape:
 - `isLoading` — controls initial thinking phase (starts `true`, becomes `false` after 1500ms)
 - `streamingContent` — string being built during phase 2
 - `isResponseLoading` — `true` while `/api/chat` fetch is in progress; disables send + chips; distinct from `isLoading`
 
-### Anthropic chat API (**Session 72**)
+### Anthropic chat API (**Session 72**, **Session 75**)
 
 - **Route:** `src/app/api/chat/route.ts` — `export const runtime = 'edge'`, `POST`, body `{ messages: { role, content }[] }`.
 - **Env:** `ANTHROPIC_API_KEY` (500 if missing). Add to `.env.local` and Vercel project env.
@@ -207,9 +207,12 @@ State shape:
 - **Stream shape:** Server translates Anthropic SSE into **NDJSON** to the client: `{ type: 'text', text }` per delta; optional final `{ type: 'cards', cards }` when trailing `{"cards":[...]}` parses and keys exist in route `CARD_META` (max 3).
 - **Client:** `handleSend` strips displayed card JSON via `CARDS_STRIP_REGEX`; streaming assistant shows trailing cursor; failures → `Something went wrong. Try again.`
 - **Input gating:** Send, chips, and `handleSend` no-op while `messages.length === 0` so the three-phase greeting is not interrupted and the first API turn always includes thread context after `INITIAL_MESSAGE` exists.
+- **Session 75 — System prompt:** First person throughout. Opening: "You are Joe Siconolfi... Speak in first person as Joe". Sections **Who I am**, **My approach**, **My philosophy**, **My technical approach and hands-on model work**, **My career**, **My projects**, **My beliefs**; **How to answer** ends with first-person instructions. Card rules in prompt use **your** for background / thinking / work.
+- **Session 74 — Contextual card hover (`ChatPanel.tsx`):** Border and background stay fixed; only `.card-title` and `.card-arrow` colors change via `onMouseEnter` / `onMouseLeave` (`querySelector`), aligned with **Chat with me** (text highlight, not surface highlight).
+- **Session 76 — Contextual cards:** Not `<a href>`. **`useRouter` from `next/navigation`**: internal paths → **`router.push(card.href)`** (preserves **`PageTransitionWrapper` / AnimatePresence**); **`mailto:`** or href ending **`.pdf`** → **`window.open(href, '_blank')`**. **`role="button"`**, **`tabIndex={0}`**, **`Enter`** on `onKeyDown`. Compact single-line rows (label + arrow only); no description in UI; padding `8px 12px`; stack `gap: 6`, `marginTop: 10`; title rest `rgba(255,255,255,0.7)` fontWeight 300.
 
 Color rules:
-- `#00ff9f` (`accent.terminal`) appears on: blinking cursor, `>` prompt prefix, chip hover states, contextual card arrow and card hover border (Session 72)
+- `#00ff9f` (`accent.terminal`) appears on: blinking cursor, `>` prompt prefix, chip hover states, contextual card title + arrow on hover (**Session 74:** text-only hover, same idea as **Chat with me** — no card border or background change; static `rgba(255,255,255,0.08)` border, `rgba(255,255,255,0.03)` bg; arrow at rest `rgba(0,255,159,0.5)`, both title and arrow `#00ff9f` on hover; **Session 76:** no description line on cards)
 - Do not use `accent.warm` for interactive terminal states — that color is for nav/link hovers only
 
 ### AssistantAvatar (Session 13)
@@ -222,12 +225,12 @@ Color rules:
 - Circle size is fixed at `w-9 h-9` (36×36px) — never resize it
 - The avatar icon itself (`/logo-update.svg`, `18×18`) is unchanged
 
-### Suggestion chips — persistent bar only (Session 12, **Session 72**)
+### Suggestion chips — persistent bar only (Session 12, **Session 72**, **Session 76**)
 
 Chips appear exclusively in the persistent bar directly above the input field. They do NOT appear inline inside message bubbles.
 - `Message` has no `chips` field — chips are not message-level data. Optional **`cards`** on assistant messages are for AI-surfaced links only (**Session 72**).
-- The persistent bar shows the fixed set until the first user message, then hides (**Session 72**). Chips stay disabled until `INITIAL_MESSAGE` is committed (`messages.length > 0`).
-- Do not put suggestion chips inside assistant bubbles — contextual **cards** are separate (compact link rows below finished assistant text).
+- **Session 76:** The chip bar is **always rendered** (no `showChips` / no hide after first user message). Container `padding: '10px 16px 0'`, `gap: 8`, `flexWrap`. **`ChatOverlay`** only mounts **`ChatPanel variant="overlay"`** — chips behavior is identical. Chips stay disabled until `INITIAL_MESSAGE` is committed (`messages.length > 0`) and while `isResponseLoading` / initial `isLoading` (unchanged gating).
+- Do not put suggestion chips inside assistant bubbles — contextual **cards** are separate (compact single-line rows below finished assistant text).
 
 CSS:
 - `@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }` defined in `globals.css` (above `@layer utilities`)

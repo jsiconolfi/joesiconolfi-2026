@@ -43,14 +43,15 @@ The ChatPanel (`src/components/ui/ChatPanel.tsx`) is a terminal-aesthetic froste
 - AI avatar: `/logo-update.svg` in a small circle
 - `>` prompt prefix in `#00ff9f` terminal green
 - **Session 72 — Anthropic streaming:** `POST /api/chat` (`src/app/api/chat/route.ts`, **`export const runtime = 'edge'`**) calls Anthropic Messages API with model **`claude-sonnet-4-20250514`**, **`max_tokens: 1024`**, long in-file `SYSTEM_PROMPT`. Env: **`ANTHROPIC_API_KEY`** (`.env.local` + Vercel). Response is NDJSON lines: `{ type: 'text', text }` per delta, then optional `{ type: 'cards', cards }` after full text is parsed for trailing `{"cards":["slug",...]}` (max 3, validated keys). Client strips that JSON from displayed assistant text via regex.
-- **Contextual cards (Session 72):** `Message` may include optional `cards?: ChatCard[]` (label, description, href, type). Rendered only below **completed** assistant text (not while `isStreaming`). Internal/action links use `<a>` with terminal green hover border/bg per site rules. Separate from suggestion chips.
+- **Session 75 — Chat voice:** `SYSTEM_PROMPT` casts the model as **Joe in first person** ("You are Joe Siconolfi... Speak in first person as Joe"). Section headers use **Who I am**, **My approach**, **My philosophy**, **My technical approach...**, **My career**, **My projects**, **My beliefs**; **How to answer** requires first-person replies. Card-surfacing rules use **your** background / thinking / work. No em dashes in prompt rules. Project blurbs in **My projects** stay third-person descriptive (unchanged).
+- **Contextual cards (Session 72, Session 74, **Session 76**):** `Message` may include optional `cards?: ChatCard[]` (label, description, href, type — **`description` not rendered** after Session 76; still present in API/`INITIAL_MESSAGE` for meta). Rendered only below **completed** assistant text (not while `isStreaming`). **`role="button"`** row: single line label + `→`; padding `8px 12px`; list wrapper `gap: 6`, `marginTop: 10`. **Session 76:** Internal routes use **`useRouter().push(card.href)`** so **Framer Motion** page transitions run; **`mailto`** and **`.pdf`** use **`window.open(..., '_blank')`**. No `<a href>` for internal navigation. **Session 74:** static border/bg; **text-only hover** — `.card-title` and `.card-arrow` → `#00ff9f`; at rest title `rgba(255,255,255,0.7)` (weight 300), arrow `rgba(0,255,159,0.5)`; `Enter` activates focused row. Separate from suggestion chips.
 - Glass treatment uses inline styles matching the site's existing glass variables
 - Thinking state: `SwirlDotGrid` (6×4, speed 0.055) + `<ThinkingText />` component (character-shimmer animation)
 
 Load sequence (Session 11–13, updated Session 33):
 1. **Phase 1 — Thinking** (1.5s): `isLoading: true`. `AssistantAvatar thinking={true}` — SwirlDotGrid sweeps inside the avatar circle. `<ThinkingText />` label sits inline to the right, vertically centered on the same row. Each character of "thinking..." has a staggered shimmer animation (`thinking-shimmer` keyframe, 80ms stagger per char, 1.6s duration).
 2. **Phase 2 — Streaming**: `isLoading` flips false. Avatar crossfades to icon (`opacity 0.4s ease`). Greeting text builds character by character at 28ms/char; `#00ff9f` cursor blinks at trailing edge.
-3. **Phase 3 — Complete**: 300ms after last char, `streamingContent` clears, **`INITIAL_MESSAGE`** (`id: 'greeting'`) lands in `messages` with copy + starter cards (`work`, `about`).
+3. **Phase 3 — Complete**: 300ms after last char, `streamingContent` clears, **`INITIAL_MESSAGE`** (`id: 'greeting'`) lands in `messages` with copy + starter cards (`work`, `about`). **Session 75 greeting (verbatim, no em dash):** `Hi! I'm Joe, a design engineer by trade and a creative cosmonaut by nature. What would you like to explore?`
 
 AssistantAvatar (Session 13):
 - `thinking` prop (boolean, default `false`) controls a crossfade between two absolutely-positioned layers inside a fixed `w-9 h-9` circle
@@ -74,10 +75,10 @@ Project mention detection (Session 14):
 Suggestion chips — persistent bar only:
 - Chips appear ONLY in the persistent bar above the input. Never inside message bubbles.
 - The `Message` interface has no `chips` field — do not add one. Optional **`cards`** on assistant messages are for model-surfaced links only (**Session 72**).
-- The bar shows the fixed set: `my work`, `my experience`, `about me`, `my resume`, `contact` — **hidden after the first user message** (**Session 72**).
+- The bar shows the fixed set: `my work`, `my experience`, `about me`, `my resume`, `contact` — **always visible at every conversation state** (**Session 76**); never hidden after the first user message. **`ChatOverlay`** uses the same **`ChatPanel`** — no separate chip implementation.
 - Each chip calls **`handleSend`** with a full natural-language prompt (e.g. `Tell me about your work`), not the chip label alone (**Session 72**).
 - Send, chips, and **`handleSend`** are inactive while **`messages.length === 0`** (until **`INITIAL_MESSAGE`** lands after the load sequence) so the greeting stream is not cleared mid-flight (**Session 72**).
-- **Session 66 (mobile):** chips row uses `flexWrap` + `gap: 8`; `padding: 10px 16px` on the chips container; input bar uses `px-0` on mobile with chips/input horizontal padding adjusted so the row wraps cleanly.
+- **Session 76:** chips container `padding: '10px 16px 0'`, `flexWrap` + `gap: 8`; input row `px-4` for alignment.
 
 ### Floating project cards (Sessions 14–23 — current state)
 
