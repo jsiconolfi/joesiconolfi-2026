@@ -2,11 +2,34 @@ import { NextRequest } from 'next/server'
 
 export const runtime = 'edge'
 
+// In-memory store — resets on edge cold start; fixed 1h window per IP
+const rateLimitStore = new Map<string, { count: number; windowStart: number }>()
+
+const RATE_LIMIT_MAX = 50
+const RATE_LIMIT_WINDOW = 60 * 60 * 1000
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now()
+  const entry = rateLimitStore.get(ip)
+
+  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW) {
+    rateLimitStore.set(ip, { count: 1, windowStart: now })
+    return true
+  }
+
+  if (entry.count >= RATE_LIMIT_MAX) {
+    return false
+  }
+
+  entry.count++
+  return true
+}
+
 const SYSTEM_PROMPT = `You are Joe Siconolfi, a Staff Design Engineer based in San Francisco. Speak in first person as Joe — warm, direct, and specific. No hedging, no corporate language, no bullet points, no em dashes. When someone asks about your work, talk about it with genuine enthusiasm for the craft, specific details, and honest takes on what was hard.
 
 ## Who I am
 
-I'm a design engineer building AI-native products that help people become more capable over time. 15+ years working across full-stack engineering, interaction design, and research to prototype and ship new interaction paradigms. Strong front-end craft with a research-driven product mindset focused on learning through use and real skill growth. Originally from Long Island, West Coast since 22. Started with MySpace CSS in middle school and never stopped making things. Vinyl collector, Knicks and Mets fan.
+I'm a design engineer building AI-native products that help people become more capable over time. 15+ years working across full-stack engineering, interaction design, and research to prototype and ship new interaction paradigms. Strong front-end craft with a research-driven product mindset focused on learning through use and real skill growth. Originally from New York, Lived on the West Coast(the SF bay area to be exact) since 2022. Started with MySpace CSS in middle school and never stopped making things. Vinyl collector, Knicks and Mets fan.
 
 I'm currently Staff Design Engineer at Cohere, the first design engineer there. I built Waypoint (design system from zero), Sherpa (RAG-based Figma plugin), and waypoint-sync (Figma-to-code token pipeline). I also prototype new interaction paradigms for frontier model capabilities at Cohere Labs, and help define UX patterns for research and product teams working on next-generation models.
 
@@ -92,7 +115,7 @@ Rules for surfacing cards:
 
 ## How to answer
 
-Speak in first person as Joe. Be specific, not generic. Short responses for simple questions (2-3 sentences), a focused paragraph for detailed ones. If someone asks about a project, give the real story: the problem, what was hard, what was built. If someone asks about your approach or philosophy, draw from the Magic Ink framing and the beliefs above. If someone asks what makes you different from other designers, talk about the code-design fluency, the hands-on model work (RAG, prompt engineering, streaming interfaces, voice), and the inference-over-interaction philosophy. If you do not know something specific, say so rather than making it up. Never use bullet points. Never use em dashes. Talk like a person, not a document.`
+Speak in first person as Joe. Be specific, not generic. Keep responses short. 2-3 sentences for simple questions. 4-5 sentences maximum for detailed ones. Never write more than a short paragraph. If you have more to say, surface a card instead of writing it out. If someone asks about a project, give the real story: the problem, what was hard, what was built. If someone asks about your approach or philosophy, draw from the Magic Ink framing and the beliefs above. If someone asks what makes you different from other designers, talk about the code-design fluency, the hands-on model work (RAG, prompt engineering, streaming interfaces, voice), and the inference-over-interaction philosophy. If you do not know something specific, say so rather than making it up. Never use bullet points. Never use em dashes. Talk like a person, not a document.`
 
 const CARD_META: Record<
   string,
@@ -199,6 +222,21 @@ const CARD_META: Record<
 type ClientMessage = { role: string; content: string }
 
 export async function POST(req: NextRequest) {
+  const ip =
+    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    req.headers.get('x-real-ip') ??
+    'unknown'
+
+  if (!checkRateLimit(ip)) {
+    return new Response(
+      JSON.stringify({ error: 'Rate limit exceeded. Try again later.' }),
+      {
+        status: 429,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    )
+  }
+
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
     return new Response('Missing ANTHROPIC_API_KEY', { status: 500 })
@@ -243,90 +281,101 @@ export async function POST(req: NextRequest) {
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
+      max_tokens: 400,
       system: SYSTEM_PROMPT,
       stream: true,
       messages: anthropicMessages,
     }),
   })
 
-  if (!response.ok) {
+  if (!response.ok || !response.body) {
     return new Response('API error', { status: 500 })
   }
 
   const encoder = new TextEncoder()
+  const decoder = new TextDecoder()
+  let sseBuffer = ''
+  let fullText = ''
+  let cardsSent = false
 
-  const stream = new ReadableStream({
-    async start(controller) {
-      const reader = response.body!.getReader()
-      const decoder = new TextDecoder()
-      let fullText = ''
-      let buffer = ''
+  function trySendCards(controller: TransformStreamDefaultController<Uint8Array>) {
+    if (cardsSent) return
+    const cardMatch = fullText.match(/\{"cards":\[.*?\]\}/)
+    if (!cardMatch) return
+    try {
+      const { cards } = JSON.parse(cardMatch[0]) as { cards: string[] }
+      const validCards = cards
+        .filter((c) => c in CARD_META)
+        .slice(0, 3)
+        .map((c) => ({ key: c, ...CARD_META[c] }))
 
-      try {
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-
-          buffer += decoder.decode(value, { stream: true })
-          const lines = buffer.split('\n')
-          buffer = lines.pop() ?? ''
-
-          for (const line of lines) {
-            if (!line.startsWith('data: ')) continue
-            const data = line.slice(6)
-            if (data === '[DONE]') continue
-
-            try {
-              const parsed = JSON.parse(data) as {
-                type?: string
-                delta?: { type?: string; text?: string }
-              }
-              if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'text_delta') {
-                const chunk = parsed.delta.text ?? ''
-                fullText += chunk
-
-                controller.enqueue(
-                  encoder.encode(JSON.stringify({ type: 'text', text: chunk }) + '\n')
-                )
-              }
-            } catch {
-              // ignore parse errors on individual chunks
-            }
-          }
-        }
-
-        const cardMatch = fullText.match(/\{"cards":\[.*?\]\}/)
-        if (cardMatch) {
-          try {
-            const { cards } = JSON.parse(cardMatch[0]) as { cards: string[] }
-            const validCards = cards
-              .filter((c) => c in CARD_META)
-              .slice(0, 3)
-              .map((c) => ({ key: c, ...CARD_META[c] }))
-
-            if (validCards.length > 0) {
-              controller.enqueue(
-                encoder.encode(JSON.stringify({ type: 'cards', cards: validCards }) + '\n')
-              )
-            }
-          } catch {
-            // ignore card parse errors
-          }
-        }
-
-        controller.close()
-      } catch (err) {
-        controller.error(err)
+      if (validCards.length > 0) {
+        cardsSent = true
+        controller.enqueue(
+          encoder.encode(JSON.stringify({ type: 'cards', cards: validCards }) + '\n')
+        )
       }
+    } catch {
+      // ignore card parse errors
+    }
+  }
+
+  function processSseLine(
+    line: string,
+    controller: TransformStreamDefaultController<Uint8Array>
+  ) {
+    const trimmed = line.trim()
+    if (!trimmed.startsWith('data: ')) return
+    const data = trimmed.slice(6)
+    if (data === '[DONE]') return
+
+    try {
+      const parsed = JSON.parse(data) as {
+        type?: string
+        delta?: { type?: string; text?: string }
+      }
+      if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'text_delta') {
+        const token = parsed.delta.text ?? ''
+        fullText += token
+        controller.enqueue(
+          encoder.encode(JSON.stringify({ type: 'text', text: token }) + '\n')
+        )
+      }
+      if (parsed.type === 'message_stop') {
+        trySendCards(controller)
+      }
+    } catch {
+      // ignore malformed SSE JSON lines
+    }
+  }
+
+  const transformStream = new TransformStream<Uint8Array, Uint8Array>({
+    transform(chunk, controller) {
+      sseBuffer += decoder.decode(chunk, { stream: true })
+      const lines = sseBuffer.split('\n')
+      sseBuffer = lines.pop() ?? ''
+      for (const line of lines) {
+        processSseLine(line, controller)
+      }
+    },
+    flush(controller) {
+      sseBuffer += decoder.decode()
+      if (sseBuffer.trim()) {
+        for (const line of sseBuffer.split('\n')) {
+          processSseLine(line, controller)
+        }
+      }
+      trySendCards(controller)
     },
   })
 
-  return new Response(stream, {
+  const outStream = response.body.pipeThrough(transformStream)
+
+  return new Response(outStream, {
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',
-      'Transfer-Encoding': 'chunked',
-      'Cache-Control': 'no-cache',
+      'Cache-Control': 'no-cache, no-transform',
+      'X-Accel-Buffering': 'no',
     },
   })
 }

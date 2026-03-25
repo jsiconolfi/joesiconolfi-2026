@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import SwirlDotGrid from '@/components/ui/SwirlDotGrid'
 import { PROJECTS } from '@/content/projects'
-import { useChatContext } from '@/context/ChatContext'
+import { useChatContext, type ChatCard, type Message } from '@/context/ChatContext'
 import { useNavWidthContext } from '@/context/NavWidthContext'
 import { useIsMobile } from '@/hooks/useIsMobile'
 
@@ -19,45 +19,6 @@ function detectProjectMention(text: string): string | null {
   return null
 }
 
-interface ChatCard {
-  key: string
-  label: string
-  description: string
-  href: string
-  type: 'case-study' | 'page' | 'action'
-}
-
-interface Message {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  cards?: ChatCard[]
-  isStreaming?: boolean
-}
-
-const INITIAL_MESSAGE: Message = {
-  id: 'greeting',
-  role: 'assistant',
-  content:
-    "Hi! I'm Joe, a design engineer by trade and a creative cosmonaut by nature. What would you like to explore?",
-  cards: [
-    {
-      key: 'work',
-      label: 'Case Studies',
-      description: '10 projects across AI, design systems, and product',
-      href: '/work',
-      type: 'page',
-    },
-    {
-      key: 'about',
-      label: 'About',
-      description: 'Background, approach, and outside the terminal',
-      href: '/about',
-      type: 'page',
-    },
-  ],
-}
-
 const CHIPS = [
   { label: 'my work', message: 'Tell me about your work' },
   { label: 'my experience', message: 'Walk me through your experience' },
@@ -65,9 +26,6 @@ const CHIPS = [
   { label: 'my resume', message: 'I want to see your resume' },
   { label: 'contact', message: 'How can I get in touch with you?' },
 ] as const
-
-// ms per character — 28ms matches Claude's streaming feel
-const STREAM_SPEED = 28
 
 const CARDS_STRIP_REGEX = /\s*\{"cards":\[.*?\]\}\s*$/
 
@@ -150,16 +108,22 @@ const AssistantAvatar = ({ thinking = false }: AssistantAvatarProps) => (
 export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
   const router = useRouter()
   const isMobile = useIsMobile()
-  const { close: closeChatOverlay } = useChatContext()
+  const {
+    close: closeChatOverlay,
+    messages,
+    setMessages,
+    isLoading,
+    streamingGreetingContent,
+    resetConversation,
+    isLimitReached,
+    incrementMessageCount,
+  } = useChatContext()
   const { desktopNavWidthPx } = useNavWidthContext()
   const isOverlay = variant === 'overlay'
   const [closeHovered, setCloseHovered] = useState(false)
   const [yellowHovered, setYellowHovered] = useState(false)
   const [greenHovered, setGreenHovered] = useState(false)
-  const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
-  const [isLoading, setIsLoading] = useState(true)
-  const [streamingContent, setStreamingContent] = useState('')
   const [isResponseLoading, setIsResponseLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -183,36 +147,6 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
   const mobileTouch = isMobile ? ({ touchAction: 'manipulation' as const }) : {}
 
   useEffect(() => {
-    let streamInterval: ReturnType<typeof setInterval> | undefined
-
-    const thinkingTimer = setTimeout(() => {
-      setIsLoading(false)
-
-      let i = 0
-      const text = INITIAL_MESSAGE.content
-      streamInterval = setInterval(() => {
-        i++
-        setStreamingContent(text.slice(0, i))
-
-        if (i >= text.length) {
-          clearInterval(streamInterval)
-          streamInterval = undefined
-
-          setTimeout(() => {
-            setMessages([INITIAL_MESSAGE])
-            setStreamingContent('')
-          }, 300)
-        }
-      }, STREAM_SPEED)
-    }, 1500)
-
-    return () => {
-      clearTimeout(thinkingTimer)
-      if (streamInterval !== undefined) clearInterval(streamInterval)
-    }
-  }, [])
-
-  useEffect(() => {
     function handleCardClick(e: Event) {
       const event = e as CustomEvent<{ query: string }>
       sendMessageRef.current(event.detail.query)
@@ -223,7 +157,10 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
 
   async function handleSend(text: string) {
     const trimmed = text.trim()
-    if (!trimmed || isResponseLoading || isLoading || messages.length === 0) return
+    if (!trimmed || isResponseLoading || isLoading || messages.length === 0 || isLimitReached)
+      return
+
+    incrementMessageCount()
 
     const userMessage: Message = {
       id: String(++idCounter.current),
@@ -235,6 +172,7 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
       id: String(++idCounter.current),
       role: 'assistant',
       content: '',
+      cards: undefined,
       isStreaming: true,
     }
 
@@ -267,6 +205,22 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
         body: JSON.stringify({ messages: apiMessages }),
       })
 
+      if (response.status === 429) {
+        setMessages(prev =>
+          prev.map(m =>
+            m.id === assistantMessage.id
+              ? {
+                  ...m,
+                  content:
+                    "You've sent a lot of messages. Take a break and try again in an hour.",
+                  isStreaming: false,
+                }
+              : m
+          )
+        )
+        return
+      }
+
       if (!response.ok) throw new Error('Chat request failed')
 
       if (!response.body) throw new Error('No response body')
@@ -275,7 +229,6 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
       const decoder = new TextDecoder()
       let buffer = ''
       let fullText = ''
-      let cards: ChatCard[] = []
 
       while (true) {
         const { done, value } = await reader.read()
@@ -297,6 +250,7 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
             if (parsed.type === 'text' && typeof parsed.text === 'string') {
               fullText += parsed.text
               const displayText = fullText.replace(CARDS_STRIP_REGEX, '').trim()
+              // Update on every parsed line (each server token) — do not batch or debounce
               setMessages(prev =>
                 prev.map(m =>
                   m.id === assistantMessage.id
@@ -307,7 +261,13 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
             }
 
             if (parsed.type === 'cards' && Array.isArray(parsed.cards)) {
-              cards = parsed.cards
+              const nextCards =
+                parsed.cards.length > 0 ? (parsed.cards as ChatCard[]) : undefined
+              setMessages(prev =>
+                prev.map(m =>
+                  m.id === assistantMessage.id ? { ...m, cards: nextCards } : m
+                )
+              )
             }
           } catch {
             // ignore malformed lines
@@ -316,10 +276,11 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
       }
 
       const displayText = fullText.replace(CARDS_STRIP_REGEX, '').trim()
+      // Cards already merged on this message from `cards` NDJSON lines — do not overwrite here
       setMessages(prev =>
         prev.map(m =>
           m.id === assistantMessage.id
-            ? { ...m, content: displayText, cards, isStreaming: false }
+            ? { ...m, content: displayText, isStreaming: false }
             : m
         )
       )
@@ -331,6 +292,7 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
             ? {
                 ...m,
                 content: 'Something went wrong. Try again.',
+                cards: undefined,
                 isStreaming: false,
               }
             : m
@@ -466,8 +428,11 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
                   </span>
                 )}
               </span>
-              <span
-                role="presentation"
+              <button
+                type="button"
+                title="New conversation"
+                aria-label="New conversation"
+                onClick={() => resetConversation()}
                 onMouseEnter={() => setGreenHovered(true)}
                 onMouseLeave={() => setGreenHovered(false)}
                 style={{
@@ -475,10 +440,14 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
                   height: 10,
                   borderRadius: '50%',
                   backgroundColor: '#28c840',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   flexShrink: 0,
+                  ...mobileTouch,
                 }}
               >
                 {greenHovered && (
@@ -489,12 +458,13 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
                       color: 'rgba(0,0,0,0.5)',
                       fontWeight: 700,
                       userSelect: 'none',
+                      pointerEvents: 'none',
                     }}
                   >
                     +
                   </span>
                 )}
-              </span>
+              </button>
             </>
           ) : (
             <>
@@ -518,14 +488,22 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
                   flexShrink: 0,
                 }}
               />
-              <span
+              <button
+                type="button"
+                title="New conversation"
+                aria-label="New conversation"
+                onClick={() => resetConversation()}
                 style={{
                   width: 10,
                   height: 10,
                   borderRadius: '50%',
                   backgroundColor: 'rgba(255,255,255,0.15)',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
                   display: 'block',
                   flexShrink: 0,
+                  ...mobileTouch,
                 }}
               />
             </>
@@ -566,12 +544,12 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
                 <p
                   className="font-mono text-sm font-light text-text-secondary leading-relaxed"
                   style={{
-                    opacity: streamingContent ? 1 : 0,
+                    opacity: streamingGreetingContent ? 1 : 0,
                     transition: 'opacity 0.6s ease',
                   }}
                 >
-                  {streamingContent || '\u00A0'}
-                  {streamingContent && (
+                  {streamingGreetingContent || '\u00A0'}
+                  {streamingGreetingContent && (
                     <span
                       style={{
                         display: 'inline-block',
@@ -724,106 +702,131 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
           style={{
             flexShrink: 0,
             backgroundColor: 'rgba(14, 16, 21, 0.6)',
-            borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+            borderTop: isLimitReached ? 'none' : '1px solid rgba(255, 255, 255, 0.06)',
             paddingBottom: isMobile ? 'calc(12px + env(safe-area-inset-bottom, 0px))' : 12,
           }}
         >
-          {/* Chips — always visible, never hidden */}
-          <div
-            className="flex flex-wrap"
-            style={{
-              gap: 8,
-              padding: '10px 16px 0',
-            }}
-          >
-            {CHIPS.map(chip => (
-              <button
-                key={chip.label}
-                type="button"
-                disabled={chipDisabled}
-                onClick={() => handleSend(chip.message)}
-                className="chip-button font-mono text-xs font-light px-3 py-1.5 rounded-full disabled:opacity-30 disabled:cursor-not-allowed"
+          {isLimitReached ? (
+            <div
+              style={{
+                padding: '14px 16px',
+                borderTop: '1px solid rgba(255,255,255,0.06)',
+              }}
+            >
+              <p
                 style={{
-                  backgroundColor: 'transparent',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  ...mobileTouch,
+                  fontSize: 11,
+                  fontWeight: 300,
+                  color: 'rgba(255,255,255,0.4)',
+                  margin: 0,
+                  fontFamily: 'var(--font-mono)',
+                  lineHeight: 1.6,
                 }}
               >
-                {chip.label}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-3 px-4">
-            <span
-              className="font-mono text-xs flex-shrink-0 select-none"
-              style={{ color: '#00ff9f' }}
-            >
-              &gt;
-            </span>
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={e => {
-                setInput(e.target.value)
-                window.dispatchEvent(new CustomEvent('swirl:keypress'))
-              }}
-              onKeyDown={handleKeyDown}
-              onFocus={handleInputFocus}
-              placeholder="ask me anything..."
-              aria-label="Ask about Joe's work or approach"
-              autoFocus
-              className={
-                isMobile
-                  ? 'flex-1 bg-transparent font-mono font-light text-white placeholder:text-text-hint focus:outline-none'
-                  : 'flex-1 bg-transparent font-mono text-sm font-light text-white placeholder:text-text-hint focus:outline-none'
-              }
-              style={{
-                caretColor: '#00ff9f',
-                fontFamily: 'var(--font-mono)',
-                fontWeight: 300,
-                fontSize: isMobile ? '16px' : '13px',
-                ...mobileTouch,
-              }}
-            />
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={
-                !input.trim() ||
-                isResponseLoading ||
-                isLoading ||
-                messages.length === 0
-              }
-              aria-label="Send message"
-              className="rounded-full flex items-center justify-center transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
-              style={{
-                width: isMobile ? 44 : 28,
-                height: isMobile ? 44 : 28,
-                minWidth: isMobile ? 44 : undefined,
-                minHeight: isMobile ? 44 : undefined,
-                border: '1px solid rgba(255,255,255,0.2)',
-                backgroundColor: 'rgba(255,255,255,0.05)',
-                ...mobileTouch,
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'
-              }}
-            >
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                <path
-                  d="M6 10V2M2 6l4-4 4 4"
-                  stroke="currentColor"
-                  strokeWidth="1.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+                You&apos;ve reached the message limit for this session. Refresh the page to start a new
+                conversation.
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Chips — always visible, never hidden */}
+              <div
+                className="flex flex-wrap"
+                style={{
+                  gap: 8,
+                  padding: '10px 16px 0',
+                }}
+              >
+                {CHIPS.map(chip => (
+                  <button
+                    key={chip.label}
+                    type="button"
+                    disabled={chipDisabled}
+                    onClick={() => handleSend(chip.message)}
+                    className="chip-button font-mono text-xs font-light px-3 py-1.5 rounded-full disabled:opacity-30 disabled:cursor-not-allowed"
+                    style={{
+                      backgroundColor: 'transparent',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      ...mobileTouch,
+                    }}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-3 px-4">
+                <span
+                  className="font-mono text-xs flex-shrink-0 select-none"
+                  style={{ color: '#00ff9f' }}
+                >
+                  &gt;
+                </span>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={input}
+                  onChange={e => {
+                    setInput(e.target.value)
+                    window.dispatchEvent(new CustomEvent('swirl:keypress'))
+                  }}
+                  onKeyDown={handleKeyDown}
+                  onFocus={handleInputFocus}
+                  placeholder="ask me anything..."
+                  aria-label="Ask about Joe's work or approach"
+                  autoFocus
+                  className={
+                    isMobile
+                      ? 'flex-1 bg-transparent font-mono font-light text-white placeholder:text-text-hint focus:outline-none'
+                      : 'flex-1 bg-transparent font-mono text-sm font-light text-white placeholder:text-text-hint focus:outline-none'
+                  }
+                  style={{
+                    caretColor: '#00ff9f',
+                    fontFamily: 'var(--font-mono)',
+                    fontWeight: 300,
+                    fontSize: isMobile ? '16px' : '13px',
+                    ...mobileTouch,
+                  }}
                 />
-              </svg>
-            </button>
-          </div>
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={
+                    !input.trim() ||
+                    isResponseLoading ||
+                    isLoading ||
+                    messages.length === 0
+                  }
+                  aria-label="Send message"
+                  className="rounded-full flex items-center justify-center transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
+                  style={{
+                    width: isMobile ? 44 : 28,
+                    height: isMobile ? 44 : 28,
+                    minWidth: isMobile ? 44 : undefined,
+                    minHeight: isMobile ? 44 : undefined,
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    ...mobileTouch,
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'
+                  }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                    <path
+                      d="M6 10V2M2 6l4-4 4 4"
+                      stroke="currentColor"
+                      strokeWidth="1.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

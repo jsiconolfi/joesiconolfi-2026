@@ -11,7 +11,7 @@ This is a personal portfolio site for Joe Siconolfi, Staff Design Engineer at Co
 - **Styling**: Tailwind CSS v3 — utility-first, no inline styles except for dynamic values (e.g. animation keyframe percentages)
 - **Animation**: Framer Motion (`framer-motion@12`) for page transitions and component-level animation, CSS for the swirl/background
 - **Fonts**: Loaded via `next/font/google` — **IBM Plex Mono** only (weights 100–700, normal + italic, CSS var `--font-mono`). All type roles use IBM Plex Mono, differentiated by weight and size. No other fonts.
-- **AI integration**: Anthropic Messages API via **`src/app/api/chat/route.ts`** (edge runtime, `fetch` to `api.anthropic.com`) — **`ANTHROPIC_API_KEY`**, model **`claude-sonnet-4-20250514`**, **`max_tokens: 1024`** (**Session 72**)
+- **AI integration**: Anthropic Messages API via **`src/app/api/chat/route.ts`** (edge runtime, `fetch` to `api.anthropic.com`) — **`ANTHROPIC_API_KEY`**, model **`claude-sonnet-4-20250514`**, **`max_tokens: 400`** (**Session 77** — do not increase without explicit instruction). **Session 80:** in-memory IP rate limit **`RATE_LIMIT_MAX` = 50** requests per **`RATE_LIMIT_WINDOW` = 1h** per IP (`x-forwarded-for` / `x-real-ip`); **`429`** JSON body; resets on edge cold start.
 - **Deployment**: Vercel
 
 ## File structure conventions
@@ -165,11 +165,13 @@ Two RAF-loop dot grid components live in `src/components/ui/`:
 - `rafRef` typed as `useRef<number | undefined>(undefined)` — cleanup on unmount
 - `prefers-reduced-motion`: static snapshot state, no animation
 
-## AI / chat panel (Session 7 — updated Session 11, Session 66, Session 68, Session 69, Session 70, **Session 72**, **Session 74**, **Session 75**, **Session 76**)
+## AI / chat panel (Session 7 — updated Session 11, Session 66, Session 68, Session 69, Session 70, **Session 72**, **Session 74**, **Session 75**, **Session 76**, **Session 77**, **Session 78**, **Session 79**, **Session 80**)
 
 The prompt bar has been replaced by a full `ChatPanel` component — the primary interface of the homepage. Rules:
 - `src/components/ui/ChatPanel.tsx` — `variant?: 'embedded' | 'overlay'` (default **`embedded`**). Homepage uses embedded; **`ChatOverlay`** passes **`variant="overlay"`**.
-- **Chrome (Session 69):** **Embedded** — three **gray** dots `rgba(255,255,255,0.15)` `10px`, no close control; **`id="chat-panel"`** on root. **Overlay** — **colored** traffic lights, red closes via **`useChatContext().close()`**; **no** `id` on root.
+- **Chrome (Session 69, **Session 79**):** **Embedded** — first two **gray** dots `rgba(255,255,255,0.15)` `10px` (non-interactive); **third gray dot** is a `<button type="button">` — **`useChatContext().resetConversation()`**, `title` / `aria-label` "New conversation"; **`id="chat-panel"`** on root. **Overlay** — red closes via **`useChatContext().close()`**; **green** is a `<button>` — **`resetConversation()`** (inner `+` glyph **`pointerEvents: 'none'`**); **no** `id` on root.
+- **Session 79 — `ChatContext.tsx`:** Exports **`Message`**, **`ChatCard`**, **`INITIAL_MESSAGE`**, **`cloneGreetingMessage()`**. **`ChatProvider`** state: **`messages`**, **`setMessages`**, **`isLoading`**, **`setIsLoading`**, **`streamingGreetingContent`**, plus existing **`isOpen` / `open` / `close` / `toggle`**. **`ChatPanel`** must not keep **`messages`** or **`isLoading`** in component state. Greeting sequence (thinking → stream → commit) runs **once** inside **`ChatProvider`** when **`messages.length === 0`** so embedded + overlay never double-schedule timers. **`resetConversation()`** replaces thread with **`cloneGreetingMessage()`** and clears the greeting stream buffer. No **localStorage** — refresh resets the thread.
+- **Session 80 — Session message cap (`ChatContext.tsx` + `ChatPanel.tsx`):** **`messageCount`** + **`incrementMessageCount()`** + **`isLimitReached`**; **`MESSAGE_LIMIT` = 30** user sends per browser session (chips and typed sends both increment). **Not** cleared by **`resetConversation()`** — only a full page refresh resets the count. When **`isLimitReached`**, **`handleSend`** returns early; the **entire** chips + input footer is replaced by a short mono note to refresh (no disabled input left visible). **`429`** from **`POST /api/chat`**: streaming assistant row is filled with a human-readable cooldown message (**not** a separate error UI); **`finally`** still clears **`isResponseLoading`**.
 - Panel dimensions (**Session 75**): desktop **`width`** = **`desktopNavWidthPx`** from **`NavWidthContext`** (nav pill measured in **`NavWrapper`** via **`ResizeObserver`** on the shrink-wrap div; fallback **`DEFAULT_DESKTOP_NAV_WIDTH_PX` = 560** in `NavWidthContext.tsx`). `maxWidth: 100%`. `height: 75vh`, `maxHeight: 80vh`; mobile `width: calc(100vw - 32px)`, **`height` and `maxHeight: calc(100dvh - 140px)`** — **`dvh` not `vh`** on mobile (Session 68). Outer panel `display: flex; flexDirection: column; minHeight: 0` so the messages region scrolls.
 - Inner column wrapper (Session 70): `flex: 1`, `minHeight: 0`, `height/maxHeight: 100%`, `overflow: hidden` — fills the outer panel so header / messages / input distribute correctly on mobile.
 - Messages column: `flex: 1`, `minHeight: 0`, `overflowY: auto` — **`overscrollBehavior: 'contain'`** (no scroll chaining to page), **`WebkitOverflowScrolling: 'touch'`** (iOS momentum). Chips + input `flexShrink: 0`; input stack **`paddingBottom: calc(12px + env(safe-area-inset-bottom, 0px))`** on mobile.
@@ -188,24 +190,25 @@ The prompt bar has been replaced by a full `ChatPanel` component — the primary
 
 ### Animated greeting stream on load (Session 11–13, updated Session 33, **Session 72**)
 
-Three-phase load sequence on every page visit:
+Three-phase load sequence on every **full page load** (or whenever **`messages`** is empty — **Session 79:** timers owned by **`ChatProvider`**, not per **`ChatPanel`**):
 1. **Thinking** (1500ms) — `AssistantAvatar thinking={true}` (SwirlDotGrid animates inside the circle) + `<ThinkingText />` inline to the right, vertically centered. `isLoading: true`. Each character of "thinking..." has a staggered shimmer via `thinking-shimmer` CSS keyframe.
-2. **Streaming** — `isLoading` flips false; avatar crossfades to icon (`opacity 0.4s ease`); **`INITIAL_MESSAGE.content`** streams character by character at `STREAM_SPEED = 28` ms/char; a `2px × 13px` `#00ff9f` cursor blinks at `0.8s step-end`.
-3. **Complete** — 300ms after last character: `streamingContent` clears, **`INITIAL_MESSAGE`** (greeting + starter `cards` for `work` and `about`) lands in `messages`. **Session 75** greeting: `Hi! I'm Joe, a design engineer by trade and a creative cosmonaut by nature. What would you like to explore?` (no em dash).
+2. **Streaming** — `isLoading` flips false; avatar crossfades to icon (`opacity 0.4s ease`); **`INITIAL_MESSAGE.content`** streams character by character at **`STREAM_SPEED = 28`** ms/char (constant in **`ChatContext.tsx`**); a `2px × 13px` `#00ff9f` cursor blinks at `0.8s step-end`. Buffer: **`streamingGreetingContent`** in context.
+3. **Complete** — 300ms after last character: **`streamingGreetingContent`** clears, **`cloneGreetingMessage()`** (greeting + starter `cards` for `work` and `about`) lands in **`messages`** — **Session 78:** never `setMessages([INITIAL_MESSAGE])` (avoids shared reference with module constant). **Session 75** greeting: `Hi! I'm Joe, a design engineer by trade and a creative cosmonaut by nature. What would you like to explore?` (no em dash).
 
 State shape:
-- `isLoading` — controls initial thinking phase (starts `true`, becomes `false` after 1500ms)
-- `streamingContent` — string being built during phase 2
-- `isResponseLoading` — `true` while `/api/chat` fetch is in progress; disables send + chips; distinct from `isLoading`
+- `isLoading` — from **`ChatContext`** — initial greeting thinking phase (starts `true` while `messages.length === 0`, becomes `false` after 1500ms)
+- `streamingGreetingContent` — from **`ChatContext`** — string built during greeting phase 2
+- `isResponseLoading` — **local `ChatPanel` state** — `true` while `/api/chat` fetch is in progress; disables send + chips; distinct from `isLoading`
 
-### Anthropic chat API (**Session 72**, **Session 75**)
+### Anthropic chat API (**Session 72**, **Session 75**, **Session 77**, **Session 80**)
 
 - **Route:** `src/app/api/chat/route.ts` — `export const runtime = 'edge'`, `POST`, body `{ messages: { role, content }[] }`.
+- **Session 80 — IP rate limit:** Module-scope **`Map`** (`rateLimitStore`) — key IP string, value **`{ count, windowStart }`**; **`RATE_LIMIT_MAX` = 50**, **`RATE_LIMIT_WINDOW` = 3600000** ms. **`checkRateLimit(ip)`** runs at the start of **`POST`** (IP from **`x-forwarded-for`** first hop or **`x-real-ip`**, else **`'unknown'`**). Over limit → **`429`**, **`Content-Type: application/json`**, body **`{ error: 'Rate limit exceeded. Try again later.' }`**. Store resets on edge cold start.
 - **Env:** `ANTHROPIC_API_KEY` (500 if missing). Add to `.env.local` and Vercel project env.
 - **Client payload:** Exclude `id === 'greeting'` and assistant rows with empty `content` so the **first message is always `user`** (Anthropic API rule).
-- **Model / limits:** `claude-sonnet-4-20250514`, `max_tokens: 1024` — do not change without explicit instruction.
-- **Stream shape:** Server translates Anthropic SSE into **NDJSON** to the client: `{ type: 'text', text }` per delta; optional final `{ type: 'cards', cards }` when trailing `{"cards":[...]}` parses and keys exist in route `CARD_META` (max 3).
-- **Client:** `handleSend` strips displayed card JSON via `CARDS_STRIP_REGEX`; streaming assistant shows trailing cursor; failures → `Something went wrong. Try again.`
+- **Model / limits:** `claude-sonnet-4-20250514`, **`max_tokens: 400`** (**Session 77**) — hard cap for concise replies; **do not increase** without explicit instruction.
+- **Stream shape:** Anthropic SSE body is piped through a **`TransformStream`** that buffers incomplete lines, forwards **`content_block_delta` / `text_delta`** immediately as NDJSON `{ type: 'text', text }` per token. Cards: on **`message_stop`** and again in **`flush`** via **`trySendCards`** (deduped with `cardsSent`) so trailing `{"cards":[...]}` still emits after the stream. Response headers **`Cache-Control: no-cache, no-transform`** and **`X-Accel-Buffering: no`** (**Session 77**) reduce proxy buffering (e.g. Vercel/Nginx).
+- **Client (`ChatPanel`):** For each parsed NDJSON line in the read loop, **`setMessages`** updates the streaming assistant row immediately (**Session 77** — no debounce). **`{ type: 'cards' }`** lines update **only** the current assistant row’s **`cards`** in state (**Session 78**); stream end sets **`isStreaming: false`** without replacing **`cards`**. No global cards state; new assistants start with **`cards: undefined`**. Strips displayed card JSON via `CARDS_STRIP_REGEX`; failures → `Something went wrong. Try again.` (**Session 78:** error row sets **`cards: undefined`**). **Session 80:** if **`response.status === 429`**, set the current assistant bubble text to the hourly cooldown copy and **`isStreaming: false`** before returning (no NDJSON read).
 - **Input gating:** Send, chips, and `handleSend` no-op while `messages.length === 0` so the three-phase greeting is not interrupted and the first API turn always includes thread context after `INITIAL_MESSAGE` exists.
 - **Session 75 — System prompt:** First person throughout. Opening: "You are Joe Siconolfi... Speak in first person as Joe". Sections **Who I am**, **My approach**, **My philosophy**, **My technical approach and hands-on model work**, **My career**, **My projects**, **My beliefs**; **How to answer** ends with first-person instructions. Card rules in prompt use **your** for background / thinking / work.
 - **Session 74 — Contextual card hover (`ChatPanel.tsx`):** Border and background stay fixed; only `.card-title` and `.card-arrow` colors change via `onMouseEnter` / `onMouseLeave` (`querySelector`), aligned with **Chat with me** (text highlight, not surface highlight).
@@ -229,7 +232,7 @@ Color rules:
 
 Chips appear exclusively in the persistent bar directly above the input field. They do NOT appear inline inside message bubbles.
 - `Message` has no `chips` field — chips are not message-level data. Optional **`cards`** on assistant messages are for AI-surfaced links only (**Session 72**).
-- **Session 76:** The chip bar is **always rendered** (no `showChips` / no hide after first user message). Container `padding: '10px 16px 0'`, `gap: 8`, `flexWrap`. **`ChatOverlay`** only mounts **`ChatPanel variant="overlay"`** — chips behavior is identical. Chips stay disabled until `INITIAL_MESSAGE` is committed (`messages.length > 0`) and while `isResponseLoading` / initial `isLoading` (unchanged gating).
+- **Session 76:** The chip bar is **always rendered** (no `showChips` / no hide after first user message). Container `padding: '10px 16px 0'`, `gap: 8`, `flexWrap`. **`ChatOverlay`** only mounts **`ChatPanel variant="overlay"`** — chips behavior is identical. Chips stay disabled until `INITIAL_MESSAGE` is committed (`messages.length > 0`) and while `isResponseLoading` / initial `isLoading` (unchanged gating). **Session 80 exception:** when **`isLimitReached`**, chips + input are **not** rendered — replaced by the session-limit copy block.
 - Do not put suggestion chips inside assistant bubbles — contextual **cards** are separate (compact single-line rows below finished assistant text).
 
 CSS:
