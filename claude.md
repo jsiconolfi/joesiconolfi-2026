@@ -39,17 +39,18 @@ The homepage is a fixed overlay composition — not a scrollable section:
 
 The ChatPanel (`src/components/ui/ChatPanel.tsx`) is a terminal-aesthetic frosted glass chat interface:
 - **`variant` prop (Session 69):** `'embedded'` (default, homepage) vs `'overlay'` (`ChatOverlay` only). **Embedded:** three **gray** dots `rgba(255,255,255,0.15)` at `10px` — persistent ambient window, not closeable from chrome; `id="chat-panel"` on root for `OrbitalSystem`. **Overlay:** **colored** `#ff5f57` / `#febc2e` / `#28c840` — red `<button>` hover `×`, `title="Close"`, `onClick → useChatContext().close()`; yellow/green `−` / `+` hover only; **no** `id` on root (avoids duplicate id with embedded instance).
-- Animated greeting stream on load — three phases: thinking → streaming → chips (Session 11)
+- Animated greeting stream on load — three phases: thinking → streaming → assistant message with starter cards (Session 11, **Session 72**)
 - AI avatar: `/logo-update.svg` in a small circle
 - `>` prompt prefix in `#00ff9f` terminal green
-- Placeholder AI responses (800ms timeout) — Anthropic integration next session
+- **Session 72 — Anthropic streaming:** `POST /api/chat` (`src/app/api/chat/route.ts`, **`export const runtime = 'edge'`**) calls Anthropic Messages API with model **`claude-sonnet-4-20250514`**, **`max_tokens: 1024`**, long in-file `SYSTEM_PROMPT`. Env: **`ANTHROPIC_API_KEY`** (`.env.local` + Vercel). Response is NDJSON lines: `{ type: 'text', text }` per delta, then optional `{ type: 'cards', cards }` after full text is parsed for trailing `{"cards":["slug",...]}` (max 3, validated keys). Client strips that JSON from displayed assistant text via regex.
+- **Contextual cards (Session 72):** `Message` may include optional `cards?: ChatCard[]` (label, description, href, type). Rendered only below **completed** assistant text (not while `isStreaming`). Internal/action links use `<a>` with terminal green hover border/bg per site rules. Separate from suggestion chips.
 - Glass treatment uses inline styles matching the site's existing glass variables
 - Thinking state: `SwirlDotGrid` (6×4, speed 0.055) + `<ThinkingText />` component (character-shimmer animation)
 
 Load sequence (Session 11–13, updated Session 33):
 1. **Phase 1 — Thinking** (1.5s): `isLoading: true`. `AssistantAvatar thinking={true}` — SwirlDotGrid sweeps inside the avatar circle. `<ThinkingText />` label sits inline to the right, vertically centered on the same row. Each character of "thinking..." has a staggered shimmer animation (`thinking-shimmer` keyframe, 80ms stagger per char, 1.6s duration).
 2. **Phase 2 — Streaming**: `isLoading` flips false. Avatar crossfades to icon (`opacity 0.4s ease`). Greeting text builds character by character at 28ms/char; `#00ff9f` cursor blinks at trailing edge.
-3. **Phase 3 — Complete**: 300ms after last char, `streamingContent` clears, full message lands in `messages`.
+3. **Phase 3 — Complete**: 300ms after last char, `streamingContent` clears, **`INITIAL_MESSAGE`** (`id: 'greeting'`) lands in `messages` with copy + starter cards (`work`, `about`).
 
 AssistantAvatar (Session 13):
 - `thinking` prop (boolean, default `false`) controls a crossfade between two absolutely-positioned layers inside a fixed `w-9 h-9` circle
@@ -61,20 +62,21 @@ AssistantAvatar (Session 13):
 
 Two separate loading states:
 - `isLoading` — initial page load thinking phase only
-- `isResponseLoading` — subsequent AI response loading; used for send button `disabled` prop and `AssistantAvatar thinking={true}`
+- `isResponseLoading` — subsequent AI request in flight; disables send and chips; empty streaming assistant row shows `ThinkingText` on the avatar row; once text arrives, assistant bubble updates with trailing `#00ff9f` blink cursor until stream completes
 
 Project mention detection (Session 14):
 - `detectProjectMention(text)` scans user input against each project's `keywords` array
 - On match, dispatches `portfolio:project-active` CustomEvent with `{ projectId }` detail
-- Fired immediately after the user sends a message (before the placeholder response timeout)
+- Fired immediately when the user sends a message (before the chat API returns)
 - Same CustomEvent pattern as `swirl:keypress`
 - Card picks its staging side (left or right) based on current orbital x vs viewport centerX at the moment of activation
 
 Suggestion chips — persistent bar only:
 - Chips appear ONLY in the persistent bar above the input. Never inside message bubbles.
-- The `Message` interface has no `chips` field — do not add one.
-- The bar always shows the fixed set: `my work`, `my experience`, `about me`, `my resume`, `contact`.
-- When wiring real AI responses, do not pass chips through message data — the bar handles all navigation shortcuts.
+- The `Message` interface has no `chips` field — do not add one. Optional **`cards`** on assistant messages are for model-surfaced links only (**Session 72**).
+- The bar shows the fixed set: `my work`, `my experience`, `about me`, `my resume`, `contact` — **hidden after the first user message** (**Session 72**).
+- Each chip calls **`handleSend`** with a full natural-language prompt (e.g. `Tell me about your work`), not the chip label alone (**Session 72**).
+- Send, chips, and **`handleSend`** are inactive while **`messages.length === 0`** (until **`INITIAL_MESSAGE`** lands after the load sequence) so the greeting stream is not cleared mid-flight (**Session 72**).
 - **Session 66 (mobile):** chips row uses `flexWrap` + `gap: 8`; `padding: 10px 16px` on the chips container; input bar uses `px-0` on mobile with chips/input horizontal padding adjusted so the row wraps cleanly.
 
 ### Floating project cards (Sessions 14–23 — current state)
@@ -120,14 +122,13 @@ interface Project {
 - NO data visualizations, NO `rgba(196,174,145,*)` warm amber
 - Active beacon: static `#00ff9f` dot + `boxShadow: 0 0 8px rgba(0,255,159,0.5)` — no pulse
 - Idle `opacity: 0.6`, hovered `opacity: 0.85`, active `opacity: 1`
-- Hover: border → `rgba(255,255,255,0.2)`, `scale(1.02)` (suppressed when active), `zIndex: 12`
+- Hover: border → `rgba(255,255,255,0.2)`, `scale(1.02)` (suppressed when active), `zIndex: 12` — implemented in **`globals.css`** via `.orbital-card-root:hover` (no `hovered` React state — **Session 73**)
 - Active always overrides hover — active state takes full visual control
 
 **Media rendering (Session 23, updated Session 27):**
 - `project.image` → raw `<img>` at rest (not `next/image` — optimization pipeline caused silent failures). `onError` → placeholder fallback.
-- `project.video` → `<video ref={videoRef} muted playsInline loop preload="none">` — lazy, no autoPlay. Plays on hover or chat activation (`hovered || active`), pauses and resets on leave.
+- `project.video` (and MP4 in `project.image` when no separate still) → `<video muted playsInline loop preload="metadata">` — loads enough for a **first-frame thumbnail at rest**; **`preload="none"`** leaves orbital cards visually empty until hover. Plays on hover or chat activation; pauses and resets on leave.
 - Both layers overlap in the image area. Image crossfades to opacity 0 when video is playing; video crossfades to opacity 1. Transition: `opacity 0.2s ease`.
-- `preload="none"` required — no network request until first hover.
 - `eslint-disable-next-line @next/next/no-img-element` comment justifies the raw `<img>` exception
 - Old autoPlay detection (`isVideo = project.image?.endsWith('.mp4')`) removed — `image` and `video` are now separate fields.
 
@@ -144,22 +145,22 @@ interface Project {
 **Viewport clamping (Session 23):**
 - `clampHome(xPct, yPct, vw, vh)` in `OrbitalSystem.tsx` — ensures every home position keeps the full 220×160 card footprint on screen. `EDGE_PAD = 12`. Re-applied on every resize.
 
-**Soft collision repulsion (Session 23, staggered Session 30):**
+**Soft collision repulsion (Session 23, staggered Session 30, **Session 73** dist²):**
 - `positionsRef` — shared `useRef<Array<{x,y}>>` in `OrbitalSystem`, passed to every card. Updated each RAF frame via `onPositionUpdate` callback. Never triggers re-renders.
-- Each card reads `positionsRef` in its RAF loop: if distance to another card < `MIN_DIST = 240`, applies a gentle push proportional to overlap. `REPULSE_STRENGTH = 0.4`.
+- Each card reads `positionsRef` in its RAF loop: if distance to another card < `MIN_DIST = 240`, applies a gentle push proportional to overlap. `REPULSE = 0.6` (impulse to velocity).
 - Repulsion + viewport clamping only apply when card is idle (`activeRef.current === false`). Staged cards are fully exempt.
 - `startTimeRef` uses lazy initialization on first RAF frame (not `performance.now()` at render time) to satisfy `react-hooks/purity`.
-- **Collision check staggered every 3rd frame (Session 30):** `frameCountRef.current % 3 === cardIndex % 3` — different cards check on different frames. Cuts collision compute by 66%; imperceptible since positions change slowly.
+- **Collision check staggered every 3rd frame:** `frameCountRef.current % 3 === cardIndex % 3` — different cards check on different frames. Cuts collision compute by ~66%. **Session 73:** compare **`distSq`** to `MIN_DIST * MIN_DIST` first; call `sqrt` only when pairs overlap (fewer `sqrt` calls per frame).
 
 **Velocity + damping physics (Session 32 — replaces stateless position model):**
 
 The old model recalculated position from scratch every frame (`newPos = driftPos + forces`). Forces had no memory so they oscillated. Session 32 introduces proper velocity physics:
 
 - `posRef` and `velRef` — `useRef({ x: 0, y: 0 })` each. Persist state between frames. Never trigger renders.
-- `lerpRef` and `frameCountRef` removed — no longer needed.
+- `lerpRef` removed — no longer needed. **`frameCountRef` (Session 73)** — increments each RAF tick; used **only** to stagger collision repulsion (`% 3` vs `cardIndex`); does not drive position lerp.
 - **Spring toward drift target**: `vx += (targetX - x) * SPRING`. `SPRING = 0.018` — gentle follow, not snap.
 - **DAMPING = 0.82** — velocity multiplied by 0.82 every frame. Oscillations decay to zero within ~0.5s regardless of opposing forces.
-- **Collision repulsion adds to velocity** (not position). `REPULSE = 0.6` impulse, then damped. Previous stagger (every 3rd frame) removed — velocity model handles smoothing naturally.
+- **Collision repulsion adds to velocity** (not position). `REPULSE = 0.6` impulse, then damped. Staggered every 3rd frame per card; damping smooths inter-frame gaps.
 - **Edge repulsion adds to velocity**. `EDGE_MARGIN = 130px`, `EDGE_FORCE = 0.4`. Force proportional to distance inside margin.
 - **Staging lerp**: when `activeRef.current && chosenSlotRef.current`, card lerps at `0.06` to slot directly. Velocity bled at `0.85x` per frame so return-to-orbit is smooth.
 - **Hard safety clamp (`HARD_MARGIN = 20px`)** — last resort only. Fires only if card somehow exits the viewport despite all soft forces. Does NOT interact with normal physics.
@@ -191,10 +192,12 @@ The old model recalculated position from scratch every frame (`newPos = driftPos
 
 **Project shuffle (Session 24):** `shuffleArray<T>()` (Fisher-Yates, module scope in `OrbitalSystem.tsx`) is called once via `useMemo(() => shuffleArray(PROJECTS), [])`. The render iterates `shuffledProjects`. Each page load gets a different layout; positions are stable within a session. `PROJECTS` in `projects.ts` is never mutated. Must use `useMemo` — `useState` or `useEffect` would cause a visible flash of the unshuffled order.
 
-**Performance — Session 30 rewrites:**
+**Performance — Session 30 rewrites + Session 73 (homepage / orbital hover):**
 - **OrbitalCard position is direct DOM** — `setDisplayPos` state removed. In the RAF loop, `cardRef.current.style.left/top` is set directly. Eliminates 600 React state updates/second (60fps × 10 cards).
-- **OrbitalCard opacity/zIndex are imperative** — set directly on `cardRef` in hover handlers and activation/deactivation callbacks. `hoveredRef` mirrors `hovered` state for use in async callbacks.
-- **OrbitalCard video is imperative** — `playVideo()` / `pauseVideo()` called from event handlers, not a `useEffect` watching state. `videoPlayingRef` guards against double-play. Deferred `currentTime = 0` avoids seek collision.
+- **OrbitalCard opacity/zIndex are imperative** — set directly on `cardRef` in pointer enter/leave and activation/deactivation callbacks. **`hoveredRef`** mirrors pointer hover **without** `setState` — used only for async deactivation timer + video pause logic.
+- **Session 73 — hover visuals are CSS-only** — classes `orbital-card-root`, `orbital-card-panel`, `orbital-card-panel--active`, footer helpers in **`globals.css`**. Moving the cursor across cards does **not** re-render React for border, shadow, scale, role color, or footer copy swap; reduces main-thread work alongside `backdrop-filter` compositing.
+- **Session 73 — active beacon** always in DOM; shown with `.orbital-card-root--active .orbital-card-beacon { display: block }` (no conditional mount on `active`).
+- **OrbitalCard video is imperative** — `playVideo()` / `pauseVideo()` from pointer handlers. **`preload="metadata"`** on `<video>` (**Session 74**) — required so MP4-backed cards show a poster at rest; Session 73’s `preload="none"` made thumbnails disappear.
 - **Swirl DPR capped at 1.5** (`Math.min(window.devicePixelRatio ?? 1, 1.5)`) — 30% fewer canvas fill ops/frame on Retina; invisible at character sizes.
 - **Swirl canvas `willChange: 'contents'`** — compositor layer for canvas, prevents canvas repaints from invalidating other layers.
 - **CaseStudyThumbnail has zero `useState`** — fully refs + imperative DOM. `passive: true` on event listeners. `willChange: 'transform'` + `translateZ(0)` on both wrapper and video elements.

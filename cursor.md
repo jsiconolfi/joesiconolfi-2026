@@ -11,7 +11,7 @@ This is a personal portfolio site for Joe Siconolfi, Staff Design Engineer at Co
 - **Styling**: Tailwind CSS v3 — utility-first, no inline styles except for dynamic values (e.g. animation keyframe percentages)
 - **Animation**: Framer Motion (`framer-motion@12`) for page transitions and component-level animation, CSS for the swirl/background
 - **Fonts**: Loaded via `next/font/google` — **IBM Plex Mono** only (weights 100–700, normal + italic, CSS var `--font-mono`). All type roles use IBM Plex Mono, differentiated by weight and size. No other fonts.
-- **AI integration**: Anthropic SDK (`@anthropic-ai/sdk`) for the prompt bar / conversational layer
+- **AI integration**: Anthropic Messages API via **`src/app/api/chat/route.ts`** (edge runtime, `fetch` to `api.anthropic.com`) — **`ANTHROPIC_API_KEY`**, model **`claude-sonnet-4-20250514`**, **`max_tokens: 1024`** (**Session 72**)
 - **Deployment**: Vercel
 
 ## File structure conventions
@@ -165,7 +165,7 @@ Two RAF-loop dot grid components live in `src/components/ui/`:
 - `rafRef` typed as `useRef<number | undefined>(undefined)` — cleanup on unmount
 - `prefers-reduced-motion`: static snapshot state, no animation
 
-## AI / chat panel (Session 7 — updated Session 11, Session 66, Session 68, Session 69, Session 70)
+## AI / chat panel (Session 7 — updated Session 11, Session 66, Session 68, Session 69, Session 70, **Session 72**)
 
 The prompt bar has been replaced by a full `ChatPanel` component — the primary interface of the homepage. Rules:
 - `src/components/ui/ChatPanel.tsx` — `variant?: 'embedded' | 'overlay'` (default **`embedded`**). Homepage uses embedded; **`ChatOverlay`** passes **`variant="overlay"`**.
@@ -186,20 +186,30 @@ The prompt bar has been replaced by a full `ChatPanel` component — the primary
 - Input bar: `>` prompt prefix in `#00ff9f` (terminal green), free-form input, up-arrow send button
 - ID generation: use `useRef` counter (not `Date.now()`) — react-hooks/purity rule is strict
 
-### Animated greeting stream on load (Session 11–13, updated Session 33)
+### Animated greeting stream on load (Session 11–13, updated Session 33, **Session 72**)
 
 Three-phase load sequence on every page visit:
 1. **Thinking** (1500ms) — `AssistantAvatar thinking={true}` (SwirlDotGrid animates inside the circle) + `<ThinkingText />` inline to the right, vertically centered. `isLoading: true`. Each character of "thinking..." has a staggered shimmer via `thinking-shimmer` CSS keyframe.
-2. **Streaming** — `isLoading` flips false; avatar crossfades to icon (`opacity 0.4s ease`); `GREETING` streams character by character at `STREAM_SPEED = 28` ms/char; a `2px × 13px` `#00ff9f` cursor blinks at `0.8s step-end`.
-3. **Complete** — 300ms after last character: `streamingContent` clears, full message lands in `messages`.
+2. **Streaming** — `isLoading` flips false; avatar crossfades to icon (`opacity 0.4s ease`); **`INITIAL_MESSAGE.content`** streams character by character at `STREAM_SPEED = 28` ms/char; a `2px × 13px` `#00ff9f` cursor blinks at `0.8s step-end`.
+3. **Complete** — 300ms after last character: `streamingContent` clears, **`INITIAL_MESSAGE`** (greeting + starter `cards` for `work` and `about`) lands in `messages`.
 
 State shape:
 - `isLoading` — controls initial thinking phase (starts `true`, becomes `false` after 1500ms)
 - `streamingContent` — string being built during phase 2
-- `isResponseLoading` — separate state for subsequent AI response loading (does NOT interfere with initial load)
+- `isResponseLoading` — `true` while `/api/chat` fetch is in progress; disables send + chips; distinct from `isLoading`
+
+### Anthropic chat API (**Session 72**)
+
+- **Route:** `src/app/api/chat/route.ts` — `export const runtime = 'edge'`, `POST`, body `{ messages: { role, content }[] }`.
+- **Env:** `ANTHROPIC_API_KEY` (500 if missing). Add to `.env.local` and Vercel project env.
+- **Client payload:** Exclude `id === 'greeting'` and assistant rows with empty `content` so the **first message is always `user`** (Anthropic API rule).
+- **Model / limits:** `claude-sonnet-4-20250514`, `max_tokens: 1024` — do not change without explicit instruction.
+- **Stream shape:** Server translates Anthropic SSE into **NDJSON** to the client: `{ type: 'text', text }` per delta; optional final `{ type: 'cards', cards }` when trailing `{"cards":[...]}` parses and keys exist in route `CARD_META` (max 3).
+- **Client:** `handleSend` strips displayed card JSON via `CARDS_STRIP_REGEX`; streaming assistant shows trailing cursor; failures → `Something went wrong. Try again.`
+- **Input gating:** Send, chips, and `handleSend` no-op while `messages.length === 0` so the three-phase greeting is not interrupted and the first API turn always includes thread context after `INITIAL_MESSAGE` exists.
 
 Color rules:
-- `#00ff9f` (`accent.terminal`) appears ONLY on: blinking cursor, `>` prompt prefix, chip hover states
+- `#00ff9f` (`accent.terminal`) appears on: blinking cursor, `>` prompt prefix, chip hover states, contextual card arrow and card hover border (Session 72)
 - Do not use `accent.warm` for interactive terminal states — that color is for nav/link hovers only
 
 ### AssistantAvatar (Session 13)
@@ -212,12 +222,12 @@ Color rules:
 - Circle size is fixed at `w-9 h-9` (36×36px) — never resize it
 - The avatar icon itself (`/logo-update.svg`, `18×18`) is unchanged
 
-### Suggestion chips — persistent bar only (Session 12)
+### Suggestion chips — persistent bar only (Session 12, **Session 72**)
 
 Chips appear exclusively in the persistent bar directly above the input field. They do NOT appear inline inside message bubbles.
-- `Message` interface has no `chips` field — chips are not message-level data
-- The persistent bar always shows the same fixed set: `my work`, `my experience`, `about me`, `my resume`, `contact`
-- Do not add chips to assistant messages when implementing AI responses — the bar handles navigation, messages handle conversation
+- `Message` has no `chips` field — chips are not message-level data. Optional **`cards`** on assistant messages are for AI-surfaced links only (**Session 72**).
+- The persistent bar shows the fixed set until the first user message, then hides (**Session 72**). Chips stay disabled until `INITIAL_MESSAGE` is committed (`messages.length > 0`).
+- Do not put suggestion chips inside assistant bubbles — contextual **cards** are separate (compact link rows below finished assistant text).
 
 CSS:
 - `@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }` defined in `globals.css` (above `@layer utilities`)
@@ -248,22 +258,21 @@ Z-index stack: Swirl `z-0` → OrbitalSystem `z-10` → PageTransitionWrapper `z
 
 **Card visual (Session 20, updated Session 25):** terminal window — traffic lights `#ff5f57`/`#febc2e`/`#28c840`, dark chrome header (`rgba(14,16,21,0.9)`), `[id].exe` title, 120px image area (placeholder grid when no asset), one line of copy (`project.role`), footer label. Idle `opacity: 0.6`, hovered `opacity: 0.85`, active `opacity: 1`. Static `#00ff9f` beacon on active.
 
-**Hover state (Session 25):** `hovered` boolean state. On hover: `opacity: 0.85`, `zIndex: 12`, border brightens to `rgba(255,255,255,0.2)`, card scales `1.02x` (suppressed when `active`). Active state always overrides hover visually.
+**Hover state (Session 25, **Session 73** CSS):** Border, shadow, `scale(1.02)`, role tint, and footer label swap are driven by **`globals.css`** (`.orbital-card-root:hover`, `.orbital-card-panel`, `.orbital-card-footer-*`) — **no `hovered` `useState`**, so sweeping the cursor across cards does not re-render each `OrbitalCard`. **`opacity: 0.85`** and **`zIndex: 12`** on the outer wrapper remain **imperative** in pointer enter/leave (and activation). Active (`.orbital-card-panel--active` / `.orbital-card-root--active`) suppresses hover scale/border via `:not(.orbital-card-panel--active)`.
 
-**Performance — Session 30 rewrites:**
+**Performance — Session 30 rewrites + Session 73:**
 - **Position updates are direct DOM** (`cardRef.current.style.left/top`) — `setDisplayPos` state was eliminated. This removes ~600 React state updates/second (60fps × 10 cards) from the reconciler.
-- **Opacity + zIndex are imperative** on both hover and activation — set directly on `cardRef` in mouse handlers and the activation/deactivation callbacks.
-- `hoveredRef` mirrors `hovered` state for use in async callbacks (deactivation timer needs hover state without stale closure issues).
-- **Video play/pause is imperative** — `playVideo()` and `pauseVideo()` are called directly from hover handlers and activation logic. The `useEffect` watching `hovered/active` for video was removed. `videoPlayingRef` guards against double-play.
-- **Collision check staggered** — `frameCountRef.current % 3 === cardIndex % 3` runs collision detection every 3rd frame per card (staggered so different cards check on different frames). Saves 66% of collision compute; imperceptible visually since positions change slowly.
+- **Opacity + zIndex are imperative** on pointer enter/leave and activation — set directly on `cardRef`. **`hoveredRef`** tracks hover **without** React state for the deactivation timer and `pauseVideo()` only.
+- **Video play/pause is imperative** — `playVideo()` and `pauseVideo()` from pointer handlers + activation. Orbital `<video>` uses **`preload="metadata"`** so MP4 cards show a first-frame thumbnail at rest (**`preload="none"`** leaves the 120px area blank until hover).
+- **Collision check staggered** — `frameCountRef` per card; `frameCountRef.current % 3 === cardIndex % 3` runs pairwise repulsion. **`distSq`** vs `MIN_DIST * MIN_DIST` before `sqrt` (**Session 73**).
 - `willChange: 'transform, left, top'` on the outer wrapper — promotes to compositor layer, position updates bypass paint.
-- `activeRef.current` is now set directly in the signal handler (not via `useEffect` watching `active` state). The sync `useEffect` was removed.
+- `activeRef.current` is set directly in the signal handler (not via `useEffect` watching `active` state). The sync `useEffect` was removed.
 
 **Click handling (Session 25):** `handleClick` uses `useRouter` from `next/navigation`. If `project.url` exists: internal paths → `router.push()`, external URLs (start with `http`) → `window.open(..., '_blank', 'noopener noreferrer')`. If no URL: fires `portfolio:query` CustomEvent (chat fallback — every card is always interactive).
 
 **Card footer (Session 25):** small label below `project.role`. No URL: `case study coming soon` at rest → `ask me about this →` on hover. With URL: `view case study →` in `#00ff9f` on hover, dim at rest. Font: 9px mono, uppercase, `0.08em` tracking.
 
-**Media rendering (Session 23, updated Session 27):** `project.image` → raw `<img>` at rest (static thumbnail). `project.video` → `<video preload="none">` — lazy, plays on hover or chat activation (`hovered || active`), pauses and resets on leave. Image and video are separate fields. `onError` on `<img>` falls back to placeholder grid. `preload="none"` required on all videos. Old autoPlay `isVideo` detection removed. Raw `<img>` (not `next/image`) is intentional — documented with `eslint-disable` comment.
+**Media rendering (Session 23, updated Session 27, **Session 74** orbital preload):** `project.image` → raw `<img>` when not `.mp4`. MP4-backed cards use `<video preload="metadata">` + `onLoadedMetadata` → `currentTime = 0` for at-rest poster; **`play()`** only on hover/chat activation; pause/reset on leave. **`preload="none"`** on orbital videos was reverted — it broke visible thumbnails. Image and video fields per `projects.ts`. `onError` on `<img>` → placeholder grid. Raw `<img>` intentional — `eslint-disable` comment.
 
 **Position system (Session 22 — replaces elliptical orbital math):**
 - `HOME_POSITIONS` array — 10 fixed positions as `{ xPct, yPct }` viewport fractions. Converted to px as `xPct * viewport.w` / `yPct * viewport.h`. Layout: 3 left, 3 right, 2 top, 2 bottom — none overlap the chat panel.
@@ -278,7 +287,7 @@ Z-index stack: Swirl `z-0` → OrbitalSystem `z-10` → PageTransitionWrapper `z
 - `posRef` and `velRef` — `useRef({ x: 0, y: 0 })`. Persist between frames, never trigger renders. `lerpRef` and `frameCountRef` removed.
 - **Spring** (`SPRING = 0.018`): `vx += (targetX - x) * SPRING` — card follows drift target gently.
 - **Damping** (`DAMPING = 0.82`): velocity × 0.82 every frame — any oscillation decays to zero in ~0.5s.
-- **Collision repulsion** adds impulse to velocity (`REPULSE = 0.6`), not position. `MIN_DIST = 240`. Runs every frame (no stagger needed — damping handles smoothing).
+- **Collision repulsion** adds impulse to velocity (`REPULSE = 0.6`), not position. `MIN_DIST = 240`. Staggered every 3rd frame per card; **Session 73** uses **dist²** pre-check before `sqrt`. Damping smooths gaps between repulsion frames.
 - **Edge repulsion** adds impulse to velocity. `EDGE_MARGIN = 130px`, `EDGE_FORCE = 0.4`. Proportional to how far inside the margin the card is.
 - **Staging**: lerp at `0.06` directly to slot. Velocity bled at `0.85x` per frame.
 - **Hard safety clamp** (`HARD_MARGIN = 20px`) — fires only if card exits viewport entirely. Does not interact with normal physics. Do NOT remove it.
@@ -705,7 +714,7 @@ These files are retained as valid TypeScript stubs (return null, no props) to ke
 - Run `tsc --noEmit` and `eslint src/` before considering a task complete.
 - No `console.log` left in committed code — use a `logger` utility if needed.
 - Images: use `next/image` for standard page content. **Exception:** `OrbitalCard.tsx`, `CaseStudyThumbnail.tsx`, and `AboutView.tsx` use raw `<img>` — fixed-size or externally-hosted media where `next/image` optimization caused silent failures or is not applicable (e.g. Spotify album art URLs). All exceptions are documented with `eslint-disable-next-line @next/next/no-img-element` comments.
-- All `<video>` elements in the project must have `preload="none"`, `muted`, `playsInline`, and `loop`. Never use `autoPlay` or `preload="auto"` — video only loads on user interaction.
+- `<video>` elements: **`muted`**, **`playsInline`**, and usually **`loop`**. Use **`preload="metadata"`** where a visible first frame is required at rest (OrbitalCard MP4 thumbnails, `CaseStudyThumbnail`, `WorkGrid`, case study heroes/artifacts). Never **`preload="auto"`**. **`autoPlay`** only where explicitly specified (e.g. desktop case-study hero with `!isMobile`); orbital cards never autoplay.
 - Links: use `next/link` for internal navigation. Never raw `<a>` for internal routes.
 - Accessibility: all interactive elements must have accessible labels. `aria-label` on icon buttons. Semantic HTML throughout.
 

@@ -37,7 +37,6 @@ export default function OrbitalCard({
 }: OrbitalCardProps) {
   const router = useRouter()
   const [active, setActive] = useState(false)
-  const [hovered, setHovered] = useState(false)
   const [imgError, setImgError] = useState(false)
 
   // DOM ref for imperative position + opacity + zIndex updates
@@ -54,6 +53,7 @@ export default function OrbitalCard({
   // Velocity-based physics state — persists between frames, never triggers renders
   const posRef = useRef({ x: 0, y: 0 })
   const velRef = useRef({ x: 0, y: 0 })
+  const frameCountRef = useRef(0)
 
   // --- Imperative video helpers ---
 
@@ -119,6 +119,7 @@ export default function OrbitalCard({
     function frame(now: number) {
       if (startTimeRef.current === null) startTimeRef.current = now
       const elapsed = now - startTimeRef.current
+      frameCountRef.current += 1
 
       const vw = window.innerWidth
       const vh = window.innerHeight
@@ -148,10 +149,11 @@ export default function OrbitalCard({
         vy *= DAMPING
       }
 
-      // Collision repulsion — force added to velocity, not position
-      if (!activeRef.current) {
+      // Collision repulsion — staggered frames + dist² check (Session 73) cuts CPU vs 10× sqrt every frame
+      if (!activeRef.current && frameCountRef.current % 3 === cardIndex % 3) {
         const MIN_DIST = 240
-        const REPULSE = 0.6   // impulse magnitude; decays each frame via DAMPING
+        const MIN_DIST_SQ = MIN_DIST * MIN_DIST
+        const REPULSE = 0.6
 
         const others = positionsRef.current
         for (let j = 0; j < others.length; j++) {
@@ -160,12 +162,12 @@ export default function OrbitalCard({
           if (!other || (other.x === 0 && other.y === 0)) continue
           const dx = x - other.x
           const dy = y - other.y
-          const dist = Math.sqrt(dx * dx + dy * dy)
-          if (dist < MIN_DIST && dist > 0) {
-            const force = ((MIN_DIST - dist) / MIN_DIST) * REPULSE
-            vx += (dx / dist) * force
-            vy += (dy / dist) * force
-          }
+          const distSq = dx * dx + dy * dy
+          if (distSq >= MIN_DIST_SQ || distSq === 0) continue
+          const dist = Math.sqrt(distSq)
+          const force = ((MIN_DIST - dist) / MIN_DIST) * REPULSE
+          vx += (dx / dist) * force
+          vy += (dy / dist) * force
         }
       }
 
@@ -224,7 +226,6 @@ export default function OrbitalCard({
 
   function handleWrapperEnter() {
     hoveredRef.current = true
-    setHovered(true)
     if (!activeRef.current && cardRef.current) {
       cardRef.current.style.opacity = '0.85'
       cardRef.current.style.zIndex = '12'
@@ -234,7 +235,6 @@ export default function OrbitalCard({
 
   function handleWrapperLeave() {
     hoveredRef.current = false
-    setHovered(false)
     if (!activeRef.current && cardRef.current) {
       cardRef.current.style.opacity = '0.6'
       cardRef.current.style.zIndex = '5'
@@ -261,7 +261,7 @@ export default function OrbitalCard({
   return (
     <div
       ref={cardRef}
-      className="absolute pointer-events-auto"
+      className={`absolute pointer-events-auto orbital-card-root ${active ? 'orbital-card-root--active' : ''}`}
       style={{
         left: homeX,
         top: homeY,
@@ -276,37 +276,27 @@ export default function OrbitalCard({
       onMouseEnter={handleWrapperEnter}
       onMouseLeave={handleWrapperLeave}
     >
-      {/* Active beacon — static dot, no animation */}
-      {active && (
-        <div
-          className="absolute -top-1 -right-1 w-2 h-2 rounded-full z-10"
-          style={{
-            backgroundColor: '#00ff9f',
-            boxShadow: '0 0 8px rgba(0,255,159,0.5)',
-          }}
-        />
-      )}
-
-      {/* Terminal window */}
+      {/* Active beacon — static dot; visibility toggled via CSS (.orbital-card-root--active) */}
       <div
+        className="orbital-card-beacon absolute -top-1 -right-1 z-10 h-2 w-2 rounded-full"
+        style={{
+          backgroundColor: '#00ff9f',
+          boxShadow: '0 0 8px rgba(0,255,159,0.5)',
+        }}
+        aria-hidden
+      />
+
+      {/* Terminal window — border / shadow / hover scale from globals.css (no hover React state) */}
+      <div
+        className={`orbital-card-panel ${active ? 'orbital-card-panel--active' : ''}`}
         onClick={handleClick}
         style={{
           backgroundColor: 'rgba(22, 26, 34, 0.92)',
           backdropFilter: 'blur(5px)',
           WebkitBackdropFilter: 'blur(5px)',
-          border: active
-            ? '1px solid rgba(0,255,159,0.3)'
-            : hovered
-            ? '1px solid rgba(255,255,255,0.2)'
-            : '1px solid rgba(255,255,255,0.08)',
           borderRadius: '8px',
           overflow: 'hidden',
           cursor: 'pointer',
-          boxShadow: active
-            ? '0 12px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,255,159,0.1)'
-            : '0 8px 32px rgba(0,0,0,0.4)',
-          transform: hovered && !active ? 'scale(1.02)' : 'scale(1)',
-          transition: 'border 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease',
           width: '220px',
         }}
       >
@@ -360,7 +350,7 @@ export default function OrbitalCard({
               }}
             >
               {videoSrc ? (
-                // preload="metadata" loads first frame for display at rest; play() fires on hover/active
+                // metadata: must load first frame for at-rest thumbnail (preload="none" leaves video area blank)
                 <video
                   ref={videoRef}
                   src={videoSrc}
@@ -430,14 +420,13 @@ export default function OrbitalCard({
         {/* One line of copy */}
         <div style={{ padding: '8px 10px 4px' }}>
           <p
+            className="orbital-card-role"
             style={{
               fontFamily: 'var(--font-mono, monospace)',
               fontSize: '10px',
               fontWeight: 300,
-              color: active ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.5)',
               margin: 0,
               lineHeight: 1.4,
-              transition: 'color 0.5s ease',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
@@ -457,31 +446,14 @@ export default function OrbitalCard({
           }}
         >
           {project.url ? (
-            <span
-              style={{
-                fontFamily: 'var(--font-mono, monospace)',
-                fontSize: '9px',
-                color: hovered ? '#00ff9f' : 'rgba(255,255,255,0.25)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                transition: 'color 0.2s ease',
-              }}
-            >
-              view case study →
-            </span>
+            <span className="orbital-card-footer-link">view case study →</span>
           ) : (
-            <span
-              style={{
-                fontFamily: 'var(--font-mono, monospace)',
-                fontSize: '9px',
-                color: hovered ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.15)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                transition: 'color 0.2s ease',
-              }}
-            >
-              {hovered ? 'ask me about this →' : 'case study coming soon'}
-            </span>
+            <div style={{ position: 'relative', width: '100%', minHeight: 14 }}>
+              <span className="orbital-card-footer-idle">case study coming soon</span>
+              <span className="orbital-card-footer-prompt" aria-hidden>
+                ask me about this →
+              </span>
+            </div>
           )}
         </div>
       </div>

@@ -105,3 +105,93 @@ body {
     font-feature-settings: 'liga' 0, 'calt' 1;
   }
 }
+
+/* Orbital cards (Session 73) — hover visuals are pure CSS so moving the cursor across
+   cards does not trigger React re-renders (backdrop-filter + scale stay on the GPU path). */
+.orbital-card-panel {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  transform: translateZ(0);
+  transition:
+    border 0.3s ease,
+    box-shadow 0.3s ease,
+    transform 0.2s ease;
+}
+
+.orbital-card-root:hover .orbital-card-panel:not(.orbital-card-panel--active) {
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateZ(0) scale(1.02);
+}
+
+.orbital-card-panel--active {
+  border-color: rgba(0, 255, 159, 0.3);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(0, 255, 159, 0.1);
+  transform: translateZ(0) scale(1);
+}
+
+.orbital-card-role {
+  color: rgba(255, 255, 255, 0.5);
+  transition: color 0.5s ease;
+}
+
+.orbital-card-panel--active .orbital-card-role {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.orbital-card-beacon {
+  display: none;
+}
+
+.orbital-card-root--active .orbital-card-beacon {
+  display: block;
+}
+
+.orbital-card-footer-idle,
+.orbital-card-footer-prompt,
+.orbital-card-footer-link {
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.orbital-card-footer-idle {
+  color: rgba(255, 255, 255, 0.15);
+  transition: opacity 0.2s ease;
+}
+
+.orbital-card-footer-prompt {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  pointer-events: none;
+  color: rgba(255, 255, 255, 0.4);
+  transition: opacity 0.2s ease;
+}
+
+.orbital-card-root:hover .orbital-card-footer-idle {
+  opacity: 0;
+}
+
+.orbital-card-root:hover .orbital-card-footer-prompt {
+  opacity: 1;
+}
+
+.orbital-card-footer-link {
+  color: rgba(255, 255, 255, 0.25);
+  transition: color 0.2s ease;
+}
+
+.orbital-card-root:hover .orbital-card-footer-link {
+  color: #00ff9f;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbital-card-root:hover .orbital-card-panel:not(.orbital-card-panel--active) {
+    transform: translateZ(0);
+  }
+}
