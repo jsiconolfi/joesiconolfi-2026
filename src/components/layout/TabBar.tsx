@@ -55,7 +55,7 @@ function TabActiveTrafficLights({ onClose }: { onClose: () => void }) {
               fontSize: 8,
               lineHeight: 1,
               color: 'rgba(0,0,0,0.65)',
-              fontWeight: 700,
+              fontWeight: 500,
               userSelect: 'none',
               pointerEvents: 'none',
             }}
@@ -97,7 +97,7 @@ function TabActiveTrafficLights({ onClose }: { onClose: () => void }) {
               fontSize: 8,
               lineHeight: 1,
               color: 'rgba(0,0,0,0.5)',
-              fontWeight: 700,
+              fontWeight: 500,
               userSelect: 'none',
               pointerEvents: 'none',
             }}
@@ -139,7 +139,7 @@ function TabActiveTrafficLights({ onClose }: { onClose: () => void }) {
               fontSize: 8,
               lineHeight: 1,
               color: 'rgba(0,0,0,0.5)',
-              fontWeight: 700,
+              fontWeight: 500,
               userSelect: 'none',
               pointerEvents: 'none',
             }}

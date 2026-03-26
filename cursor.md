@@ -10,7 +10,7 @@ This is a personal portfolio site for Joe Siconolfi, Staff Design Engineer at Co
 - **Language**: TypeScript (strict mode, no `any` unless explicitly justified)
 - **Styling**: Tailwind CSS v3 — utility-first, no inline styles except for dynamic values (e.g. animation keyframe percentages)
 - **Animation**: Framer Motion (`framer-motion@12`) for page transitions and component-level animation, CSS for the swirl/background
-- **Fonts**: Loaded via `next/font/google` — **IBM Plex Mono** only (weights 100–700, normal + italic, CSS var `--font-mono`). All type roles use IBM Plex Mono, differentiated by weight and size. No other fonts.
+- **Fonts**: Loaded via `next/font/google` — **IBM Plex Mono** only (**Session 87:** weights **`300`**, **`400`**, **`500`**, **`normal`** only — smaller first-load payload; no italic or 100–200 / 600–700). CSS var `--font-mono`. All type roles use IBM Plex Mono, differentiated by weight and size. No other fonts.
 - **AI integration**: Anthropic Messages API via **`src/app/api/chat/route.ts`** (edge runtime, `fetch` to `api.anthropic.com`) — **`ANTHROPIC_API_KEY`**, model **`claude-sonnet-4-20250514`**, **`max_tokens: 250`** (**Session 77**, **Session 85**, **Session 86** — **do not exceed** without explicit instruction; **250** leaves room for short replies plus trailing cards JSON without cutoff). **`SYSTEM_PROMPT`** starts with a **`RULES`** block: **2-3 sentences max** (else cards), and **no em dashes (`—`)** in any reply. **Session 80:** in-memory IP rate limit **`RATE_LIMIT_MAX` = 50** requests per **`RATE_LIMIT_WINDOW` = 1h** per IP (`x-forwarded-for` / `x-real-ip`); **`429`** JSON body; resets on edge cold start.
 - **Deployment**: Vercel
 
@@ -165,12 +165,13 @@ Two RAF-loop dot grid components live in `src/components/ui/`:
 - `rafRef` typed as `useRef<number | undefined>(undefined)` — cleanup on unmount
 - `prefers-reduced-motion`: static snapshot state, no animation
 
-## AI / chat panel (Session 7 — updated Session 11, Session 66, Session 68, Session 69, Session 70, **Session 72**, **Session 74**, **Session 75**, **Session 76**, **Session 77**, **Session 78**, **Session 79**, **Session 80**, **Session 85**, **Session 86**)
+## AI / chat panel (Session 7 — updated Session 11, Session 66, Session 68, Session 69, Session 70, **Session 72**, **Session 74**, **Session 75**, **Session 76**, **Session 77**, **Session 78**, **Session 79**, **Session 80**, **Session 85**, **Session 86**, **Session 87**)
 
 The prompt bar has been replaced by a full `ChatPanel` component — the primary interface of the homepage. Rules:
 - `src/components/ui/ChatPanel.tsx` — `variant?: 'embedded' | 'overlay'` (default **`embedded`**). Homepage uses embedded; **`ChatOverlay`** passes **`variant="overlay"`**.
-- **Chrome (Session 69, **Session 79**, **Session 81**):** **Embedded** — first two **gray** dots `rgba(255,255,255,0.15)` `10px` (non-interactive); **third gray dot** is a `<button type="button">` — **`useChatContext().resetConversation()`**, `title` / `aria-label` "New conversation"; **`id="chat-panel"`** on root. **Overlay** — red closes via **`useChatContext().close()`**; **green** is a `<button>` — **`resetConversation()`**; **red / yellow / green** hover glyphs (**`×` `−` `+`**) all **`pointerEvents: 'none'`** on inner **`<span>`**s (**Session 81**); **no** `id` on root.
+- **Chrome (Session 69, **Session 79**, **Session 81**):** **Embedded** — first two **gray** dots `rgba(255,255,255,0.15)` `10px` (non-interactive); **third gray dot** is a `<button type="button">` — **`useChatMessages().resetConversation()`** (or **`useChatContext()`**), `title` / `aria-label` "New conversation"; **`id="chat-panel"`** on root. **Overlay** — red closes via **`useChatUI().close()`**; **green** — **`resetConversation()`**; **red / yellow / green** hover glyphs (**`×` `−` `+`**) all **`pointerEvents: 'none'`** on inner **`<span>`**s (**Session 81**); **no** `id` on root.
 - **Session 79 — `ChatContext.tsx`:** Exports **`Message`**, **`ChatCard`**, **`INITIAL_MESSAGE`**, **`cloneGreetingMessage()`**. **`ChatProvider`** state: **`messages`**, **`setMessages`**, **`isLoading`**, **`setIsLoading`**, **`streamingGreetingContent`**, plus existing **`isOpen` / `open` / `close` / `toggle`**. **`ChatPanel`** must not keep **`messages`** or **`isLoading`** in component state. Greeting sequence (thinking → stream → commit) runs **once** inside **`ChatProvider`** when **`messages.length === 0`** so embedded + overlay never double-schedule timers. **`resetConversation()`** replaces thread with **`cloneGreetingMessage()`** and clears the greeting stream buffer. No **localStorage** — refresh resets the thread.
+- **Session 87 — Context split:** **`ChatUIContext`** / **`useChatUI()`** — **`isOpen`**, **`open`**, **`close`**, **`toggle`**, **`isLimitReached`**, **`messageCount`**, **`incrementMessageCount`**. **`ChatMessagesContext`** / **`useChatMessages()`** — **`messages`**, **`setMessages`**, **`isLoading`**, **`setIsLoading`**, **`streamingGreetingContent`**, **`resetConversation`**. **`Nav`** and **`ChatOverlay`** use **`useChatUI()`** so streaming does not re-render the full tree. **`useChatContext()`** / **`useChat()`** merge both APIs.
 - **Session 80 — Session message cap (`ChatContext.tsx` + `ChatPanel.tsx`):** **`messageCount`** + **`incrementMessageCount()`** + **`isLimitReached`**; **`MESSAGE_LIMIT` = 30** user sends per browser session (chips and typed sends both increment). **Not** cleared by **`resetConversation()`** — only a full page refresh resets the count. When **`isLimitReached`**, **`handleSend`** returns early; the **entire** chips + input footer is replaced by a short mono note to refresh (no disabled input left visible). **`429`** from **`POST /api/chat`**: streaming assistant row is filled with a human-readable cooldown message (**not** a separate error UI); **`finally`** still clears **`isResponseLoading`**.
 - Panel dimensions (**Session 75**): desktop **`width`** = **`desktopNavWidthPx`** from **`NavWidthContext`** (nav pill measured in **`NavWrapper`** via **`ResizeObserver`** on the shrink-wrap div; fallback **`DEFAULT_DESKTOP_NAV_WIDTH_PX` = 560** in `NavWidthContext.tsx`). `maxWidth: 100%`. `height: 75vh`, `maxHeight: 80vh`; mobile `width: calc(100vw - 32px)`, **`height` and `maxHeight: calc(100dvh - 140px)`** — **`dvh` not `vh`** on mobile (Session 68). Outer panel `display: flex; flexDirection: column; minHeight: 0` so the messages region scrolls.
 - Inner column wrapper (Session 70): `flex: 1`, `minHeight: 0`, `height/maxHeight: 100%`, `overflow: hidden` — fills the outer panel so header / messages / input distribute correctly on mobile.
@@ -255,8 +256,8 @@ Ten project cards float around the chat panel with gentle sine-wave drift, and d
 
 **Files:**
 - `src/content/projects.ts` — `Project` interface + `PROJECTS` array (10 entries)
-- `src/components/ui/OrbitalCard.tsx` — floating card with drift animation + staging lerp
-- `src/components/ui/OrbitalSystem.tsx` — mounts 10 cards, computes home positions + staging zones; `z-10`
+- `src/components/ui/OrbitalCard.tsx` — floating card with drift animation + staging lerp; **`forwardRef`** + **`tick(now)`** via **`useImperativeHandle`** (**Session 87**)
+- `src/components/ui/OrbitalSystem.tsx` — mounts 10 cards, computes home positions + staging zones; **`z-10`**; **one `requestAnimationFrame` loop** invokes each card's **`tick`** (**Session 87**)
 
 Z-index stack: Swirl `z-0` → OrbitalSystem `z-10` → PageTransitionWrapper `z-10/z-20` → NavWrapper `z-40` → TabBar `z-50` → ChatOverlay `z-50`
 
@@ -266,7 +267,8 @@ Z-index stack: Swirl `z-0` → OrbitalSystem `z-10` → PageTransitionWrapper `z
 
 **Hover state (Session 25, **Session 73** CSS):** Border, shadow, `scale(1.02)`, role tint, and footer label swap are driven by **`globals.css`** (`.orbital-card-root:hover`, `.orbital-card-panel`, `.orbital-card-footer-*`) — **no `hovered` `useState`**, so sweeping the cursor across cards does not re-render each `OrbitalCard`. **`opacity: 0.85`** and **`zIndex: 12`** on the outer wrapper remain **imperative** in pointer enter/leave (and activation). Active (`.orbital-card-panel--active` / `.orbital-card-root--active`) suppresses hover scale/border via `:not(.orbital-card-panel--active)`.
 
-**Performance — Session 30 rewrites + Session 73:**
+**Performance — Session 30 rewrites + Session 73 + Session 87:**
+- **Session 87 — Single RAF:** `OrbitalSystem` runs **one** `requestAnimationFrame` loop; each card exposes **`tick(now)`** — **no** per-card RAF schedulers. Physics unchanged.
 - **Position updates are direct DOM** (`cardRef.current.style.left/top`) — `setDisplayPos` state was eliminated. This removes ~600 React state updates/second (60fps × 10 cards) from the reconciler.
 - **Opacity + zIndex are imperative** on pointer enter/leave and activation — set directly on `cardRef`. **`hoveredRef`** tracks hover **without** React state for the deactivation timer and `pauseVideo()` only.
 - **Video play/pause is imperative** — `playVideo()` and `pauseVideo()` from pointer handlers + activation. Orbital `<video>` uses **`preload="metadata"`** so MP4 cards show a first-frame thumbnail at rest (**`preload="none"`** leaves the 120px area blank until hover).
@@ -404,7 +406,7 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 **PageTransitionWrapper (`src/components/layout/PageTransitionWrapper.tsx`, Session 35, rewritten Session 47):**
 - `AnimatePresence mode="wait" initial={false}` — exits before enters; no animation on first load
 - `key={pathname}` on `motion.div` — triggers transition on route change
-- `data-scroll-container` on motion.div — `useEffect` resets `scrollTop = 0` on pathname change
+- `data-scroll-container` on motion.div — `useEffect` resets `scrollTop = 0` on pathname change only (**Session 87:** `[pathname]` dependency — not on every chat token)
 - `isDeepPage(pathname)` helper: `pathname.startsWith('/work') || pathname === '/about' || pathname === '/timeline' || pathname === '/lab'` — single source of truth for page tier
 - Deep pages (`/work`, `/work/*`, `/about`): `zIndex: 20`, dark bg `rgba(14,16,21,0.97)`, `pointerEvents: 'auto'`, `overflowY: 'auto'`, `top: 0`
 - Homepage: `zIndex: 10`, transparent bg, `pointerEvents: 'none'`, `overflowY: 'hidden'`, `top: 0`
@@ -415,19 +417,20 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 - `isCaseStudy`, `isWorkIndex`, `isAbout`, `isContentPage` variables removed — replaced by single `deep` boolean
 - Do NOT reintroduce `top: TAB_BAR_HEIGHT` on the wrapper; do NOT split `isDeepPage` back into separate variables
 
-**OrbitalSystem (updated Session 35, Session 66):**
+**OrbitalSystem (updated Session 35, Session 66, **Session 87**):**
 - **Session 66:** `useIsMobile()` — returns `null` on viewports `< 768px` (after all hooks). No orbital UI on phone; Swirl unchanged.
 - Uses `usePathname` — pathname is a dependency on the measure `useEffect`
 - Runs immediate `measure()` + delayed `measure()` at 600ms on each pathname change
 - Delayed measure ensures `chat-panel` element is found after the 450ms transition animation completes
 - Cards stay rendered (behind opaque overlay) on case study pages — no visibility toggle needed
+- **Session 87:** After mount, a **single** RAF loop drives all cards; `positionsRef` rows initialized with **`Array.from({ length: 10 }, () => ({ x: 0, y: 0 }))`** (distinct objects per card)
 
 ## Mobile layout — Session 66
 
 **Breakpoint:** `768px`. Shared hook `src/hooks/useIsMobile.ts` — `'use client'`, `useState(false)` + `useEffect` with `resize` listener; `isMobile === window.innerWidth < 768`. Use this hook (not ad-hoc media queries) for responsive behavior unless a static CSS approach is explicitly required.
 
 - **OrbitalSystem:** `if (isMobile) return null` after all hooks — no cards on mobile; do not partially render. Swirl stays mounted in layout (`Swirl.tsx` unchanged).
-- **Nav:** Desktop pill unchanged. Mobile: full-width bar (logo / hamburger / Chat); hamburger opens fixed overlay `z-index: 45` with large link labels; active route `#00ff9f`; Chat calls `useChatContext().toggle()`. **NavWrapper:** inner `width: 100%` when mobile.
+- **Nav:** Desktop pill unchanged. Mobile: full-width bar (logo / hamburger / Chat); hamburger opens fixed overlay `z-index: 45` with large link labels; active route `#00ff9f`; Chat calls **`useChatUI().toggle()`** (**Session 87:** prefer **`useChatUI`** for open/close/toggle so streaming does not re-render Nav). **NavWrapper:** inner `width: 100%` when mobile.
 - **ChatPanel:** Root `width` / `maxWidth` — mobile `calc(100vw - 32px)` / `100%`, desktop **`desktopNavWidthPx` + `px`** from **`NavWidthContext`** (**Session 75**). Mobile height **`calc(100dvh - 140px)`**; flex column + scrollable messages (Session 68). **Embedded** = gray chrome; **overlay** = colored chrome (Session 69).
 - **Homepage `page.tsx`:** `'use client'` + `useIsMobile` — **Session 68 mobile:** wrapper `top: 80px`, `left/right/bottom: 0`, `padding: 16px`, `alignItems: flex-start`; desktop `top: 0`, centered. Name block `bottom: 100` / `left: 16` on mobile vs `32` desktop.
 - **ChatOverlay (Session 71, **Session 75**):** Dialog root **no `py-20`**, **no horizontal padding on desktop**; mobile `paddingLeft`/`paddingRight` `16px` only. Inner **`motion.div`** width — mobile **`calc(100vw - 32px)`**; desktop same **`NavWidthContext`** pixel width as embedded chat — **no `max-w-2xl`**, matches homepage chat placement.
@@ -466,7 +469,7 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 
 **Colored dots** (`#ff5f57`, `#febc2e`, `#28c840`) — use on **closeable / page-level** window chrome and any surface with a real dismiss:
 - **Sticky page headers:** **`about.exe`**, **`timeline.exe`**, **`lab.exe`**, **`case-studies.exe`** — red **`<button type="button">`** → **`router.push('/')`**, hover **`×`**; yellow/green hover **`−`** / **`+`** only; glyph spans **`pointerEvents: 'none'`**.
-- **`ChatPanel variant="overlay"`** — red closes via **`useChatContext().close()`**; red/yellow/green hover glyphs all **`pointerEvents: 'none'`** (**Session 81**).
+- **`ChatPanel variant="overlay"`** — red closes via **`useChatUI().close()`** (or **`useChatContext().close()`**); red/yellow/green hover glyphs all **`pointerEvents: 'none'`** (**Session 81**).
 - **Orbital project cards**, **`TabBar`** active tab (**desktop only**; lights hidden on mobile — Session 67) — **Session 81:** TabBar **red dot closes tab**; glyphs **`pointerEvents: 'none'`**.
 
 **Gray dots** (`rgba(255,255,255,0.15)`) — **informational cards only** (clicking dots does nothing):

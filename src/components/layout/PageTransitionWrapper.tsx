@@ -22,7 +22,7 @@ function PageContent({ pathname, children }: PageContentProps) {
   useEffect(() => {
     const container = document.querySelector('[data-scroll-container]')
     if (container) (container as HTMLElement).scrollTop = 0
-  })
+  }, [pathname])
 
   return (
     <motion.div

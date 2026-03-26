@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import SwirlDotGrid from '@/components/ui/SwirlDotGrid'
 import { PROJECTS } from '@/content/projects'
-import { useChatContext, type ChatCard, type Message } from '@/context/ChatContext'
+import { useChatMessages, useChatUI, type ChatCard, type Message } from '@/context/ChatContext'
 import { useNavWidthContext } from '@/context/NavWidthContext'
 import { useIsMobile } from '@/hooks/useIsMobile'
 
@@ -108,16 +108,14 @@ const AssistantAvatar = ({ thinking = false }: AssistantAvatarProps) => (
 export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
   const router = useRouter()
   const isMobile = useIsMobile()
+  const { close: closeChatOverlay, isLimitReached, incrementMessageCount } = useChatUI()
   const {
-    close: closeChatOverlay,
     messages,
     setMessages,
     isLoading,
     streamingGreetingContent,
     resetConversation,
-    isLimitReached,
-    incrementMessageCount,
-  } = useChatContext()
+  } = useChatMessages()
   const { desktopNavWidthPx } = useNavWidthContext()
   const isOverlay = variant === 'overlay'
   const [closeHovered, setCloseHovered] = useState(false)
@@ -390,7 +388,7 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
                       fontSize: 7,
                       lineHeight: 1,
                       color: 'rgba(0,0,0,0.65)',
-                      fontWeight: 700,
+                      fontWeight: 500,
                       userSelect: 'none',
                       pointerEvents: 'none',
                     }}
@@ -420,7 +418,7 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
                       fontSize: 7,
                       lineHeight: 1,
                       color: 'rgba(0,0,0,0.5)',
-                      fontWeight: 700,
+                      fontWeight: 500,
                       userSelect: 'none',
                       pointerEvents: 'none',
                     }}
@@ -457,7 +455,7 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
                       fontSize: 7,
                       lineHeight: 1,
                       color: 'rgba(0,0,0,0.5)',
-                      fontWeight: 700,
+                      fontWeight: 500,
                       userSelect: 'none',
                       pointerEvents: 'none',
                     }}

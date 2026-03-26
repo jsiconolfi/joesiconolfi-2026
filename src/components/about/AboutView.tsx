@@ -263,7 +263,7 @@ export default function AboutView() {
             <span style={{
               fontSize: 8, lineHeight: 1,
               color: 'rgba(0,0,0,0.65)',
-              fontWeight: 700, userSelect: 'none',
+              fontWeight: 500, userSelect: 'none',
               pointerEvents: 'none',
             }}>×</span>
           )}
@@ -279,7 +279,7 @@ export default function AboutView() {
           }}
         >
           {yellowHovered && (
-            <span style={{ fontSize: 8, lineHeight: 1, color: 'rgba(0,0,0,0.5)', fontWeight: 700, userSelect: 'none', pointerEvents: 'none' }}>−</span>
+            <span style={{ fontSize: 8, lineHeight: 1, color: 'rgba(0,0,0,0.5)', fontWeight: 500, userSelect: 'none', pointerEvents: 'none' }}>−</span>
           )}
         </span>
         <span
@@ -293,7 +293,7 @@ export default function AboutView() {
           }}
         >
           {greenHovered && (
-            <span style={{ fontSize: 8, lineHeight: 1, color: 'rgba(0,0,0,0.5)', fontWeight: 700, userSelect: 'none', pointerEvents: 'none' }}>+</span>
+            <span style={{ fontSize: 8, lineHeight: 1, color: 'rgba(0,0,0,0.5)', fontWeight: 500, userSelect: 'none', pointerEvents: 'none' }}>+</span>
           )}
         </span>
         <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 10, fontWeight: 300 }}>

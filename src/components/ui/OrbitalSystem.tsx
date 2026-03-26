@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { usePathname } from 'next/navigation'
-import OrbitalCard from './OrbitalCard'
+import OrbitalCard, { type OrbitalCardHandle } from './OrbitalCard'
 import { PROJECTS } from '@/content/projects'
 import { useIsMobile } from '@/hooks/useIsMobile'
 
@@ -86,12 +86,32 @@ export default function OrbitalSystem() {
   // Shared mutable ref — updated every frame by each card.
   // Using a ref (not state) so updates never trigger re-renders.
   const positionsRef = useRef<Array<{ x: number; y: number }>>(
-    Array(10).fill({ x: 0, y: 0 })
+    Array.from({ length: 10 }, () => ({ x: 0, y: 0 }))
   )
+
+  /** Imperative `tick` targets — filled by each `OrbitalCard` ref; driven by one shared RAF below. */
+  const cardTickRefs = useRef<Array<OrbitalCardHandle | null>>(new Array(10).fill(null))
 
   const handlePositionUpdate = useCallback((index: number, x: number, y: number) => {
     positionsRef.current[index] = { x, y }
   }, [])
+
+  /** Session 87 — single RAF schedules all cards (physics unchanged; only scheduling moved from OrbitalCard). */
+  useEffect(() => {
+    if (isMobile || !ready || viewport.w === 0) return
+
+    let rafId = 0
+    function loop() {
+      const now = performance.now()
+      const refs = cardTickRefs.current
+      for (let i = 0; i < refs.length; i++) {
+        refs[i]?.tick(now)
+      }
+      rafId = requestAnimationFrame(loop)
+    }
+    rafId = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(rafId)
+  }, [isMobile, ready, viewport.w])
 
   useEffect(() => {
     function measure() {
@@ -160,6 +180,9 @@ export default function OrbitalSystem() {
         return (
           <OrbitalCard
             key={project.id}
+            ref={el => {
+              cardTickRefs.current[i] = el
+            }}
             project={project}
             homeX={home.x}
             homeY={home.y}

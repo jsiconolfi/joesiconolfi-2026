@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useImperativeHandle, useRef, useState, forwardRef } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Project } from '@/content/projects'
 
@@ -20,21 +20,28 @@ interface OrbitalCardProps {
   positionsRef: React.MutableRefObject<Array<{ x: number; y: number }>>
 }
 
-export default function OrbitalCard({
-  project,
-  homeX,
-  homeY,
-  driftXAmp,
-  driftYAmp,
-  driftXSpeed,
-  driftYSpeed,
-  driftPhase,
-  leftSlot,
-  rightSlot,
-  cardIndex,
-  onPositionUpdate,
-  positionsRef,
-}: OrbitalCardProps) {
+export interface OrbitalCardHandle {
+  tick: (now: number) => void
+}
+
+const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function OrbitalCard(
+  {
+    project,
+    homeX,
+    homeY,
+    driftXAmp,
+    driftYAmp,
+    driftXSpeed,
+    driftYSpeed,
+    driftPhase,
+    leftSlot,
+    rightSlot,
+    cardIndex,
+    onPositionUpdate,
+    positionsRef,
+  },
+  ref
+) {
   const router = useRouter()
   const [active, setActive] = useState(false)
   const [imgError, setImgError] = useState(false)
@@ -42,7 +49,6 @@ export default function OrbitalCard({
   // DOM ref for imperative position + opacity + zIndex updates
   const cardRef = useRef<HTMLDivElement>(null)
 
-  const rafRef = useRef<number | undefined>(undefined)
   const videoRef = useRef<HTMLVideoElement>(null)
   const deactivateTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const activeRef = useRef(false)
@@ -113,114 +119,111 @@ export default function OrbitalCard({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project.id, homeX, leftSlot, rightSlot])
 
-  // --- RAF drift + velocity-based physics (direct DOM, no setState) ---
+  // --- Drift + velocity physics driven by OrbitalSystem single RAF (`tick`) — direct DOM, no setState per frame ---
 
-  useEffect(() => {
-    function frame(now: number) {
-      if (startTimeRef.current === null) startTimeRef.current = now
-      const elapsed = now - startTimeRef.current
-      frameCountRef.current += 1
+  useImperativeHandle(
+    ref,
+    () => ({
+      tick(now: number) {
+        if (startTimeRef.current === null) startTimeRef.current = now
+        const elapsed = now - startTimeRef.current
+        frameCountRef.current += 1
 
-      const vw = window.innerWidth
-      const vh = window.innerHeight
+        const vw = window.innerWidth
+        const vh = window.innerHeight
 
-      // Drift: gentle sine wave around home position
-      const driftX = Math.sin(elapsed * driftXSpeed + driftPhase) * driftXAmp
-      const driftY = Math.cos(elapsed * driftYSpeed + driftPhase * 1.3) * driftYAmp
-      const targetX = homeX + driftX
-      const targetY = homeY + driftY
+        const driftX = Math.sin(elapsed * driftXSpeed + driftPhase) * driftXAmp
+        const driftY = Math.cos(elapsed * driftYSpeed + driftPhase * 1.3) * driftYAmp
+        const targetX = homeX + driftX
+        const targetY = homeY + driftY
 
-      // Initialize position to drift target on first frame
-      if (posRef.current.x === 0 && posRef.current.y === 0) {
-        posRef.current = { x: targetX, y: targetY }
-      }
-
-      let { x, y } = posRef.current
-      let { x: vx, y: vy } = velRef.current
-
-      // Spring toward drift target (bypassed while staged — slot lerp handles it)
-      if (!activeRef.current || !chosenSlotRef.current) {
-        const SPRING = 0.018   // how strongly card follows drift target
-        const DAMPING = 0.82   // velocity decay per frame — kills oscillation
-
-        vx += (targetX - x) * SPRING
-        vy += (targetY - y) * SPRING
-        vx *= DAMPING
-        vy *= DAMPING
-      }
-
-      // Collision repulsion — staggered frames + dist² check (Session 73) cuts CPU vs 10× sqrt every frame
-      if (!activeRef.current && frameCountRef.current % 3 === cardIndex % 3) {
-        const MIN_DIST = 240
-        const MIN_DIST_SQ = MIN_DIST * MIN_DIST
-        const REPULSE = 0.6
-
-        const others = positionsRef.current
-        for (let j = 0; j < others.length; j++) {
-          if (j === cardIndex) continue
-          const other = others[j]
-          if (!other || (other.x === 0 && other.y === 0)) continue
-          const dx = x - other.x
-          const dy = y - other.y
-          const distSq = dx * dx + dy * dy
-          if (distSq >= MIN_DIST_SQ || distSq === 0) continue
-          const dist = Math.sqrt(distSq)
-          const force = ((MIN_DIST - dist) / MIN_DIST) * REPULSE
-          vx += (dx / dist) * force
-          vy += (dy / dist) * force
+        if (posRef.current.x === 0 && posRef.current.y === 0) {
+          posRef.current = { x: targetX, y: targetY }
         }
-      }
 
-      // Soft edge repulsion — additive to velocity so it damps naturally
-      if (!activeRef.current) {
-        const EDGE_MARGIN = 130   // px from viewport edge where force starts
-        const EDGE_FORCE = 0.4    // impulse magnitude
+        let { x, y } = posRef.current
+        let { x: vx, y: vy } = velRef.current
 
-        if (x < EDGE_MARGIN)       vx += (EDGE_MARGIN - x) / EDGE_MARGIN * EDGE_FORCE
-        if (x > vw - EDGE_MARGIN)  vx -= (x - (vw - EDGE_MARGIN)) / EDGE_MARGIN * EDGE_FORCE
-        if (y < EDGE_MARGIN)       vy += (EDGE_MARGIN - y) / EDGE_MARGIN * EDGE_FORCE
-        if (y > vh - EDGE_MARGIN)  vy -= (y - (vh - EDGE_MARGIN)) / EDGE_MARGIN * EDGE_FORCE
-      }
+        if (!activeRef.current || !chosenSlotRef.current) {
+          const SPRING = 0.018
+          const DAMPING = 0.82
 
-      // Staging lerp — overrides physics while active and slot is chosen
-      if (activeRef.current && chosenSlotRef.current) {
-        const slot = chosenSlotRef.current
-        x += (slot.x - x) * 0.06
-        y += (slot.y - y) * 0.06
-        // Bleed velocity so return-to-orbit is smooth
-        vx *= 0.85
-        vy *= 0.85
-      } else {
-        x += vx
-        y += vy
-      }
+          vx += (targetX - x) * SPRING
+          vy += (targetY - y) * SPRING
+          vx *= DAMPING
+          vy *= DAMPING
+        }
 
-      // Hard safety clamp — last resort only, fires only if card exits viewport entirely
-      const HARD_MARGIN = 20
-      x = Math.max(HARD_MARGIN, Math.min(vw - HARD_MARGIN, x))
-      y = Math.max(HARD_MARGIN, Math.min(vh - HARD_MARGIN, y))
+        if (!activeRef.current && frameCountRef.current % 3 === cardIndex % 3) {
+          const MIN_DIST = 240
+          const MIN_DIST_SQ = MIN_DIST * MIN_DIST
+          const REPULSE = 0.6
 
-      // Persist state for next frame
-      posRef.current = { x, y }
-      velRef.current = { x: vx, y: vy }
+          const others = positionsRef.current
+          for (let j = 0; j < others.length; j++) {
+            if (j === cardIndex) continue
+            const other = others[j]
+            if (!other || (other.x === 0 && other.y === 0)) continue
+            const dx = x - other.x
+            const dy = y - other.y
+            const distSq = dx * dx + dy * dy
+            if (distSq >= MIN_DIST_SQ || distSq === 0) continue
+            const dist = Math.sqrt(distSq)
+            const force = ((MIN_DIST - dist) / MIN_DIST) * REPULSE
+            vx += (dx / dist) * force
+            vy += (dy / dist) * force
+          }
+        }
 
-      // Report to shared positions store
-      onPositionUpdate(cardIndex, x, y)
+        if (!activeRef.current) {
+          const EDGE_MARGIN = 130
+          const EDGE_FORCE = 0.4
 
-      // Direct DOM update — bypasses React reconciler entirely
-      if (cardRef.current) {
-        cardRef.current.style.left = `${x}px`
-        cardRef.current.style.top = `${y}px`
-      }
+          if (x < EDGE_MARGIN) vx += (EDGE_MARGIN - x) / EDGE_MARGIN * EDGE_FORCE
+          if (x > vw - EDGE_MARGIN) vx -= (x - (vw - EDGE_MARGIN)) / EDGE_MARGIN * EDGE_FORCE
+          if (y < EDGE_MARGIN) vy += (EDGE_MARGIN - y) / EDGE_MARGIN * EDGE_FORCE
+          if (y > vh - EDGE_MARGIN) vy -= (y - (vh - EDGE_MARGIN)) / EDGE_MARGIN * EDGE_FORCE
+        }
 
-      rafRef.current = requestAnimationFrame(frame)
-    }
+        if (activeRef.current && chosenSlotRef.current) {
+          const slot = chosenSlotRef.current
+          x += (slot.x - x) * 0.06
+          y += (slot.y - y) * 0.06
+          vx *= 0.85
+          vy *= 0.85
+        } else {
+          x += vx
+          y += vy
+        }
 
-    rafRef.current = requestAnimationFrame(frame)
-    return () => {
-      if (rafRef.current !== undefined) cancelAnimationFrame(rafRef.current)
-    }
-  }, [homeX, homeY, driftXAmp, driftYAmp, driftXSpeed, driftYSpeed, driftPhase, cardIndex, onPositionUpdate, positionsRef])
+        const HARD_MARGIN = 20
+        x = Math.max(HARD_MARGIN, Math.min(vw - HARD_MARGIN, x))
+        y = Math.max(HARD_MARGIN, Math.min(vh - HARD_MARGIN, y))
+
+        posRef.current = { x, y }
+        velRef.current = { x: vx, y: vy }
+
+        onPositionUpdate(cardIndex, x, y)
+
+        if (cardRef.current) {
+          cardRef.current.style.left = `${x}px`
+          cardRef.current.style.top = `${y}px`
+        }
+      },
+    }),
+    [
+      homeX,
+      homeY,
+      driftXAmp,
+      driftYAmp,
+      driftXSpeed,
+      driftYSpeed,
+      driftPhase,
+      cardIndex,
+      onPositionUpdate,
+      positionsRef,
+    ]
+  )
 
   // --- Hover handlers ---
 
@@ -459,4 +462,6 @@ export default function OrbitalCard({
       </div>
     </div>
   )
-}
+})
+
+export default OrbitalCard

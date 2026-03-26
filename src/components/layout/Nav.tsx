@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import HiDotGrid from '@/components/ui/HiDotGrid'
 import CaseStudiesDropdown from '@/components/ui/CaseStudiesDropdown'
-import { useChatContext } from '@/context/ChatContext'
+import { useChatUI } from '@/context/ChatContext'
 import { useIsMobile } from '@/hooks/useIsMobile'
 
 function isActive(pathname: string, href: string): boolean {
@@ -44,7 +44,7 @@ const MOBILE_SOCIAL_LINKS = [
 export default function Nav() {
   const pathname = usePathname()
   const router = useRouter()
-  const { toggle } = useChatContext()
+  const { toggle } = useChatUI()
   const isMobile = useIsMobile()
   const [menuOpen, setMenuOpen] = useState(false)
 

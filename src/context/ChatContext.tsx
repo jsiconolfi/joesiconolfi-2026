@@ -7,6 +7,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  type ReactNode,
 } from 'react'
 
 export interface ChatCard {
@@ -61,25 +62,33 @@ const STREAM_SPEED = 28
 /** User sends per browser session; refresh resets. Not reset by `resetConversation()`. */
 const MESSAGE_LIMIT = 30
 
-interface ChatContextValue {
+/** Stable UI state — consumed by Nav, ChatOverlay, etc. Does not change on each streaming token. */
+export interface ChatUIContextValue {
   isOpen: boolean
   open: () => void
   close: () => void
   toggle: () => void
+  isLimitReached: boolean
+  messageCount: number
+  incrementMessageCount: () => void
+}
+
+/** Message thread — changes frequently during streaming; consume only from ChatPanel. */
+export interface ChatMessagesContextValue {
   messages: Message[]
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>
   isLoading: boolean
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>
   streamingGreetingContent: string
   resetConversation: () => void
-  messageCount: number
-  incrementMessageCount: () => void
-  isLimitReached: boolean
 }
 
-const ChatContext = createContext<ChatContextValue | null>(null)
+export type ChatContextValue = ChatUIContextValue & ChatMessagesContextValue
 
-export function ChatProvider({ children }: { children: React.ReactNode }) {
+const ChatUIContext = createContext<ChatUIContextValue | null>(null)
+const ChatMessagesContext = createContext<ChatMessagesContextValue | null>(null)
+
+export function ChatProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -143,44 +152,56 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   }, [messages.length])
 
-  const value = useMemo(
+  const uiValue = useMemo(
     () => ({
       isOpen,
       open,
       close,
       toggle,
-      messages,
-      setMessages,
-      isLoading,
-      setIsLoading,
-      streamingGreetingContent,
-      resetConversation,
+      isLimitReached,
       messageCount,
       incrementMessageCount,
-      isLimitReached,
     }),
-    [
-      isOpen,
-      open,
-      close,
-      toggle,
-      messages,
-      setMessages,
-      setIsLoading,
-      isLoading,
-      streamingGreetingContent,
-      resetConversation,
-      messageCount,
-      incrementMessageCount,
-      isLimitReached,
-    ]
+    [isOpen, open, close, toggle, isLimitReached, messageCount, incrementMessageCount]
   )
 
-  return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>
+  const messagesValue = useMemo(
+    () => ({
+      messages,
+      setMessages,
+      isLoading,
+      setIsLoading,
+      streamingGreetingContent,
+      resetConversation,
+    }),
+    [messages, isLoading, streamingGreetingContent, resetConversation]
+  )
+
+  return (
+    <ChatUIContext.Provider value={uiValue}>
+      <ChatMessagesContext.Provider value={messagesValue}>{children}</ChatMessagesContext.Provider>
+    </ChatUIContext.Provider>
+  )
 }
 
-export function useChatContext() {
-  const ctx = useContext(ChatContext)
-  if (!ctx) throw new Error('useChatContext must be used within ChatProvider')
+export function useChatUI(): ChatUIContextValue {
+  const ctx = useContext(ChatUIContext)
+  if (!ctx) throw new Error('useChatUI must be used within ChatProvider')
   return ctx
+}
+
+export function useChatMessages(): ChatMessagesContextValue {
+  const ctx = useContext(ChatMessagesContext)
+  if (!ctx) throw new Error('useChatMessages must be used within ChatProvider')
+  return ctx
+}
+
+/** Backwards-compatible: full chat surface API (UI + messages). Prefer `useChatUI` / `useChatMessages` where split helps. */
+export function useChatContext(): ChatContextValue {
+  return { ...useChatUI(), ...useChatMessages() }
+}
+
+/** Alias of `useChatContext` — merged UI + messages API. */
+export function useChat(): ChatContextValue {
+  return useChatContext()
 }
