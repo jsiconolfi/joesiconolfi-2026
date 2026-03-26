@@ -127,7 +127,6 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
   const [isResponseLoading, setIsResponseLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const idCounter = useRef(100)
   const sendMessageRef = useRef<(content: string) => void>(() => {})
 
   function scrollToBottom() {
@@ -163,13 +162,13 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
     incrementMessageCount()
 
     const userMessage: Message = {
-      id: String(++idCounter.current),
+      id: crypto.randomUUID(),
       role: 'user',
       content: trimmed,
     }
 
     const assistantMessage: Message = {
-      id: String(++idCounter.current),
+      id: crypto.randomUUID(),
       role: 'assistant',
       content: '',
       cards: undefined,
