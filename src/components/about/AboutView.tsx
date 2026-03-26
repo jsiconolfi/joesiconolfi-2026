@@ -14,9 +14,10 @@ interface NowPlaying {
 }
 
 const BIO = [
-  "I'm a design engineer based in San Francisco, originally from Long Island. Pizza in my veins, West Coast since 22. For 15+ years I've been building where design and engineering overlap, mostly at companies where the product didn't exist yet and someone had to figure out what it should be.",
-  "My focus is AI-native product. Not AI as a feature bolted onto something, but experiences built from the ground up around what AI actually makes possible. I care about the human side of that: how do you make a system that learns feel empowering rather than opaque? How do you design for capability without designing away agency? That's the problem I keep returning to.",
-  "When I'm not building, I'm digging through record bins or watching the Knicks and Mets find new ways to break my heart. I started with MySpace CSS in middle school and the habit never left. Fifteen years later the tools are different, the problems are bigger, and I still can't stop making things.",
+  "I'm a designer, engineer, and self-proclaimed creative cosmonaut based in San Francisco, originally from New York. With pizza in my blood, punk in my veins, and users in my heart. I've been on the West Coast and the SF Bay since 2022. For 15+ years I've been doing both: conceiving the experience and building it, in the same session, without handing off.",
+  "Most of my work has been at companies where the product didn't exist yet. That's where the duality matters most. When you're figuring out what something should be, you can't separate how it feels from how it works. The design is the product. The code is the design. I've never thought of them as different jobs.",
+  "My focus now is AI-native product. Not AI as a feature bolted onto something, but experiences built from the ground up around what AI actually makes possible. I care deeply about the human side of that: how do you make a system that learns feel empowering rather than opaque? How do you design for capability without designing away agency? How do you get someone to the moment where the product just gets them, and make that moment happen faster? That's the problem I keep returning to.",
+  "When I'm not building I'm digging through record bins or watching the Knicks and Mets find new ways to break my heart. I started with MySpace CSS in middle school and the habit never left. Fifteen years later the tools are different, the problems are bigger, and I still can't stop making things.",
 ]
 
 const FACTS = [
@@ -35,6 +36,175 @@ const LINKS = [
   { label: 'github', url: 'https://github.com/Jsiconolfi' },
   { label: 'email', url: 'mailto:jsiconolfi@gmail.com' },
 ]
+
+type SportsScheduleClientPayload =
+  | {
+      status: 'live'
+      opponent: string
+      opponentAbbr: string
+      opponent_score: number
+      isHome: boolean
+      knicks_score?: number
+      mets_score?: number
+      period?: number
+      clock?: string
+      inning?: number
+      inningHalf?: string
+    }
+  | {
+      status: 'upcoming'
+      opponent: string
+      opponentAbbr: string
+      date: string
+      isHome: boolean
+      venue: string
+    }
+  | { status: 'off_season' }
+  | { status: 'error' }
+
+interface SportsWidgetProps {
+  team: 'knicks' | 'mets'
+  color: string
+  apiPath: string
+}
+
+function SportsWidget({ team, color, apiPath }: SportsWidgetProps) {
+  const [data, setData] = useState<SportsScheduleClientPayload | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const res = await fetch(apiPath)
+        const json: unknown = await res.json()
+        setData(json as SportsScheduleClientPayload)
+      } catch {
+        setData({ status: 'error' })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+    const interval = setInterval(fetchData, 60_000)
+    return () => clearInterval(interval)
+  }, [apiPath])
+
+  const isNba = team === 'knicks'
+
+  function formatGameTime(dateStr: string): string {
+    const date = new Date(dateStr)
+    const now = new Date()
+    const isToday = date.toDateString() === now.toDateString()
+    const tomorrow = new Date(now)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const isTomorrow = date.toDateString() === tomorrow.toDateString()
+
+    const timeStr = date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZoneName: 'short',
+    })
+
+    if (isToday) return `Today · ${timeStr}`
+    if (isTomorrow) return `Tomorrow · ${timeStr}`
+    return (
+      date.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+      }) + ` · ${timeStr}`
+    )
+  }
+
+  const teamScore =
+    data?.status === 'live'
+      ? isNba
+        ? (data.knicks_score ?? 0)
+        : (data.mets_score ?? 0)
+      : 0
+
+  return (
+    <div
+      style={{
+        padding: '12px 14px',
+        backgroundColor: 'rgba(255,255,255,0.02)',
+        border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: 6,
+        fontFamily: 'var(--font-mono)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <span
+          style={{
+            fontSize: 9,
+            fontWeight: 300,
+            color,
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+          }}
+        >
+          {team}
+        </span>
+        {data?.status === 'live' && (
+          <span
+            style={{
+              fontSize: 9,
+              color: '#00ff9f',
+              border: '1px solid rgba(0,255,159,0.3)',
+              borderRadius: 3,
+              padding: '1px 5px',
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+            }}
+          >
+            live
+          </span>
+        )}
+      </div>
+
+      {loading && (
+        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', margin: 0, fontWeight: 300 }}>
+          loading...
+        </p>
+      )}
+
+      {!loading && data?.status === 'upcoming' && (
+        <div>
+          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', margin: '0 0 3px', fontWeight: 300 }}>
+            {data.isHome ? 'vs' : '@'} {data.opponent}
+          </p>
+          <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', margin: 0, fontWeight: 300 }}>
+            {formatGameTime(data.date)}
+          </p>
+        </div>
+      )}
+
+      {!loading && data?.status === 'live' && (
+        <div>
+          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', margin: '0 0 3px', fontWeight: 300 }}>
+            {teamScore} – {data.opponent_score} vs {data.opponentAbbr}
+          </p>
+          <p style={{ fontSize: 10, color: 'rgba(0,255,159,0.6)', margin: 0, fontWeight: 300 }}>
+            {isNba ? `Q${data.period ?? 1} · ${data.clock ?? ''}` : (data.inningHalf ?? '')}
+          </p>
+        </div>
+      )}
+
+      {!loading && data?.status === 'off_season' && (
+        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', margin: 0, fontWeight: 300 }}>
+          no games scheduled
+        </p>
+      )}
+
+      {!loading && data?.status === 'error' && (
+        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', margin: 0, fontWeight: 300 }}>
+          unavailable
+        </p>
+      )}
+    </div>
+  )
+}
 
 export default function AboutView() {
   const router = useRouter()
@@ -66,7 +236,7 @@ export default function AboutView() {
   return (
     <main style={{ minHeight: '100vh', fontFamily: 'var(--font-mono, monospace)', overflowX: 'hidden' }}>
 
-      {/* Terminal chrome — colored traffic lights; red → home (Session 71) */}
+      {/* Terminal chrome - colored traffic lights; red → home (Session 71) */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 40,
         backgroundColor: 'rgba(10, 12, 16, 0.98)',
@@ -189,7 +359,7 @@ export default function AboutView() {
         {/* Divider */}
         <div style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginBottom: 56 }} />
 
-        {/* Facts + Spotify + Connect */}
+        {/* Facts + connect | Spotify + sports widgets (Session 83) */}
         <div style={{
           display: isMobile ? 'flex' : 'grid',
           flexDirection: isMobile ? 'column' : undefined,
@@ -197,7 +367,7 @@ export default function AboutView() {
           gap: 48,
         }}>
 
-          {/* Facts */}
+          {/* Facts + connect */}
           <div>
             <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 24px' }}>
               outside the terminal
@@ -214,10 +384,53 @@ export default function AboutView() {
                 </div>
               ))}
             </div>
+
+            <div style={{
+              marginTop: 32,
+              paddingTop: 24,
+              borderTop: '1px solid rgba(255,255,255,0.06)',
+            }}>
+              <p style={{
+                fontSize: 10,
+                color: 'rgba(255,255,255,0.25)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                margin: '0 0 12px',
+                fontFamily: 'var(--font-mono)',
+              }}>
+                connect
+              </p>
+              <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
+                {LINKS.map(link => (
+                  <a
+                    key={link.label}
+                    href={link.url}
+                    target={link.url.startsWith('mailto:') ? undefined : '_blank'}
+                    rel={link.url.startsWith('mailto:') ? undefined : 'noopener noreferrer'}
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 300,
+                      color: 'rgba(255,255,255,0.4)',
+                      textDecoration: 'none',
+                      fontFamily: 'var(--font-mono)',
+                      transition: 'color 0.2s ease',
+                      minHeight: isMobile ? 44 : undefined,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      touchAction: 'manipulation',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.color = '#00ff9f')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}
+                  >
+                    {link.label}
+                  </a>
+                ))}
+              </div>
+            </div>
           </div>
 
-          {/* Spotify + Connect */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
+          {/* Spotify + Knicks + Mets */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
             {/* Spotify widget */}
             <div>
@@ -284,33 +497,36 @@ export default function AboutView() {
               )}
             </div>
 
-            {/* Connect */}
             <div>
-              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 16px' }}>
-                connect
+              <p
+                style={{
+                  fontSize: 10,
+                  color: 'rgba(255,255,255,0.25)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  margin: '0 0 8px',
+                  fontFamily: 'var(--font-mono)',
+                }}
+              >
+                knicks
               </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {LINKS.map(link => (
-                  <a
-                    key={link.label}
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      fontSize: 12, fontWeight: 300, color: 'rgba(255,255,255,0.4)',
-                      textDecoration: 'none', transition: 'color 0.2s ease',
-                      display: 'flex', alignItems: 'center', gap: 8,
-                      minHeight: isMobile ? 44 : undefined,
-                      touchAction: 'manipulation',
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.color = '#00ff9f')}
-                    onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}
-                  >
-                    <span style={{ color: '#00ff9f', fontSize: 10 }}>→</span>
-                    {link.label}
-                  </a>
-                ))}
-              </div>
+              <SportsWidget team="knicks" color="rgba(0,119,200,0.7)" apiPath="/api/sports/knicks" />
+            </div>
+
+            <div>
+              <p
+                style={{
+                  fontSize: 10,
+                  color: 'rgba(255,255,255,0.25)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  margin: '0 0 8px',
+                  fontFamily: 'var(--font-mono)',
+                }}
+              >
+                mets
+              </p>
+              <SportsWidget team="mets" color="rgba(0,90,156,0.7)" apiPath="/api/sports/mets" />
             </div>
           </div>
         </div>

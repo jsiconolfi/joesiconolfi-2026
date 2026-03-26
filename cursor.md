@@ -11,7 +11,7 @@ This is a personal portfolio site for Joe Siconolfi, Staff Design Engineer at Co
 - **Styling**: Tailwind CSS v3 — utility-first, no inline styles except for dynamic values (e.g. animation keyframe percentages)
 - **Animation**: Framer Motion (`framer-motion@12`) for page transitions and component-level animation, CSS for the swirl/background
 - **Fonts**: Loaded via `next/font/google` — **IBM Plex Mono** only (weights 100–700, normal + italic, CSS var `--font-mono`). All type roles use IBM Plex Mono, differentiated by weight and size. No other fonts.
-- **AI integration**: Anthropic Messages API via **`src/app/api/chat/route.ts`** (edge runtime, `fetch` to `api.anthropic.com`) — **`ANTHROPIC_API_KEY`**, model **`claude-sonnet-4-20250514`**, **`max_tokens: 400`** (**Session 77** — do not increase without explicit instruction). **Session 80:** in-memory IP rate limit **`RATE_LIMIT_MAX` = 50** requests per **`RATE_LIMIT_WINDOW` = 1h** per IP (`x-forwarded-for` / `x-real-ip`); **`429`** JSON body; resets on edge cold start.
+- **AI integration**: Anthropic Messages API via **`src/app/api/chat/route.ts`** (edge runtime, `fetch` to `api.anthropic.com`) — **`ANTHROPIC_API_KEY`**, model **`claude-sonnet-4-20250514`**, **`max_tokens: 250`** (**Session 77**, **Session 85**, **Session 86** — **do not exceed** without explicit instruction; **250** leaves room for short replies plus trailing cards JSON without cutoff). **`SYSTEM_PROMPT`** starts with a **`RULES`** block: **2-3 sentences max** (else cards), and **no em dashes (`—`)** in any reply. **Session 80:** in-memory IP rate limit **`RATE_LIMIT_MAX` = 50** requests per **`RATE_LIMIT_WINDOW` = 1h** per IP (`x-forwarded-for` / `x-real-ip`); **`429`** JSON body; resets on edge cold start.
 - **Deployment**: Vercel
 
 ## File structure conventions
@@ -165,7 +165,7 @@ Two RAF-loop dot grid components live in `src/components/ui/`:
 - `rafRef` typed as `useRef<number | undefined>(undefined)` — cleanup on unmount
 - `prefers-reduced-motion`: static snapshot state, no animation
 
-## AI / chat panel (Session 7 — updated Session 11, Session 66, Session 68, Session 69, Session 70, **Session 72**, **Session 74**, **Session 75**, **Session 76**, **Session 77**, **Session 78**, **Session 79**, **Session 80**)
+## AI / chat panel (Session 7 — updated Session 11, Session 66, Session 68, Session 69, Session 70, **Session 72**, **Session 74**, **Session 75**, **Session 76**, **Session 77**, **Session 78**, **Session 79**, **Session 80**, **Session 85**, **Session 86**)
 
 The prompt bar has been replaced by a full `ChatPanel` component — the primary interface of the homepage. Rules:
 - `src/components/ui/ChatPanel.tsx` — `variant?: 'embedded' | 'overlay'` (default **`embedded`**). Homepage uses embedded; **`ChatOverlay`** passes **`variant="overlay"`**.
@@ -200,13 +200,13 @@ State shape:
 - `streamingGreetingContent` — from **`ChatContext`** — string built during greeting phase 2
 - `isResponseLoading` — **local `ChatPanel` state** — `true` while `/api/chat` fetch is in progress; disables send + chips; distinct from `isLoading`
 
-### Anthropic chat API (**Session 72**, **Session 75**, **Session 77**, **Session 80**)
+### Anthropic chat API (**Session 72**, **Session 75**, **Session 77**, **Session 80**, **Session 85**, **Session 86**)
 
 - **Route:** `src/app/api/chat/route.ts` — `export const runtime = 'edge'`, `POST`, body `{ messages: { role, content }[] }`.
 - **Session 80 — IP rate limit:** Module-scope **`Map`** (`rateLimitStore`) — key IP string, value **`{ count, windowStart }`**; **`RATE_LIMIT_MAX` = 50**, **`RATE_LIMIT_WINDOW` = 3600000** ms. **`checkRateLimit(ip)`** runs at the start of **`POST`** (IP from **`x-forwarded-for`** first hop or **`x-real-ip`**, else **`'unknown'`**). Over limit → **`429`**, **`Content-Type: application/json`**, body **`{ error: 'Rate limit exceeded. Try again later.' }`**. Store resets on edge cold start.
 - **Env:** `ANTHROPIC_API_KEY` (500 if missing). Add to `.env.local` and Vercel project env.
 - **Client payload:** Exclude `id === 'greeting'` and assistant rows with empty `content` so the **first message is always `user`** (Anthropic API rule).
-- **Model / limits:** `claude-sonnet-4-20250514`, **`max_tokens: 400`** (**Session 77**) — hard cap for concise replies; **do not increase** without explicit instruction.
+- **Model / limits:** `claude-sonnet-4-20250514`, **`max_tokens: 250`** (**Session 86**; 150 was too tight for cards JSON) — **do not exceed** without explicit instruction; brevity still enforced by **`RULES`**, not by starving the output budget. **`SYSTEM_PROMPT`** must start with the **`RULES`** block (length + no **`—`**), then persona and reference content; **`How to answer`** reinforces the em-dash rule in prose.
 - **Stream shape:** Anthropic SSE body is piped through a **`TransformStream`** that buffers incomplete lines, forwards **`content_block_delta` / `text_delta`** immediately as NDJSON `{ type: 'text', text }` per token. Cards: on **`message_stop`** and again in **`flush`** via **`trySendCards`** (deduped with `cardsSent`) so trailing `{"cards":[...]}` still emits after the stream. Response headers **`Cache-Control: no-cache, no-transform`** and **`X-Accel-Buffering: no`** (**Session 77**) reduce proxy buffering (e.g. Vercel/Nginx).
 - **Client (`ChatPanel`):** For each parsed NDJSON line in the read loop, **`setMessages`** updates the streaming assistant row immediately (**Session 77** — no debounce). **`{ type: 'cards' }`** lines update **only** the current assistant row’s **`cards`** in state (**Session 78**); stream end sets **`isStreaming: false`** without replacing **`cards`**. No global cards state; new assistants start with **`cards: undefined`**. Strips displayed card JSON via `CARDS_STRIP_REGEX`; failures → `Something went wrong. Try again.` (**Session 78:** error row sets **`cards: undefined`**). **Session 80:** if **`response.status === 429`**, set the current assistant bubble text to the hourly cooldown copy and **`isStreaming: false`** before returning (no NDJSON read).
 - **Input gating:** Send, chips, and `handleSend` no-op while `messages.length === 0` so the three-phase greeting is not interrupted and the first API turn always includes thread context after `INITIAL_MESSAGE` exists.
@@ -452,7 +452,7 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 **Page sticky chrome (Session 71):** `AboutView`, `TimelineView`, `LabView`, `WorkGrid` sticky `*.exe` headers use **colored** traffic lights (`#ff5f57` / `#febc2e` / `#28c840`): red `<button type="button">` → `router.push('/')`, shows `×` on hover; yellow/green show `−` / `+` on hover only; **inner glyph spans use `pointerEvents: 'none'`** so the button receives clicks.
 
 **Per-file highlights:**
-- **AboutView:** Photo/bio stack vertical on mobile; photo **120×120** centered; name block centered; facts + Spotify stack; facts label width **100** mobile; Spotify link **`maxWidth: '100%'`**; connect + Spotify links touch + 44px height on mobile.
+- **AboutView:** Photo/bio stack vertical on mobile; photo **120×120** centered; name block centered; facts + connect (left) and Spotify + sports widgets (right) stack on mobile; facts label width **100** mobile; Spotify link **`maxWidth: '100%'`**; Spotify row touch + 44px height on mobile; **Session 83:** connect links horizontal row under facts (**no** `→` arrows), **`minHeight: 44`** + **`touchAction: 'manipulation'`** on mobile; right column widgets **`gap: 14`** (Spotify, Knicks, Mets).
 - **TimelineView:** Resume download link **44px** min height + `touchAction`; **`EraBlock`** receives `isMobile` — summary **`wordBreak: 'break-word'`**; case study **`button`** `minHeight: 44`, `touchAction`, `type="button"`.
 - **LabView:** Beliefs **single column** on mobile (`flex` / `gap: 8`); note **`marginTop: 4`** mobile; filter input **`maxWidth: '100%'`** mobile, **`fontSize: 16`** mobile (iOS); tag/clear/suggestion buttons **44px** + `touchAction`; experiment copy **`wordBreak`**.
 - **WorkGrid:** Grid **`1fr`** mobile; header **22px**; card chrome row **`minHeight: 44`** mobile; whole card **`touchAction: 'manipulation'`**; **`role="button"`** + **`aria-label`** + keyboard **Enter/Space** for a11y.
@@ -570,7 +570,7 @@ Dynamic pages at `/work/[slug]` for all 10 projects.
 
 **Next case study chain (loops):** waypoint → statespace → channel → seudo → wafer → sherpa → waypoint-sync → kernel → mushroom → cohere-labs → waypoint
 
-## About page (Session 44, bio Session 65)
+## About page (Session 44, bio Session 84, sports widgets Session 82, layout Session 83)
 
 Live at `/about`. Scrollable content page, same visual system as case study pages.
 
@@ -579,14 +579,17 @@ Live at `/about`. Scrollable content page, same visual system as case study page
 - `src/components/about/AboutView.tsx` — `'use client'` component
 - `src/app/api/spotify/callback/route.ts` — OAuth callback, one-time token exchange
 - `src/app/api/spotify/now-playing/route.ts` — fetches currently-playing or recently-played
+- `src/app/api/sports/knicks/route.ts` — Knicks schedule/score via ESPN team schedule API (**Session 82**)
+- `src/app/api/sports/mets/route.ts` — Mets schedule/score, same pattern (**Session 82**)
+- `src/lib/espnSchedule.ts` — typed helpers for ESPN schedule JSON (`competition[0].status`, `score.value` / `displayValue`) (**Session 82**)
 
-**Layout (Session 67):** 880px max-width, `padding: isMobile ? '100px 20px 80px' : '120px 48px 160px'`, `width: '100%'`, `boxSizing`. Photo+bio: stack on mobile (flex column, 120px photo centered); facts+Spotify stack on mobile; see **Mobile content pages — Session 67** in this file.
+**Layout (Session 67, Session 83):** 880px max-width, `padding: isMobile ? '100px 20px 80px' : '120px 48px 160px'`, `width: '100%'`, `boxSizing`. Photo+bio: stack on mobile (flex column, 120px photo centered); bottom grid: **left** — facts then **connect** (divider, horizontal row, label-only links, hover `#00ff9f`); **right** — Spotify + Knicks + Mets only, column **`gap: 14`** (no extra `marginTop` on sports blocks). See **Mobile content pages — Session 67** in this file.
 
 **Terminal chrome:** sticky, `zIndex: 40`, `rgba(10,12,16,0.98)` + `blur(12px)`. **Session 71:** **colored** traffic lights (red → `/`). Title: `about.exe`.
 
 **Photo:** `/joe.png` — raw `<img>` with `eslint-disable-next-line @next/next/no-img-element`, 200×200, `objectFit: cover`, `borderRadius: 8`.
 
-**Bio copy:** 3 paragraphs in `BIO` in `AboutView.tsx`, verbatim (Session 65 — Long Island / 15+ years overlap; AI-native product + agency; records, Knicks/Mets, MySpace CSS arc). No em dashes in about bio. Never rewrite. 13px, fontWeight 300, lineHeight 1.8, `rgba(255,255,255,0.65)`.
+**Bio copy:** 4 paragraphs in `BIO` in `AboutView.tsx`, verbatim (**Session 84** — designer/engineer/creative cosmonaut, NY→SF Bay 2022, design–code duality, AI-native product + agency questions, records/Knicks/Mets/MySpace arc). No em dashes in `AboutView.tsx` body or bio strings (including JSX comments). Never rewrite. 13px, fontWeight 300, lineHeight 1.8, `rgba(255,255,255,0.65)`.
 
 **Spotify widget:**
 - Calls `/api/spotify/now-playing` on mount + every 30s (via `setInterval`)
@@ -596,6 +599,10 @@ Live at `/about`. Scrollable content page, same visual system as case study page
 - Hover: border `rgba(30,215,96,0.3)`, bg `rgba(30,215,96,0.04)` — imperative via `onMouseEnter/Leave` on the `<a>` tag
 - Album art: raw `<img>` with `eslint-disable-next-line @next/next/no-img-element`
 - Section label: `now playing` / `last played` (toggled by `isPlaying`)
+
+**Knicks + Mets widgets (Session 82, layout Session 83):** Right column only, below Spotify, **`flexDirection: 'column'`** + **`gap: 14`** with Spotify (no connect in this column). `<SportsWidget>` fetches `/api/sports/knicks` or `/api/sports/mets` on mount and every **60s** (`setInterval` cleared on unmount). Visual match: bordered `rgba(255,255,255,0.02)` panel, mono labels. Team accent in header: Knicks `rgba(0,119,200,0.7)`, Mets `rgba(0,90,156,0.7)`. **Live** badge: `#00ff9f` + `rgba(0,255,159,0.3)` border. States: **upcoming** (`vs` / `@` opponent + localized date/time), **live** (scores + quarter/clock or MLB `shortDetail`), **off_season** (`no games scheduled`), **error** (`unavailable`), loading (`loading...`). Server: **`export const revalidate = 60`** + `fetch(..., { next: { revalidate: 60 } })` to ESPN `site.api.espn.com` team schedule endpoints — **no API key** (not SportRadar). Parsing uses **`competitions[0].status.type.state`** (`in` / `pre` / `post`), not event-level status.
+
+**Connect (Session 83):** Bottom of **left** column under facts: `marginTop: 32`, `paddingTop: 24`, `borderTop: 1px solid rgba(255,255,255,0.06)`; row `display: flex`, `gap: 24`, `flexWrap: wrap`; links text-only (no arrows), `fontSize: 11`, hover `#00ff9f`; `mailto:` omits `target` / `rel`; external uses `_blank` + `noopener noreferrer`. URLs stay on **`LINKS`** in `AboutView.tsx` (existing canonical paths).
 
 **Spotify API routes:**
 - `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REFRESH_TOKEN` in `.env.local`

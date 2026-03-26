@@ -29,7 +29,7 @@ export const INITIAL_MESSAGE: Message = {
   id: 'greeting',
   role: 'assistant',
   content:
-    "Hi! I'm Joe, a designer + engineer by trade and a creative cosmonaut by nature. What would you like to explore?",
+    "Hi! I'm Joe, a designer and engineer by trade and a creative cosmonaut by nature. What would you like to explore?",
   cards: [
     {
       key: 'work',
