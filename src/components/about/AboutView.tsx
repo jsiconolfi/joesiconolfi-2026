@@ -64,11 +64,10 @@ type SportsScheduleClientPayload =
 
 interface SportsWidgetProps {
   team: 'knicks' | 'mets'
-  color: string
   apiPath: string
 }
 
-function SportsWidget({ team, color, apiPath }: SportsWidgetProps) {
+function SportsWidget({ team, apiPath }: SportsWidgetProps) {
   const [data, setData] = useState<SportsScheduleClientPayload | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -139,7 +138,7 @@ function SportsWidget({ team, color, apiPath }: SportsWidgetProps) {
           style={{
             fontSize: 9,
             fontWeight: 300,
-            color,
+            color: 'rgba(255,255,255,0.75)',
             textTransform: 'uppercase',
             letterSpacing: '0.08em',
           }}
@@ -510,7 +509,7 @@ export default function AboutView() {
               >
                 knicks
               </p>
-              <SportsWidget team="knicks" color="rgba(0,119,200,0.7)" apiPath="/api/sports/knicks" />
+              <SportsWidget team="knicks" apiPath="/api/sports/knicks" />
             </div>
 
             <div>
@@ -526,7 +525,7 @@ export default function AboutView() {
               >
                 mets
               </p>
-              <SportsWidget team="mets" color="rgba(0,90,156,0.7)" apiPath="/api/sports/mets" />
+              <SportsWidget team="mets" apiPath="/api/sports/mets" />
             </div>
           </div>
         </div>

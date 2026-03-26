@@ -524,7 +524,7 @@ const BIO = [
 - Spotify green is `#1ed760` — NOT `#00ff9f`. Do not confuse them.
 - Album art uses raw `<img>` with `eslint-disable-next-line @next/next/no-img-element`
 
-**Knicks / Mets widgets (Session 82):** **`SportsWidget`** in `AboutView.tsx` — **`/api/sports/knicks`**, **`/api/sports/mets`**. ESPN unofficial JSON only (**no env vars**). Next game: opponent, home/away, formatted local time; live: scores, NBA `Q` + clock or MLB `shortDetail`; **live** pill `#00ff9f`. **`setInterval` 60_000**, cleanup on unmount. Routes return JSON `status`: `live` | `upcoming` | `off_season`; HTTP 500 → `{ status: 'error' }`.
+**Knicks / Mets widgets (Session 82):** **`SportsWidget`** in `AboutView.tsx` — **`/api/sports/knicks`**, **`/api/sports/mets`**. ESPN unofficial JSON only (**no env vars**). Next game: opponent, home/away, formatted local time; live: scores, NBA `Q` + clock or MLB `shortDetail`; **live** pill `#00ff9f`. Team name labels (**knicks** / **mets**) use **`rgba(255,255,255,0.75)`** (not team blue accents). **`setInterval` 60_000**, cleanup on unmount. Routes return JSON `status`: `live` | `upcoming` | `off_season`; HTTP 500 → `{ status: 'error' }`.
 
 **Connect links (Session 83):** Under facts in the left column: horizontal row (`gap: 24`, `flexWrap`), text labels only (**no** `→` prefix). Hover **`#00ff9f`**. `mailto:` has no `target`/`rel`; https opens `_blank` + `noopener noreferrer`. Data: **`LINKS`** in `AboutView.tsx`. No `next/link` — external or `mailto:`.
 
