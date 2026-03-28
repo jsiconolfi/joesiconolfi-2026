@@ -58,8 +58,9 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
   const [active, setActive] = useState(false)
   const [imgError, setImgError] = useState(false)
 
-  // DOM ref for imperative position + opacity + zIndex updates
+  // Transform + z-index on cardRef; opacity must NOT wrap backdrop-filter (breaks blur in WebKit/Blink)
   const cardRef = useRef<HTMLDivElement>(null)
+  const opacityLayerRef = useRef<HTMLDivElement>(null)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const deactivateTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -82,8 +83,10 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
         chosenSlotRef.current = homeX < vwCenter ? leftSlot : rightSlot
         activeRef.current = true
         setActive(true)
+        if (opacityLayerRef.current) {
+          opacityLayerRef.current.style.opacity = '1'
+        }
         if (cardRef.current) {
-          cardRef.current.style.opacity = '1'
           cardRef.current.style.zIndex = '15'
         }
         onVideoHover(cardIndex)
@@ -92,8 +95,10 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
           activeRef.current = false
           setActive(false)
           chosenSlotRef.current = null
+          if (opacityLayerRef.current) {
+            opacityLayerRef.current.style.opacity = hoveredRef.current ? '0.85' : '0.6'
+          }
           if (cardRef.current) {
-            cardRef.current.style.opacity = hoveredRef.current ? '0.85' : '0.6'
             cardRef.current.style.zIndex = hoveredRef.current ? '12' : '5'
           }
           if (!hoveredRef.current) onVideoLeave(cardIndex)
@@ -216,18 +221,26 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
 
   function handleWrapperEnter() {
     hoveredRef.current = true
-    if (!activeRef.current && cardRef.current) {
-      cardRef.current.style.opacity = '0.85'
-      cardRef.current.style.zIndex = '12'
+    if (!activeRef.current) {
+      if (opacityLayerRef.current) {
+        opacityLayerRef.current.style.opacity = '0.85'
+      }
+      if (cardRef.current) {
+        cardRef.current.style.zIndex = '12'
+      }
     }
     onVideoHover(cardIndex)
   }
 
   function handleWrapperLeave() {
     hoveredRef.current = false
-    if (!activeRef.current && cardRef.current) {
-      cardRef.current.style.opacity = '0.6'
-      cardRef.current.style.zIndex = '5'
+    if (!activeRef.current) {
+      if (opacityLayerRef.current) {
+        opacityLayerRef.current.style.opacity = '0.6'
+      }
+      if (cardRef.current) {
+        cardRef.current.style.zIndex = '5'
+      }
     }
     if (!activeRef.current) onVideoLeave(cardIndex)
   }
@@ -257,36 +270,59 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
         top: 0,
         transform: `translate(${homeX - HALF_W}px, ${homeY - HALF_H}px)`,
         width: `${CARD_W}px`,
-        opacity: 0.6,
-        transition: 'opacity 0.3s ease',
         zIndex: 5,
         willChange: 'transform',
+        borderRadius: '8px',
       }}
       onMouseEnter={handleWrapperEnter}
       onMouseLeave={handleWrapperLeave}
     >
-      {/* Active beacon — static dot; visibility toggled via CSS (.orbital-card-root--active) */}
+      {/* Blur + tint behind card content — not on transform node; pointer-events none so panel receives clicks */}
       <div
-        className="orbital-card-beacon absolute -top-1 -right-1 z-10 h-2 w-2 rounded-full"
-        style={{
-          backgroundColor: '#00ff9f',
-          boxShadow: '0 0 8px rgba(0,255,159,0.5)',
-        }}
         aria-hidden
+        style={{
+          position: 'absolute',
+          inset: 0,
+          zIndex: 0,
+          borderRadius: '8px',
+          backdropFilter: 'blur(5px)',
+          WebkitBackdropFilter: 'blur(5px)',
+          backgroundColor: 'rgba(22, 26, 34, 0.92)',
+          pointerEvents: 'none',
+        }}
       />
 
-      {/* Terminal window — border / shadow / hover scale from globals.css (no hover React state) */}
       <div
-        className={`orbital-card-panel ${active ? 'orbital-card-panel--active' : ''}`}
-        onClick={handleClick}
+        ref={opacityLayerRef}
         style={{
-          backgroundColor: 'rgba(14, 16, 21, 0.85)',
-          borderRadius: '8px',
-          overflow: 'hidden',
-          cursor: 'pointer',
-          width: '220px',
+          position: 'relative',
+          zIndex: 1,
+          opacity: 0.6,
+          transition: 'opacity 0.3s ease',
         }}
       >
+        {/* Active beacon — static dot; visibility toggled via CSS (.orbital-card-root--active) */}
+        <div
+          className="orbital-card-beacon absolute -top-1 -right-1 z-10 h-2 w-2 rounded-full"
+          style={{
+            backgroundColor: '#00ff9f',
+            boxShadow: '0 0 8px rgba(0,255,159,0.5)',
+          }}
+          aria-hidden
+        />
+
+        {/* Terminal window — border / shadow / hover scale from globals.css (no hover React state) */}
+        <div
+          className={`orbital-card-panel ${active ? 'orbital-card-panel--active' : ''}`}
+          onClick={handleClick}
+          style={{
+            backgroundColor: 'transparent',
+            borderRadius: '8px',
+            overflow: 'hidden',
+            cursor: 'pointer',
+            width: '220px',
+          }}
+        >
         {/* Chrome header */}
         <div
           style={{
@@ -442,6 +478,7 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
               </span>
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>

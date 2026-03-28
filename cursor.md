@@ -179,7 +179,7 @@ The prompt bar has been replaced by a full `ChatPanel` component — the primary
 - **iOS input (Session 70):** `fontSize: '16px'` on mobile (**mandatory** — below 16px triggers auto-zoom); `'13px'` desktop. `fontFamily: 'var(--font-mono)'`, `fontWeight: 300`. **`onFocus`:** mobile → `setTimeout(scrollToBottom, 300)` after keyboard. Sentinel at thread end: `<div ref={messagesEndRef} style={{ height: 1 }} />`. **`touchAction: 'manipulation'`** on mobile for chips, text input, send button, overlay red close.
 - **Root `viewport` export (Session 70):** `src/app/layout.tsx` — `maximumScale: 1`, `userScalable: false` with `device-width` / `initialScale: 1` (Next.js `export const viewport`).
 - Glass treatment uses **inline styles only** (not Tailwind backdrop-blur classes):
-  - Outer panel: `backgroundColor: rgba(22,26,34,0.7)`, `backdropFilter: blur(5px)`, `boxShadow: 0 8px 32px rgba(0,0,0,0.3)`, `border: 1px solid rgba(255,255,255,0.06)`
+  - Outer panel: `backgroundColor: rgba(22,26,34,0.92)`, `backdropFilter: blur(5px)`, `WebkitBackdropFilter: blur(5px)`, `boxShadow: 0 8px 32px rgba(0,0,0,0.3)`, `border: 1px solid rgba(255,255,255,0.06)`
   - Header / input bar: `backgroundColor: rgba(14,16,21,0.8)`, `borderBottom/Top: 1px solid rgba(255,255,255,0.06)`
   - User message bubble: `rgba(255,255,255,0.08)` bg, `rgba(255,255,255,0.1)` border, `borderRadius: 16px 16px 4px 16px`
   - Suggestion chips: `rgba(255,255,255,0.04)` bg, `rgba(255,255,255,0.12)` border, `borderRadius: 20px`
@@ -274,7 +274,7 @@ Z-index stack: Swirl `z-0` → OrbitalSystem `z-10` → PageTransitionWrapper `z
 - **Position updates are direct DOM** — `setDisplayPos` eliminated; no React reconciliation per frame.
 - **Opacity + zIndex are imperative** on pointer enter/leave and activation — set directly on `cardRef`. **`hoveredRef`** tracks hover **without** React state for the deactivation timer.
 - **Session 90 — Video:** `OrbitalSystem` **`activeVideoRef`** + **`handleOrbitalVideoHover` / `handleOrbitalVideoLeave`**; **`getVideoElement()`** on **`OrbitalCardHandle`**. Orbital `<video>` uses **`preload="metadata"`** for first-frame thumbnail at rest.
-- **Session 90 — Orbital panels:** **no** `backdrop-filter` (solid `rgba(14,16,21,0.85)` body). Other UI blurs unchanged.
+- **Session 92 — Orbital panels:** **`backdropFilter` / `WebkitBackdropFilter`: `blur(5px)`** + **`backgroundColor: rgba(22,26,34,0.92)`** on **`absolute` / `inset: 0` / `zIndex: 0`** (**`pointer-events: none`**). **`opacity`** idle/hover/active on **`opacityLayerRef`** (**`relative` / `zIndex: 1`**) — **not** on **`cardRef`** (ancestor **`opacity`** breaks **`backdrop-filter`**). **`cardRef`**: **`transform`** + **`zIndex`** only. Beacon + **`.orbital-card-panel`** (**`transparent`**). Nav, chat, sticky chrome blurs unchanged.
 - **Collision check staggered** — `frameCountRef` per card; `frameCountRef.current % 3 === cardIndex % 3` runs pairwise repulsion. **`distSq`** vs `MIN_DIST * MIN_DIST` before `sqrt` (**Session 73**).
 - `activeRef.current` is set directly in the signal handler (not via `useEffect` watching `active` state). The sync `useEffect` was removed.
 
@@ -318,7 +318,7 @@ Z-index stack: Swirl `z-0` → OrbitalSystem `z-10` → PageTransitionWrapper `z
 **Project shuffle (Session 24):** `shuffleArray<T>()` (Fisher-Yates, module scope) shuffles `PROJECTS` once via `useMemo(() => shuffleArray(PROJECTS), [])` inside `OrbitalSystem`. The render iterates `shuffledProjects` — different order on every page load, stable for the session. `PROJECTS` in `projects.ts` is never mutated. Do not replace `useMemo` with `useState` or `useEffect` — that would cause a flash of unshuffled content.
 
 **Do NOT reintroduce elliptical orbital math.** Home positions are fixed viewport percentages.
-**Do NOT change `lerpRef` factor (`0.06`), traffic light colors, or orbital chrome layout.** (**Session 90:** orbital **panel** has no backdrop-filter — solid fill — traffic lights unchanged.)
+**Do NOT change `lerpRef` factor (`0.06`), traffic light colors, or orbital chrome layout.** (**Session 92:** orbital glass on **`absolute` inset-0 layer** under **`zIndex: 1`** content — traffic lights / borders / scale hover unchanged.)
 
 **Project assets (Session 23):** `/public/projects/` — current files on disk:
 - MP4 (video): `waypoint.mp4`, `sherpa.mp4`, `waypoint-sync.mp4`, `channelai.mp4`, `statespace.mp4`, `seudo.mp4`, `kernel.mp4`, `cohere-labs.mp4`

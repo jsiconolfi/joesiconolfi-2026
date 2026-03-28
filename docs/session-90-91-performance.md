@@ -39,11 +39,11 @@ Rapid hover across MP4-backed cards could previously overlap `play()` across man
 
 At most one orbital MP4 plays at a time, which limits decode and main-thread work during fast pointer movement.
 
-### 4. Remove backdrop blur on orbital panels only
+### 4. Orbital panel glass (Session 90 vs Session 92)
 
-Ten panels with `backdrop-filter` over an animated Swirl was a major GPU cost. Orbital card bodies no longer use blur; they use a slightly more opaque solid fill (**`rgba(14, 16, 21, 0.85)`**) so cards still read as distinct surfaces.
+Session 90 briefly removed **`backdrop-filter`** from orbital bodies to cut GPU cost over the Swirl. **Session 92 restored frosted glass** with a structural fix: blur and tint live on a **dedicated absolute layer** (`inset: 0`, `z-index: 0`, `pointer-events: none`) with **`blur(5px)`** and **`backgroundColor: rgba(22, 26, 34, 0.92)`** — matching the original Session 20 card body. Idle / hover / active **opacity** is applied on a **sibling** **`opacityLayerRef`** wrapper, **not** on an ancestor of the blur layer (opacity on ancestors breaks **`backdrop-filter`** in WebKit/Blink).
 
-**Explicitly unchanged:** Nav, `ChatPanel`, `ChatOverlay`, sticky page chrome, and `TabBar` still use their own glass / blur treatments.
+**Explicitly unchanged elsewhere:** Nav, `ChatPanel`, `ChatOverlay`, sticky page chrome, and `TabBar` were never stripped of blur in Session 90.
 
 ### 5. What did not change
 

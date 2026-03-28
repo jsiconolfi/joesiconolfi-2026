@@ -333,7 +333,7 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
         maxWidth: '100%',
         height: isMobile ? 'calc(100dvh - 140px)' : '75vh',
         maxHeight: isMobile ? 'calc(100dvh - 140px)' : '80vh',
-        backgroundColor: 'rgba(22, 26, 34, 0.7)',
+        backgroundColor: 'rgba(22, 26, 34, 0.92)',
         backdropFilter: 'blur(5px)',
         WebkitBackdropFilter: 'blur(5px)',
         border: '1px solid rgba(255, 255, 255, 0.06)',

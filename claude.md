@@ -123,7 +123,7 @@ interface Project {
 - 120px image/video area: placeholder `20×20px` grid line pattern + project id label when no asset or load error
 - One line of copy: `project.role` — `rgba(255,255,255,0.5)` idle → `rgba(255,255,255,0.85)` active
 - Footer label: `case study coming soon` at rest → `ask me about this →` on hover (no URL); `view case study →` in `#00ff9f` on hover (with URL). 9px mono, uppercase.
-- Card body (**Session 90**): `rgba(14,16,21,0.85)`, **no** `backdrop-filter` / `WebkitBackdropFilter` (orbital cards only — avoids 10 blurs over Swirl). Nav, chat, sticky chrome blurs unchanged. `borderRadius: 8px`, `220px` wide
+- Card body (**Session 92**): **`backdropFilter` / `WebkitBackdropFilter`: `blur(5px)`** + **`rgba(22,26,34,0.92)`** on a **`position: absolute; inset: 0; zIndex: 0`** layer (**`pointer-events: none`**), **sibling** to the content stack — **never** put **`opacity < 1`** on an ancestor of that layer (breaks backdrop blur in WebKit/Blink). Idle/hover/active **`opacity`** lives on **`opacityLayerRef`** (`relative` **`zIndex: 1`**), not **`cardRef`**. **`cardRef`**: **`transform`**, **`borderRadius: 8px`**, **`zIndex`** only; no **`isolation: isolate`** (can narrow backdrop roots). **`.orbital-card-panel`** **`transparent`**. Nav, chat, sticky chrome blurs unchanged. `220px` wide
 - NO data visualizations, NO `rgba(196,174,145,*)` warm amber
 - Active beacon: static `#00ff9f` dot + `boxShadow: 0 0 8px rgba(0,255,159,0.5)` — no pulse
 - Idle `opacity: 0.6`, hovered `opacity: 0.85`, active `opacity: 1`
@@ -191,19 +191,19 @@ The old model recalculated position from scratch every frame (`newPos = driftPos
 - **Critical:** centering wrapper in `page.tsx` must have `pointer-events-none`. `ChatPanel` root div must have `pointer-events-auto`. Without this pair, the `fixed inset-0` wrapper at `z-20` silently blocks all pointer events to the cards at `z-10`.
 
 **Do NOT reintroduce elliptical orbital math.** Home positions are fixed viewport percentages.
-**Do NOT change `lerpRef` factor (`0.06`), traffic light colors, or orbital chrome layout.** (**Session 90** allowed change: orbital **panel body** is solid `rgba(14,16,21,0.85)` **without** backdrop-filter — traffic lights / borders / scale hover unchanged.)
+**Do NOT change `lerpRef` factor (`0.06`), traffic light colors, or orbital chrome layout.** (**Session 92:** glass **`blur(5px)`** + **`rgba(22,26,34,0.92)`** on the **absolute inset-0 blur layer** inside **`cardRef`** (content **`zIndex: 1`**) — traffic lights / borders / scale hover unchanged.)
 **Do NOT reduce `MIN_DIST` below 220** (card width). Current value: 240.
 **`positionsRef` must remain a `useRef`** — never convert to `useState`.
 
 **Project shuffle (Session 24):** `shuffleArray<T>()` (Fisher-Yates, module scope in `OrbitalSystem.tsx`) is called once via `useMemo(() => shuffleArray(PROJECTS), [])`. The render iterates `shuffledProjects`. Each page load gets a different layout; positions are stable within a session. `PROJECTS` in `projects.ts` is never mutated. Must use `useMemo` — `useState` or `useEffect` would cause a visible flash of the unshuffled order.
 
-**Performance — Session 30 + Session 73 + Session 87 + Session 90 (homepage / orbital):**
+**Performance — Session 30 + Session 73 + Session 87 + Session 90 + Session 92 (homepage / orbital):**
 - **Session 90 — Position via `transform: translate(x, y)`** — outer wrapper is `position: fixed; left: 0; top: 0` with **`transform: translate(x - 110px, y - 80px)`** (`110`/`80` = half of `220×160` footprint). Physics `x,y` remain card-center coordinates; compositor-friendly (no per-frame `left`/`top` layout). **`willChange: 'transform'`** on the wrapper only.
 - **Session 90 — RAF only on homepage** — `OrbitalSystem` uses `usePathname()` + `isHome = pathname === '/'`; the shared RAF loop **does not run** off `/` (cards freeze at last transform until return). Saves 10× physics per frame on deep routes.
 - **Session 90 — Single orbital video** — `OrbitalSystem` holds **`activeVideoRef`**; **`onVideoHover(index)`** / **`onVideoLeave(index)`** pause any other card’s `<video>` before playing. **`OrbitalCardHandle`** adds **`getVideoElement()`** for the coordinator. Prevents stacked MP4 decodes on fast hover sweeps.
-- **Session 90 — No backdrop-filter on orbital panels** — removed inline blur; slightly more opaque solid fill. **Do not** remove blur from Nav, `ChatPanel`, overlays, sticky `*.exe` headers, or `TabBar`.
+- **Session 92 — Orbital panel glass restored** — **`backdropFilter` / `WebkitBackdropFilter`: `blur(5px)`** + **`backgroundColor: rgba(22,26,34,0.92)`** on **`position: absolute; inset: 0; zIndex: 0`** (blur **`pointer-events: none`**). **`opacity`** for idle/hover/active on **`opacityLayerRef`** only (sibling above blur), **not** on **`cardRef`**. **Do not** remove blur from Nav, `ChatPanel`, overlays, sticky `*.exe` headers, or `TabBar` when editing orbital cards.
 - **OrbitalCard position is direct DOM** — `setDisplayPos` state removed; no per-frame React updates.
-- **OrbitalCard opacity/zIndex are imperative** — set directly on `cardRef` in pointer enter/leave and activation/deactivation callbacks. **`hoveredRef`** mirrors pointer hover **without** `setState` — used only for async deactivation timer + leave coordination.
+- **OrbitalCard opacity/zIndex are imperative** — **`opacity`** on **`opacityLayerRef`**; **`zIndex`** on **`cardRef`** (pointer enter/leave and activation). **`hoveredRef`** mirrors pointer hover **without** `setState` — used only for async deactivation timer + leave coordination.
 - **Session 73 — hover visuals are CSS-only** — classes `orbital-card-root`, `orbital-card-panel`, `orbital-card-panel--active`, footer helpers in **`globals.css`**. Moving the cursor across cards does **not** re-render React for border, shadow, scale, role color, or footer copy swap.
 - **Session 73 — active beacon** always in DOM; shown with `.orbital-card-root--active .orbital-card-beacon { display: block }` (no conditional mount on `active`).
 - **OrbitalCard video** — play/pause coordinated by **`OrbitalSystem`** (Session 90). **`preload="metadata"`** on `<video>` (**Session 74**) — required so MP4-backed cards show a poster at rest.
