@@ -5,12 +5,44 @@ import {
   getPrimaryCompetition,
   parseCompetitorPoints,
   pickHomeAway,
+  type EspnScheduleEvent,
 } from '@/lib/espnSchedule'
 
 export const revalidate = 60
 
 const ESPN_NY_METS_SCHEDULE =
   'https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/teams/21/schedule'
+
+function isCompletedEvent(e: EspnScheduleEvent): boolean {
+  const state = competitionState(e)
+  const comp = getPrimaryCompetition(e)
+  const t = comp?.status?.type as { state?: string; completed?: boolean } | undefined
+  return state === 'post' || t?.completed === true
+}
+
+function getMetsLastGame(events: EspnScheduleEvent[]) {
+  const completedGames = events.filter(isCompletedEvent)
+  const lastGame = completedGames[completedGames.length - 1] ?? null
+  if (!lastGame) return null
+
+  const comp = getPrimaryCompetition(lastGame)
+  const { home, away } = pickHomeAway(comp)
+  const isHome = home?.team?.abbreviation === 'NYM'
+  const mets = isHome ? home : away
+  const opponent = isHome ? away : home
+  const metsScore = parseCompetitorPoints(mets)
+  const opponentScore = parseCompetitorPoints(opponent)
+
+  return {
+    opponent: opponent?.team?.displayName ?? 'TBD',
+    opponentAbbr: opponent?.team?.abbreviation ?? '???',
+    metsScore,
+    opponentScore,
+    won: metsScore > opponentScore,
+    isHome,
+    date: lastGame.date,
+  }
+}
 
 export async function GET() {
   try {
@@ -20,6 +52,7 @@ export async function GET() {
     }
     const raw: unknown = await espnRes.json()
     const events = getEventsFromSchedule(raw)
+    const lastGame = getMetsLastGame(events)
     const now = Date.now()
 
     const liveGame = events.find((e) => competitionState(e) === 'in')
@@ -38,6 +71,7 @@ export async function GET() {
         inning: comp?.status?.period ?? 1,
         inningHalf: comp?.status?.type?.shortDetail ?? 'Top 1',
         isHome: home?.team?.abbreviation === 'NYM',
+        lastGame,
       })
     }
 
@@ -62,10 +96,11 @@ export async function GET() {
         date: nextGame.date,
         isHome,
         venue: comp?.venue?.fullName ?? '',
+        lastGame,
       })
     }
 
-    return NextResponse.json({ status: 'off_season' as const })
+    return NextResponse.json({ status: 'off_season' as const, lastGame })
   } catch {
     return NextResponse.json({ status: 'error' }, { status: 500 })
   }

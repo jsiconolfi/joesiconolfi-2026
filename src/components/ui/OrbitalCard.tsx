@@ -18,10 +18,20 @@ interface OrbitalCardProps {
   cardIndex: number
   onPositionUpdate: (index: number, x: number, y: number) => void
   positionsRef: React.MutableRefObject<Array<{ x: number; y: number }>>
+  /** Parent coordinates single active MP4 — pause others before play */
+  onVideoHover: (index: number) => void
+  onVideoLeave: (index: number) => void
 }
+
+/** Matches `CARD_W` / `CARD_H` in OrbitalSystem — center of card in physics space */
+const CARD_W = 220
+const CARD_H = 160
+const HALF_W = CARD_W / 2
+const HALF_H = CARD_H / 2
 
 export interface OrbitalCardHandle {
   tick: (now: number) => void
+  getVideoElement: () => HTMLVideoElement | null
 }
 
 const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function OrbitalCard(
@@ -39,6 +49,8 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
     cardIndex,
     onPositionUpdate,
     positionsRef,
+    onVideoHover,
+    onVideoLeave,
   },
   ref
 ) {
@@ -55,36 +67,10 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
   const hoveredRef = useRef(false)
   const chosenSlotRef = useRef<{ x: number; y: number } | null>(null)
   const startTimeRef = useRef<number | null>(null)
-  const videoPlayingRef = useRef(false)
   // Velocity-based physics state — persists between frames, never triggers renders
   const posRef = useRef({ x: 0, y: 0 })
   const velRef = useRef({ x: 0, y: 0 })
   const frameCountRef = useRef(0)
-
-  // --- Imperative video helpers ---
-
-  function playVideo() {
-    const video = videoRef.current
-    const hasVideo = !!(project.video || project.image?.endsWith('.mp4'))
-    if (!video || !hasVideo || videoPlayingRef.current) return
-    videoPlayingRef.current = true
-    if (video.readyState >= 2) {
-      video.play().catch(() => {})
-    } else {
-      video.addEventListener('canplay', () => video.play().catch(() => {}), { once: true })
-    }
-  }
-
-  function pauseVideo() {
-    const video = videoRef.current
-    const hasVideo = !!(project.video || project.image?.endsWith('.mp4'))
-    if (!video || !hasVideo) return
-    videoPlayingRef.current = false
-    video.pause()
-    requestAnimationFrame(() => {
-      if (!videoPlayingRef.current) video.currentTime = 0
-    })
-  }
 
   // --- Activation signal ---
 
@@ -100,7 +86,7 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
           cardRef.current.style.opacity = '1'
           cardRef.current.style.zIndex = '15'
         }
-        playVideo()
+        onVideoHover(cardIndex)
         clearTimeout(deactivateTimer.current)
         deactivateTimer.current = setTimeout(() => {
           activeRef.current = false
@@ -110,20 +96,22 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
             cardRef.current.style.opacity = hoveredRef.current ? '0.85' : '0.6'
             cardRef.current.style.zIndex = hoveredRef.current ? '12' : '5'
           }
-          if (!hoveredRef.current) pauseVideo()
+          if (!hoveredRef.current) onVideoLeave(cardIndex)
         }, 4000)
       }
     }
     window.addEventListener('portfolio:project-active', handleSignal)
     return () => window.removeEventListener('portfolio:project-active', handleSignal)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project.id, homeX, leftSlot, rightSlot])
+  }, [project.id, homeX, leftSlot, rightSlot, cardIndex, onVideoHover, onVideoLeave])
 
   // --- Drift + velocity physics driven by OrbitalSystem single RAF (`tick`) — direct DOM, no setState per frame ---
 
   useImperativeHandle(
     ref,
     () => ({
+      getVideoElement() {
+        return videoRef.current
+      },
       tick(now: number) {
         if (startTimeRef.current === null) startTimeRef.current = now
         const elapsed = now - startTimeRef.current
@@ -206,8 +194,7 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
         onPositionUpdate(cardIndex, x, y)
 
         if (cardRef.current) {
-          cardRef.current.style.left = `${x}px`
-          cardRef.current.style.top = `${y}px`
+          cardRef.current.style.transform = `translate(${x - HALF_W}px, ${y - HALF_H}px)`
         }
       },
     }),
@@ -233,7 +220,7 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
       cardRef.current.style.opacity = '0.85'
       cardRef.current.style.zIndex = '12'
     }
-    playVideo()
+    onVideoHover(cardIndex)
   }
 
   function handleWrapperLeave() {
@@ -242,7 +229,7 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
       cardRef.current.style.opacity = '0.6'
       cardRef.current.style.zIndex = '5'
     }
-    if (!activeRef.current) pauseVideo()
+    if (!activeRef.current) onVideoLeave(cardIndex)
   }
 
   function handleClick() {
@@ -264,17 +251,16 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
   return (
     <div
       ref={cardRef}
-      className={`absolute pointer-events-auto orbital-card-root ${active ? 'orbital-card-root--active' : ''}`}
+      className={`fixed pointer-events-auto orbital-card-root ${active ? 'orbital-card-root--active' : ''}`}
       style={{
-        left: homeX,
-        top: homeY,
-        transform: 'translate(-50%, -50%)',
-        width: '220px',
+        left: 0,
+        top: 0,
+        transform: `translate(${homeX - HALF_W}px, ${homeY - HALF_H}px)`,
+        width: `${CARD_W}px`,
         opacity: 0.6,
         transition: 'opacity 0.3s ease',
         zIndex: 5,
-        // Promote to compositor layer — position updates bypass paint entirely
-        willChange: 'transform, left, top',
+        willChange: 'transform',
       }}
       onMouseEnter={handleWrapperEnter}
       onMouseLeave={handleWrapperLeave}
@@ -294,9 +280,7 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
         className={`orbital-card-panel ${active ? 'orbital-card-panel--active' : ''}`}
         onClick={handleClick}
         style={{
-          backgroundColor: 'rgba(22, 26, 34, 0.92)',
-          backdropFilter: 'blur(5px)',
-          WebkitBackdropFilter: 'blur(5px)',
+          backgroundColor: 'rgba(14, 16, 21, 0.85)',
           borderRadius: '8px',
           overflow: 'hidden',
           cursor: 'pointer',

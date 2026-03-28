@@ -34,7 +34,10 @@ export default function NavWrapper() {
     const el = navMeasureRef.current
     if (!el) return
 
-    const update = () => setDesktopNavWidthPx(el.offsetWidth)
+    const update = () => {
+      if (document.documentElement.dataset.transitioning === 'true') return
+      setDesktopNavWidthPx(el.offsetWidth)
+    }
     update()
     const ro = new ResizeObserver(update)
     ro.observe(el)
@@ -52,7 +55,8 @@ export default function NavWrapper() {
         display: 'flex',
         justifyContent: 'center',
         padding: isMobile ? '12px 16px' : '12px 24px',
-        transition: 'top 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+        // Session 91 — 150ms delay staggers nav vs full-viewport page transition
+        transition: 'top 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.15s',
         pointerEvents: 'none',
       }}
     >

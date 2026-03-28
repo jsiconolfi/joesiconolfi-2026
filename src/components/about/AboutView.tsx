@@ -22,13 +22,14 @@ const BIO = [
 
 const FACTS = [
   { label: 'hometown', value: 'Huntington, NY' },
-  { label: 'based', value: 'San Francisco, CA' },
+  { label: 'based', value: 'San Francisco Bay' },
   { label: 'years in tech', value: '15+' },
-  { label: 'first code', value: 'MySpace CSS, circa 2004' },
-  { label: 'record collection', value: 'growing, never finished' },
+  { label: 'mindset', value: 'Designer + engineer, no handoff' },
+  { label: 'record collection', value: 'Growing, never finished' },
   { label: 'sports', value: 'Knicks. Mets. Send help.' },
   { label: 'education', value: 'MBA + BS Computer Science, Full Sail' },
-  { label: 'currently building', value: 'Waypoint at Cohere' },
+  { label: 'reading', value: 'Genesis: Artificial Intelligence, Hope, and the Human Spirit' },
+  { label: 'building', value: 'Waypoint, Sherpa + frontier model UX at Cohere' },
 ]
 
 const LINKS = [
@@ -36,6 +37,18 @@ const LINKS = [
   { label: 'github', url: 'https://github.com/Jsiconolfi' },
   { label: 'email', url: 'mailto:jsiconolfi@gmail.com' },
 ]
+
+/** Last completed game from `/api/sports/knicks` or `/api/sports/mets` (Session 88). */
+type SportsLastGame = {
+  opponent: string
+  opponentAbbr: string
+  opponentScore: number
+  won: boolean
+  isHome: boolean
+  date: string
+  knicksScore?: number
+  metsScore?: number
+}
 
 type SportsScheduleClientPayload =
   | {
@@ -50,6 +63,7 @@ type SportsScheduleClientPayload =
       clock?: string
       inning?: number
       inningHalf?: string
+      lastGame?: SportsLastGame | null
     }
   | {
       status: 'upcoming'
@@ -58,8 +72,9 @@ type SportsScheduleClientPayload =
       date: string
       isHome: boolean
       venue: string
+      lastGame?: SportsLastGame | null
     }
-  | { status: 'off_season' }
+  | { status: 'off_season'; lastGame?: SportsLastGame | null }
   | { status: 'error' }
 
 interface SportsWidgetProps {
@@ -122,6 +137,9 @@ function SportsWidget({ team, apiPath }: SportsWidgetProps) {
         ? (data.knicks_score ?? 0)
         : (data.mets_score ?? 0)
       : 0
+
+  const lastGameRow =
+    !loading && data && data.status !== 'error' && data.lastGame ? data.lastGame : null
 
   return (
     <div
@@ -200,6 +218,69 @@ function SportsWidget({ team, apiPath }: SportsWidgetProps) {
         <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', margin: 0, fontWeight: 300 }}>
           unavailable
         </p>
+      )}
+
+      {/* Last game result — single line (Session 88 data, Session 89 layout) */}
+      {lastGameRow && (
+        <div
+          style={{
+            marginTop: 10,
+            paddingTop: 10,
+            borderTop: '1px solid rgba(255,255,255,0.05)',
+            display: 'flex',
+            alignItems: 'baseline',
+            justifyContent: 'space-between',
+            gap: 8,
+          }}
+        >
+          <span
+            style={{
+              fontSize: 9,
+              color: 'rgba(255,255,255,0.2)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              fontFamily: 'var(--font-mono)',
+              fontWeight: 300,
+              flexShrink: 0,
+            }}
+          >
+            last result
+          </span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, justifyContent: 'flex-end', minWidth: 0 }}>
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 300,
+                color: lastGameRow.won ? 'rgba(0,255,159,0.7)' : 'rgba(255,255,255,0.3)',
+                fontFamily: 'var(--font-mono)',
+              }}
+            >
+              {lastGameRow.won ? 'W' : 'L'}
+            </span>
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 300,
+                color: 'rgba(255,255,255,0.5)',
+                fontFamily: 'var(--font-mono)',
+              }}
+            >
+              {isNba
+                ? `${lastGameRow.knicksScore ?? 0}–${lastGameRow.opponentScore}`
+                : `${lastGameRow.metsScore ?? 0}–${lastGameRow.opponentScore}`}
+            </span>
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 300,
+                color: 'rgba(255,255,255,0.25)',
+                fontFamily: 'var(--font-mono)',
+              }}
+            >
+              {lastGameRow.isHome ? 'vs' : '@'} {lastGameRow.opponentAbbr}
+            </span>
+          </div>
+        </div>
       )}
     </div>
   )

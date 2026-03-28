@@ -92,13 +92,46 @@ export default function OrbitalSystem() {
   /** Imperative `tick` targets — filled by each `OrbitalCard` ref; driven by one shared RAF below. */
   const cardTickRefs = useRef<Array<OrbitalCardHandle | null>>(new Array(10).fill(null))
 
+  /** Session 90 — at most one orbital MP4 decoding at a time */
+  const activeVideoRef = useRef<HTMLVideoElement | null>(null)
+
+  const isHome = pathname === '/'
+
   const handlePositionUpdate = useCallback((index: number, x: number, y: number) => {
     positionsRef.current[index] = { x, y }
   }, [])
 
-  /** Session 87 — single RAF schedules all cards (physics unchanged; only scheduling moved from OrbitalCard). */
+  const handleOrbitalVideoHover = useCallback((index: number) => {
+    const next = cardTickRefs.current[index]?.getVideoElement() ?? null
+    if (activeVideoRef.current && activeVideoRef.current !== next) {
+      activeVideoRef.current.pause()
+      activeVideoRef.current.currentTime = 0
+    }
+    if (next) {
+      activeVideoRef.current = next
+      next.currentTime = 0
+      if (next.readyState >= 2) {
+        next.play().catch(() => {})
+      } else {
+        next.addEventListener('canplay', () => next.play().catch(() => {}), { once: true })
+      }
+    } else {
+      activeVideoRef.current = null
+    }
+  }, [])
+
+  const handleOrbitalVideoLeave = useCallback((index: number) => {
+    const vid = cardTickRefs.current[index]?.getVideoElement() ?? null
+    if (vid && activeVideoRef.current === vid) {
+      vid.pause()
+      vid.currentTime = 0
+      activeVideoRef.current = null
+    }
+  }, [])
+
+  /** Session 87 — single RAF schedules all cards; Session 90 — pause off homepage */
   useEffect(() => {
-    if (isMobile || !ready || viewport.w === 0) return
+    if (isMobile || !isHome || !ready || viewport.w === 0) return
 
     let rafId = 0
     function loop() {
@@ -111,7 +144,7 @@ export default function OrbitalSystem() {
     }
     rafId = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(rafId)
-  }, [isMobile, ready, viewport.w])
+  }, [isMobile, isHome, ready, viewport.w])
 
   useEffect(() => {
     function measure() {
@@ -196,6 +229,8 @@ export default function OrbitalSystem() {
             cardIndex={i}
             onPositionUpdate={handlePositionUpdate}
             positionsRef={positionsRef}
+            onVideoHover={handleOrbitalVideoHover}
+            onVideoLeave={handleOrbitalVideoLeave}
           />
         )
       })}

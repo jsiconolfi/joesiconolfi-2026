@@ -173,7 +173,7 @@ The prompt bar has been replaced by a full `ChatPanel` component — the primary
 - **Session 79 — `ChatContext.tsx`:** Exports **`Message`**, **`ChatCard`**, **`INITIAL_MESSAGE`**, **`cloneGreetingMessage()`**. **`ChatProvider`** state: **`messages`**, **`setMessages`**, **`isLoading`**, **`setIsLoading`**, **`streamingGreetingContent`**, plus existing **`isOpen` / `open` / `close` / `toggle`**. **`ChatPanel`** must not keep **`messages`** or **`isLoading`** in component state. Greeting sequence (thinking → stream → commit) runs **once** inside **`ChatProvider`** when **`messages.length === 0`** so embedded + overlay never double-schedule timers. **`resetConversation()`** replaces thread with **`cloneGreetingMessage()`** and clears the greeting stream buffer. No **localStorage** — refresh resets the thread.
 - **Session 87 — Context split:** **`ChatUIContext`** / **`useChatUI()`** — **`isOpen`**, **`open`**, **`close`**, **`toggle`**, **`isLimitReached`**, **`messageCount`**, **`incrementMessageCount`**. **`ChatMessagesContext`** / **`useChatMessages()`** — **`messages`**, **`setMessages`**, **`isLoading`**, **`setIsLoading`**, **`streamingGreetingContent`**, **`resetConversation`**. **`Nav`** and **`ChatOverlay`** use **`useChatUI()`** so streaming does not re-render the full tree. **`useChatContext()`** / **`useChat()`** merge both APIs.
 - **Session 80 — Session message cap (`ChatContext.tsx` + `ChatPanel.tsx`):** **`messageCount`** + **`incrementMessageCount()`** + **`isLimitReached`**; **`MESSAGE_LIMIT` = 30** user sends per browser session (chips and typed sends both increment). **Not** cleared by **`resetConversation()`** — only a full page refresh resets the count. When **`isLimitReached`**, **`handleSend`** returns early; the **entire** chips + input footer is replaced by a short mono note to refresh (no disabled input left visible). **`429`** from **`POST /api/chat`**: streaming assistant row is filled with a human-readable cooldown message (**not** a separate error UI); **`finally`** still clears **`isResponseLoading`**.
-- Panel dimensions (**Session 75**): desktop **`width`** = **`desktopNavWidthPx`** from **`NavWidthContext`** (nav pill measured in **`NavWrapper`** via **`ResizeObserver`** on the shrink-wrap div; fallback **`DEFAULT_DESKTOP_NAV_WIDTH_PX` = 560** in `NavWidthContext.tsx`). `maxWidth: 100%`. `height: 75vh`, `maxHeight: 80vh`; mobile `width: calc(100vw - 32px)`, **`height` and `maxHeight: calc(100dvh - 140px)`** — **`dvh` not `vh`** on mobile (Session 68). Outer panel `display: flex; flexDirection: column; minHeight: 0` so the messages region scrolls.
+- Panel dimensions (**Session 75**): desktop **`width`** = **`desktopNavWidthPx`** from **`NavWidthContext`** (nav pill measured in **`NavWrapper`** via **`ResizeObserver`** on the shrink-wrap div — **Session 91:** observer skips updates while **`document.documentElement.dataset.transitioning`** is set; fallback **`DEFAULT_DESKTOP_NAV_WIDTH_PX` = 560** in `NavWidthContext.tsx`). `maxWidth: 100%`. `height: 75vh`, `maxHeight: 80vh`; mobile `width: calc(100vw - 32px)`, **`height` and `maxHeight: calc(100dvh - 140px)`** — **`dvh` not `vh`** on mobile (Session 68). Outer panel `display: flex; flexDirection: column; minHeight: 0` so the messages region scrolls.
 - Inner column wrapper (Session 70): `flex: 1`, `minHeight: 0`, `height/maxHeight: 100%`, `overflow: hidden` — fills the outer panel so header / messages / input distribute correctly on mobile.
 - Messages column: `flex: 1`, `minHeight: 0`, `overflowY: auto` — **`overscrollBehavior: 'contain'`** (no scroll chaining to page), **`WebkitOverflowScrolling: 'touch'`** (iOS momentum). Chips + input `flexShrink: 0`; input stack **`paddingBottom: calc(12px + env(safe-area-inset-bottom, 0px))`** on mobile.
 - **iOS input (Session 70):** `fontSize: '16px'` on mobile (**mandatory** — below 16px triggers auto-zoom); `'13px'` desktop. `fontFamily: 'var(--font-mono)'`, `fontWeight: 300`. **`onFocus`:** mobile → `setTimeout(scrollToBottom, 300)` after keyboard. Sentinel at thread end: `<div ref={messagesEndRef} style={{ height: 1 }} />`. **`touchAction: 'manipulation'`** on mobile for chips, text input, send button, overlay red close.
@@ -256,8 +256,8 @@ Ten project cards float around the chat panel with gentle sine-wave drift, and d
 
 **Files:**
 - `src/content/projects.ts` — `Project` interface + `PROJECTS` array (10 entries)
-- `src/components/ui/OrbitalCard.tsx` — floating card with drift animation + staging lerp; **`forwardRef`** + **`tick(now)`** via **`useImperativeHandle`** (**Session 87**)
-- `src/components/ui/OrbitalSystem.tsx` — mounts 10 cards, computes home positions + staging zones; **`z-10`**; **one `requestAnimationFrame` loop** invokes each card's **`tick`** (**Session 87**)
+- `src/components/ui/OrbitalCard.tsx` — floating card with drift animation + staging lerp; **`forwardRef`** + **`tick(now)`** + **`getVideoElement()`** via **`useImperativeHandle`** (**Session 87**, **Session 90**). Position: **`transform: translate(x - 110, y - 80)`** from fixed `0,0` (**Session 90**).
+- `src/components/ui/OrbitalSystem.tsx` — mounts 10 cards, computes home positions + staging zones; **`z-10`**; **one `requestAnimationFrame` loop** invokes each card's **`tick`** only when **`pathname === '/'`** (**Session 87**, **Session 90**). **`activeVideoRef`** + **`onVideoHover` / `onVideoLeave`** — one orbital MP4 at a time (**Session 90**).
 
 Z-index stack: Swirl `z-0` → OrbitalSystem `z-10` → PageTransitionWrapper `z-10/z-20` → NavWrapper `z-40` → TabBar `z-50` → ChatOverlay `z-50`
 
@@ -267,13 +267,15 @@ Z-index stack: Swirl `z-0` → OrbitalSystem `z-10` → PageTransitionWrapper `z
 
 **Hover state (Session 25, **Session 73** CSS):** Border, shadow, `scale(1.02)`, role tint, and footer label swap are driven by **`globals.css`** (`.orbital-card-root:hover`, `.orbital-card-panel`, `.orbital-card-footer-*`) — **no `hovered` `useState`**, so sweeping the cursor across cards does not re-render each `OrbitalCard`. **`opacity: 0.85`** and **`zIndex: 12`** on the outer wrapper remain **imperative** in pointer enter/leave (and activation). Active (`.orbital-card-panel--active` / `.orbital-card-root--active`) suppresses hover scale/border via `:not(.orbital-card-panel--active)`.
 
-**Performance — Session 30 rewrites + Session 73 + Session 87:**
+**Performance — Session 30 + Session 73 + Session 87 + Session 90:**
 - **Session 87 — Single RAF:** `OrbitalSystem` runs **one** `requestAnimationFrame` loop; each card exposes **`tick(now)`** — **no** per-card RAF schedulers. Physics unchanged.
-- **Position updates are direct DOM** (`cardRef.current.style.left/top`) — `setDisplayPos` state was eliminated. This removes ~600 React state updates/second (60fps × 10 cards) from the reconciler.
-- **Opacity + zIndex are imperative** on pointer enter/leave and activation — set directly on `cardRef`. **`hoveredRef`** tracks hover **without** React state for the deactivation timer and `pauseVideo()` only.
-- **Video play/pause is imperative** — `playVideo()` and `pauseVideo()` from pointer handlers + activation. Orbital `<video>` uses **`preload="metadata"`** so MP4 cards show a first-frame thumbnail at rest (**`preload="none"`** leaves the 120px area blank until hover).
+- **Session 90 — RAF on `/` only:** `usePathname()` + `isHome`; loop **does not schedule** off the homepage (cards hold last `transform` until return).
+- **Session 90 — `transform` positioning:** `cardRef.current.style.transform = translate(x - 110px, y - 80px)` with **`left: 0` / `top: 0` / `position: fixed`** — no per-frame `left`/`top` updates. **`willChange: 'transform'`** on outer wrapper.
+- **Position updates are direct DOM** — `setDisplayPos` eliminated; no React reconciliation per frame.
+- **Opacity + zIndex are imperative** on pointer enter/leave and activation — set directly on `cardRef`. **`hoveredRef`** tracks hover **without** React state for the deactivation timer.
+- **Session 90 — Video:** `OrbitalSystem` **`activeVideoRef`** + **`handleOrbitalVideoHover` / `handleOrbitalVideoLeave`**; **`getVideoElement()`** on **`OrbitalCardHandle`**. Orbital `<video>` uses **`preload="metadata"`** for first-frame thumbnail at rest.
+- **Session 90 — Orbital panels:** **no** `backdrop-filter` (solid `rgba(14,16,21,0.85)` body). Other UI blurs unchanged.
 - **Collision check staggered** — `frameCountRef` per card; `frameCountRef.current % 3 === cardIndex % 3` runs pairwise repulsion. **`distSq`** vs `MIN_DIST * MIN_DIST` before `sqrt` (**Session 73**).
-- `willChange: 'transform, left, top'` on the outer wrapper — promotes to compositor layer, position updates bypass paint.
 - `activeRef.current` is set directly in the signal handler (not via `useEffect` watching `active` state). The sync `useEffect` was removed.
 
 **Click handling (Session 25):** `handleClick` uses `useRouter` from `next/navigation`. If `project.url` exists: internal paths → `router.push()`, external URLs (start with `http`) → `window.open(..., '_blank', 'noopener noreferrer')`. If no URL: fires `portfolio:query` CustomEvent (chat fallback — every card is always interactive).
@@ -311,12 +313,12 @@ Z-index stack: Swirl `z-0` → OrbitalSystem `z-10` → PageTransitionWrapper `z
 
 **Staging zones (Session 22):** `CARD_H = 160`, `STAGE_GAP = 12`. 5 slots per side, `16px` gap from panel edge. `id="chat-panel"` on `ChatPanel` root div.
 
-**OrbitalCard props (Session 23 additions):** `cardIndex: number`, `onPositionUpdate: (index, x, y) => void`, `positionsRef: React.MutableRefObject<Array<{x,y}>>`. Both `CARD_W = 220` and `CARD_H = 160` are defined as module-level constants in `OrbitalCard.tsx`.
+**OrbitalCard props (Session 23 additions; Session 90):** `cardIndex: number`, `onPositionUpdate: (index, x, y) => void`, `positionsRef`, **`onVideoHover: (index: number) => void`**, **`onVideoLeave: (index: number) => void`**. `CARD_W` / `CARD_H` (220 / 160) and half-sizes for `translate` live in **`OrbitalCard.tsx`** (must match **`OrbitalSystem`** footprint constants).
 
 **Project shuffle (Session 24):** `shuffleArray<T>()` (Fisher-Yates, module scope) shuffles `PROJECTS` once via `useMemo(() => shuffleArray(PROJECTS), [])` inside `OrbitalSystem`. The render iterates `shuffledProjects` — different order on every page load, stable for the session. `PROJECTS` in `projects.ts` is never mutated. Do not replace `useMemo` with `useState` or `useEffect` — that would cause a flash of unshuffled content.
 
 **Do NOT reintroduce elliptical orbital math.** Home positions are fixed viewport percentages.
-**Do NOT change `lerpRef` factor (`0.06`), traffic light colors, or card visual design.**
+**Do NOT change `lerpRef` factor (`0.06`), traffic light colors, or orbital chrome layout.** (**Session 90:** orbital **panel** has no backdrop-filter — solid fill — traffic lights unchanged.)
 
 **Project assets (Session 23):** `/public/projects/` — current files on disk:
 - MP4 (video): `waypoint.mp4`, `sherpa.mp4`, `waypoint-sync.mp4`, `channelai.mp4`, `statespace.mp4`, `seudo.mp4`, `kernel.mp4`, `cohere-labs.mp4`
@@ -369,6 +371,7 @@ Persistent browser-like tab bar visible on all `/work/*` routes.
 - `Nav.tsx` no longer has `fixed` positioning — `NavWrapper` owns all positioning.
 - `NavWrapper` wraps Nav in a `position: fixed` div, shifting `top` by `TAB_BAR_HEIGHT` on all `/work` pages.
 - **Session 42:** Transition updated from `'top 0.3s ease'` to `'top 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)'` — matches the ease-out-quart used in page transitions. Nav slides smoothly rather than snapping.
+- **Session 91:** Append **`0.15s`** transition-delay — full string **`top 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.15s`** — staggers nav `top` animation vs **`PageTransitionWrapper`** (exactly **150ms**, do not change without explicit instruction). **`ResizeObserver`** skips **`setDesktopNavWidthPx`** while **`dataset.transitioning`** is set.
 - **Session 44:** `hasChrome = pathname.startsWith('/work') || pathname === '/about'` — `/about` also has a sticky terminal chrome header so the nav must shift down there too.
 - **Session 49:** `hasChrome` updated to also include `pathname === '/timeline'` — `/timeline` has its own sticky terminal chrome, nav shifts down there too.
 - **Session 60:** `hasChrome` updated to also include `pathname === '/lab'` — `/lab` has its own sticky terminal chrome, nav shifts down there too.
@@ -403,10 +406,11 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 - Embedded `ChatPanel` root has `id="chat-panel"` and `pointer-events-auto` (overlay instance omits `id` — Session 69); desktop width from **`NavWidthContext`** (**Session 75**), mobile `calc(100vw - 32px)` (see ChatPanel)
 - Name block: desktop `bottom: 32px` `left: 32px`; mobile `bottom: 100px` `left: 16px` — `z-10` `pointer-events-none`
 
-**PageTransitionWrapper (`src/components/layout/PageTransitionWrapper.tsx`, Session 35, rewritten Session 47):**
+**PageTransitionWrapper (`src/components/layout/PageTransitionWrapper.tsx`, Session 35, rewritten Session 47, **Session 91**):**
 - `AnimatePresence mode="wait" initial={false}` — exits before enters; no animation on first load
 - `key={pathname}` on `motion.div` — triggers transition on route change
 - `data-scroll-container` on motion.div — `useEffect` resets `scrollTop = 0` on pathname change only (**Session 87:** `[pathname]` dependency — not on every chat token)
+- **Session 91:** **`onAnimationStart`** sets **`document.documentElement.dataset.transitioning = 'true'`**; **`onAnimationComplete`** deletes it only when **`useIsPresent()`** is true (enter finished — not exit). **`motion.div`** **`willChange: 'transform, opacity'`**, **`contain: 'layout style'`**; inner **`div`** around **`{children}`** has **`contain: 'layout'`**.
 - `isDeepPage(pathname)` helper: `pathname.startsWith('/work') || pathname === '/about' || pathname === '/timeline' || pathname === '/lab'` — single source of truth for page tier
 - Deep pages (`/work`, `/work/*`, `/about`): `zIndex: 20`, dark bg `rgba(14,16,21,0.97)`, `pointerEvents: 'auto'`, `overflowY: 'auto'`, `top: 0`
 - Homepage: `zIndex: 10`, transparent bg, `pointerEvents: 'none'`, `overflowY: 'hidden'`, `top: 0`
@@ -417,13 +421,14 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 - `isCaseStudy`, `isWorkIndex`, `isAbout`, `isContentPage` variables removed — replaced by single `deep` boolean
 - Do NOT reintroduce `top: TAB_BAR_HEIGHT` on the wrapper; do NOT split `isDeepPage` back into separate variables
 
-**OrbitalSystem (updated Session 35, Session 66, **Session 87**):**
+**OrbitalSystem (updated Session 35, Session 66, **Session 87**, **Session 90**):**
 - **Session 66:** `useIsMobile()` — returns `null` on viewports `< 768px` (after all hooks). No orbital UI on phone; Swirl unchanged.
 - Uses `usePathname` — pathname is a dependency on the measure `useEffect`
 - Runs immediate `measure()` + delayed `measure()` at 600ms on each pathname change
 - Delayed measure ensures `chat-panel` element is found after the 450ms transition animation completes
 - Cards stay rendered (behind opaque overlay) on case study pages — no visibility toggle needed
 - **Session 87:** After mount, a **single** RAF loop drives all cards; `positionsRef` rows initialized with **`Array.from({ length: 10 }, () => ({ x: 0, y: 0 }))`** (distinct objects per card)
+- **Session 90:** That RAF runs **only when `pathname === '/'`** — off homepage the loop does not schedule (no physics ticks per frame). **`activeVideoRef`** coordinates orbital MP4 playback.
 
 ## Mobile layout — Session 66
 
@@ -573,7 +578,7 @@ Dynamic pages at `/work/[slug]` for all 10 projects.
 
 **Next case study chain (loops):** waypoint → statespace → channel → seudo → wafer → sherpa → waypoint-sync → kernel → mushroom → cohere-labs → waypoint
 
-## About page (Session 44, bio Session 84, sports widgets Session 82, layout Session 83)
+## About page (Session 44, bio Session 84, sports widgets Session 82, layout Session 83, last result Session 88, compact last result Session 89)
 
 Live at `/about`. Scrollable content page, same visual system as case study pages.
 
@@ -603,7 +608,7 @@ Live at `/about`. Scrollable content page, same visual system as case study page
 - Album art: raw `<img>` with `eslint-disable-next-line @next/next/no-img-element`
 - Section label: `now playing` / `last played` (toggled by `isPlaying`)
 
-**Knicks + Mets widgets (Session 82, layout Session 83):** Right column only, below Spotify, **`flexDirection: 'column'`** + **`gap: 14`** with Spotify (no connect in this column). `<SportsWidget>` fetches `/api/sports/knicks` or `/api/sports/mets` on mount and every **60s** (`setInterval` cleared on unmount). Visual match: bordered `rgba(255,255,255,0.02)` panel, mono labels. Team name labels in header: **`rgba(255,255,255,0.75)`** (shared for both teams). **Live** badge: `#00ff9f` + `rgba(0,255,159,0.3)` border. States: **upcoming** (`vs` / `@` opponent + localized date/time), **live** (scores + quarter/clock or MLB `shortDetail`), **off_season** (`no games scheduled`), **error** (`unavailable`), loading (`loading...`). Server: **`export const revalidate = 60`** + `fetch(..., { next: { revalidate: 60 } })` to ESPN `site.api.espn.com` team schedule endpoints — **no API key** (not SportRadar). Parsing uses **`competitions[0].status.type.state`** (`in` / `pre` / `post`), not event-level status.
+**Knicks + Mets widgets (Session 82, layout Session 83, last result Session 88, single-line last result Session 89):** Right column only, below Spotify, **`flexDirection: 'column'`** + **`gap: 14`** with Spotify (no connect in this column). `<SportsWidget>` fetches `/api/sports/knicks` or `/api/sports/mets` on mount and every **60s** (`setInterval` cleared on unmount). Visual match: bordered `rgba(255,255,255,0.02)` panel, mono labels. Team name labels in header: **`rgba(255,255,255,0.75)`** (shared for both teams). **Live** badge: `#00ff9f` + `rgba(0,255,159,0.3)` border. States: **upcoming** (`vs` / `@` opponent + localized date/time), **live** (scores + quarter/clock or MLB `shortDetail`), **off_season** (`no games scheduled`), **error** (`unavailable`), loading (`loading...`). **Session 88:** API adds **`lastGame`** to **`live`**, **`upcoming`**, and **`off_season`**. **Session 89:** **last result** UI is one line: label left, **W** / **L** + score + **`vs` / `@`** abbr right (`justifyContent: space-between`, inner cluster `gap: 6`); **W** `rgba(0,255,159,0.7)`, **L** `rgba(255,255,255,0.3)`; only when **`lastGame`** is present. Server: **`export const revalidate = 60`** + `fetch(..., { next: { revalidate: 60 } })` to ESPN `site.api.espn.com` team schedule endpoints — **no API key** (not SportRadar). Parsing uses **`competitions[0].status.type.state`** (`in` / `pre` / `post`), not event-level status.
 
 **Connect (Session 83):** Bottom of **left** column under facts: `marginTop: 32`, `paddingTop: 24`, `borderTop: 1px solid rgba(255,255,255,0.06)`; row `display: flex`, `gap: 24`, `flexWrap: wrap`; links text-only (no arrows), `fontSize: 11`, hover `#00ff9f`; `mailto:` omits `target` / `rel`; external uses `_blank` + `noopener noreferrer`. URLs stay on **`LINKS`** in `AboutView.tsx` (existing canonical paths).
 
@@ -613,9 +618,9 @@ Live at `/about`. Scrollable content page, same visual system as case study page
 - Callback redirectUri: `http://localhost:3002/api/spotify/callback` (hardcoded for local setup)
 - Both routes use `cache: 'no-store'` — always fresh data
 
-**NavWrapper:** `hasChrome = pathname.startsWith('/work') || pathname === '/about' || pathname === '/timeline' || pathname === '/lab'` — these pages have sticky terminal chrome headers so nav shifts down by `TAB_BAR_HEIGHT`. `top` is `useState(0)` + `useEffect` with 60ms delay (Session 46) — always animates from 0 so the CSS transition fires correctly.
+**NavWrapper:** `hasChrome = pathname.startsWith('/work') || pathname === '/about' || pathname === '/timeline' || pathname === '/lab'` — these pages have sticky terminal chrome headers so nav shifts down by `TAB_BAR_HEIGHT`. `top` is `useState(0)` + `useEffect` with 60ms delay (Session 46) — always animates from 0 so the CSS transition fires correctly. **Session 91:** **`top`** transition **`0.15s` delay**; **`ResizeObserver`** skips width updates during **`dataset.transitioning`**.
 
-**PageTransitionWrapper:** `/about`, `/timeline`, and `/lab` are deep pages — dark bg, z-20, scrollable, enter from above. Handled by `isDeepPage` (Session 47, updated Session 49, Session 60).
+**PageTransitionWrapper:** `/about`, `/timeline`, and `/lab` are deep pages — dark bg, z-20, scrollable, enter from above. Handled by `isDeepPage` (Session 47, updated Session 49, Session 60). **Session 91:** **`dataset.transitioning`**, **`useIsPresent`**, **`contain`**, **`willChange`** — see layout section above.
 
 **`<video>` rule exception note:** `AboutView.tsx` has no video elements. The "no autoPlay" rule does not apply here (no video at all).
 
