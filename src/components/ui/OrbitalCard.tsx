@@ -193,8 +193,10 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
         x = Math.max(HARD_MARGIN, Math.min(vw - HARD_MARGIN, x))
         y = Math.max(HARD_MARGIN, Math.min(vh - HARD_MARGIN, y))
 
-        posRef.current = { x, y }
-        velRef.current = { x: vx, y: vy }
+        posRef.current.x = x
+        posRef.current.y = y
+        velRef.current.x = vx
+        velRef.current.y = vy
 
         onPositionUpdate(cardIndex, x, y)
 

@@ -98,7 +98,8 @@ export default function OrbitalSystem() {
   const isHome = pathname === '/'
 
   const handlePositionUpdate = useCallback((index: number, x: number, y: number) => {
-    positionsRef.current[index] = { x, y }
+    positionsRef.current[index].x = x
+    positionsRef.current[index].y = y
   }, [])
 
   const handleOrbitalVideoHover = useCallback((index: number) => {
