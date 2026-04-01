@@ -122,21 +122,20 @@ body {
   opacity: 1;
 }
 
-/* Orbital cards (Session 73 hover; Session 92 — blur layer sibling to opacity layer; no ancestor opacity
-   on blur. Border / shadow / hover scale here. */
+/* Orbital cards (Session 73 hover; Session 92 — blur layer sibling to opacity layer; Session 94 — no hover
+   scale (avoids blur repaint jank); will-change on panel for compositor layer. */
 .orbital-card-panel {
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   transform: translateZ(0);
+  will-change: transform;
   transition:
     border 0.3s ease,
-    box-shadow 0.3s ease,
-    transform 0.2s ease;
+    box-shadow 0.3s ease;
 }
 
 .orbital-card-root:hover .orbital-card-panel:not(.orbital-card-panel--active) {
   border-color: rgba(255, 255, 255, 0.2);
-  transform: translateZ(0) scale(1.02);
 }
 
 .orbital-card-panel--active {
@@ -204,10 +203,4 @@ body {
 
 .orbital-card-root:hover .orbital-card-footer-link {
   color: #00ff9f;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .orbital-card-root:hover .orbital-card-panel:not(.orbital-card-panel--active) {
-    transform: translateZ(0);
-  }
 }
