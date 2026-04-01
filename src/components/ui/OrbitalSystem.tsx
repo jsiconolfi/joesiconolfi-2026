@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import OrbitalCard, { type OrbitalCardHandle } from './OrbitalCard'
 import { PROJECTS } from '@/content/projects'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { ORBIT_STAGING_EVENT, type OrbitStagingDetail } from '@/lib/orbitalStaging'
 
 // Fisher-Yates shuffle — runs once, result is stable for the session
 function shuffleArray<T>(arr: T[]): T[] {
@@ -57,7 +58,10 @@ const DRIFT_CONFIGS = [
 
 const CARD_W = 220
 const CARD_H = 160
-const STAGE_GAP = 12
+/** Session 93 — gap between chat panel edge and docked card's nearest edge (half card-width; was full CARD_W) */
+const DOCK_GAP = CARD_W / 2
+/** Session 93 — vertical spacing between stacked dock centers when multiple cards activate on the same side */
+const STAGGER = CARD_H + 16
 const EDGE_PAD = 12
 
 // Clamp a percentage-based position so the card stays fully on screen
@@ -79,9 +83,11 @@ export default function OrbitalSystem() {
   const shuffledProjects = useMemo(() => shuffleArray(PROJECTS), [])
   const pathname = usePathname()
   const [viewport, setViewport] = useState({ w: 0, h: 0 })
-  const [leftSlots, setLeftSlots] = useState<Array<{ x: number; y: number }>>([])
-  const [rightSlots, setRightSlots] = useState<Array<{ x: number; y: number }>>([])
   const [ready, setReady] = useState(false)
+
+  /** Session 93 — batch `portfolio:project-active` in one microtask so multi-mention stagger works */
+  const activationQueueRef = useRef<string[]>([])
+  const activationFlushScheduledRef = useRef(false)
 
   // Shared mutable ref — updated every frame by each card.
   // Using a ref (not state) so updates never trigger re-renders.
@@ -155,27 +161,6 @@ export default function OrbitalSystem() {
 
       const panel = document.getElementById('chat-panel')
       if (panel) {
-        const rect = panel.getBoundingClientRect()
-        const panelMidY = rect.top + rect.height / 2
-        const slotH = CARD_H + STAGE_GAP
-        const totalH = 5 * slotH
-        const startY = panelMidY - totalH / 2
-
-        const lx = rect.left - CARD_W / 2 - 16
-        const rx = rect.right + CARD_W / 2 + 16
-
-        setLeftSlots(
-          Array.from({ length: 5 }, (_, i) => ({
-            x: lx,
-            y: startY + i * slotH + CARD_H / 2,
-          }))
-        )
-        setRightSlots(
-          Array.from({ length: 5 }, (_, i) => ({
-            x: rx,
-            y: startY + i * slotH + CARD_H / 2,
-          }))
-        )
         setReady(true)
       }
     }
@@ -201,6 +186,82 @@ export default function OrbitalSystem() {
     }
   }, [pathname])
 
+  /** Session 93 — compute dock center targets in physics space (card center = posRef x/y), batch multi-mention stagger */
+  useEffect(() => {
+    function cardCenterXForIndex(idx: number, vw: number, vh: number): number {
+      const pos = positionsRef.current[idx]
+      if (pos.x !== 0 || pos.y !== 0) return pos.x
+      const raw = HOME_POSITIONS[idx]
+      const home = clampHome(raw.xPct, raw.yPct, vw, vh)
+      return home.x
+    }
+
+    function flushActivationQueue() {
+      const queued = activationQueueRef.current
+      activationQueueRef.current = []
+      if (queued.length === 0) return
+
+      const vw = window.innerWidth
+      const vh = window.innerHeight
+      const panel = document.getElementById('chat-panel')
+      if (!panel) return
+
+      const rect = panel.getBoundingClientRect()
+      const leftDockCenterX = rect.left - DOCK_GAP - CARD_W / 2
+      const rightDockCenterX = rect.right + DOCK_GAP + CARD_W / 2
+      const dockCY = vh / 2
+
+      const seen = new Set<string>()
+      const ids: string[] = []
+      for (const id of queued) {
+        if (seen.has(id)) continue
+        seen.add(id)
+        ids.push(id)
+      }
+
+      const leftIds: string[] = []
+      const rightIds: string[] = []
+      for (const projectId of ids) {
+        const idx = shuffledProjects.findIndex(p => p.id === projectId)
+        if (idx < 0) continue
+        const cx = cardCenterXForIndex(idx, vw, vh)
+        if (cx < vw / 2) leftIds.push(projectId)
+        else rightIds.push(projectId)
+      }
+
+      function emitSide(group: string[], dockCenterX: number) {
+        const n = group.length
+        for (let i = 0; i < n; i++) {
+          const centerY = dockCY + (i - (n - 1) / 2) * STAGGER
+          window.dispatchEvent(
+            new CustomEvent<OrbitStagingDetail>(ORBIT_STAGING_EVENT, {
+              detail: { projectId: group[i], centerX: dockCenterX, centerY },
+            })
+          )
+        }
+      }
+
+      emitSide(leftIds, leftDockCenterX)
+      emitSide(rightIds, rightDockCenterX)
+    }
+
+    function onProjectActive(e: Event) {
+      const ev = e as CustomEvent<{ projectId: string }>
+      const id = ev.detail?.projectId
+      if (!id) return
+      activationQueueRef.current.push(id)
+      if (activationFlushScheduledRef.current) return
+      activationFlushScheduledRef.current = true
+      queueMicrotask(() => {
+        activationFlushScheduledRef.current = false
+        flushActivationQueue()
+      })
+    }
+
+    window.addEventListener('portfolio:project-active', onProjectActive)
+    return () => window.removeEventListener('portfolio:project-active', onProjectActive)
+  }, [shuffledProjects])
+
   if (isMobile) return null
   if (!ready || viewport.w === 0) return null
 
@@ -210,7 +271,6 @@ export default function OrbitalSystem() {
         const raw = HOME_POSITIONS[i]
         const home = clampHome(raw.xPct, raw.yPct, viewport.w, viewport.h)
         const drift = DRIFT_CONFIGS[i]
-        const slotIndex = i % 5
         return (
           <OrbitalCard
             key={project.id}
@@ -225,8 +285,6 @@ export default function OrbitalSystem() {
             driftXSpeed={drift.xSpeed}
             driftYSpeed={drift.ySpeed}
             driftPhase={drift.phase}
-            leftSlot={leftSlots[slotIndex] ?? { x: 140, y: viewport.h / 2 }}
-            rightSlot={rightSlots[slotIndex] ?? { x: viewport.w - 140, y: viewport.h / 2 }}
             cardIndex={i}
             onPositionUpdate={handlePositionUpdate}
             positionsRef={positionsRef}

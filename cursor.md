@@ -256,8 +256,9 @@ Ten project cards float around the chat panel with gentle sine-wave drift, and d
 
 **Files:**
 - `src/content/projects.ts` — `Project` interface + `PROJECTS` array (10 entries)
-- `src/components/ui/OrbitalCard.tsx` — floating card with drift animation + staging lerp; **`forwardRef`** + **`tick(now)`** + **`getVideoElement()`** via **`useImperativeHandle`** (**Session 87**, **Session 90**). Position: **`transform: translate(x - 110, y - 80)`** from fixed `0,0` (**Session 90**).
-- `src/components/ui/OrbitalSystem.tsx` — mounts 10 cards, computes home positions + staging zones; **`z-10`**; **one `requestAnimationFrame` loop** invokes each card's **`tick`** only when **`pathname === '/'`** (**Session 87**, **Session 90**). **`activeVideoRef`** + **`onVideoHover` / `onVideoLeave`** — one orbital MP4 at a time (**Session 90**).
+- `src/lib/orbitalStaging.ts` — **`ORBIT_STAGING_EVENT`**, **`CHAT_RESPONSE_COMPLETE_EVENT`** (`portfolio:chat-response-complete`), **`OrbitStagingDetail`** (**Session 93**)
+- `src/components/ui/OrbitalCard.tsx` — floating card with drift animation + staging lerp; **`forwardRef`** + **`tick(now)`** + **`getVideoElement()`** via **`useImperativeHandle`** (**Session 87**, **Session 90**). Position: **`transform: translate(x - 110, y - 80)`** from fixed `0,0` (**Session 90**). Listens to **`portfolio:orbit-staging`** for activation (**Session 93**).
+- `src/components/ui/OrbitalSystem.tsx` — mounts 10 cards, computes home positions + **Session 93** dock targets (measured panel + **`DOCK_GAP = CARD_W / 2`**, same-side vertical stagger); **`z-10`**; **one `requestAnimationFrame` loop** invokes each card's **`tick`** only when **`pathname === '/'`** (**Session 87**, **Session 90**). Listens to **`portfolio:project-active`**, batches, emits **`portfolio:orbit-staging`** (**Session 93**). **`activeVideoRef`** + **`onVideoHover` / `onVideoLeave`** — one orbital MP4 at a time (**Session 90**).
 
 Z-index stack: Swirl `z-0` → OrbitalSystem `z-10` → PageTransitionWrapper `z-10/z-20` → NavWrapper `z-40` → TabBar `z-50` → ChatOverlay `z-50`
 
@@ -304,16 +305,16 @@ Z-index stack: Swirl `z-0` → OrbitalSystem `z-10` → PageTransitionWrapper `z
 - `SPRING` ≤ 0.025. `DAMPING` between 0.78–0.88. Do NOT reintroduce `px = homeX + driftX` as the base position each frame.
 
 **Activation — two triggers:**
-1. Chat keyword match → `portfolio:project-active` CustomEvent → card activates
+1. Chat keyword match → **`portfolio:project-active`** (**ChatPanel**) → **`OrbitalSystem`** batches (**`queueMicrotask`**) → **`portfolio:orbit-staging`** `{ projectId, centerX, centerY }` → **`OrbitalCard`** activates (**Session 93**)
 2. Card click → `portfolio:query` CustomEvent `{ query: 'tell me about [name]' }` → ChatPanel auto-submits
-- Side picked by `homeX < window.innerWidth / 2` (home position, not current drift position)
-- `lerpRef` `0 → 1` at `0.06`/frame → lerps from drift position to staging slot
-- After 4000ms: `active` false, `chosenSlotRef` cleared → `lerpRef` drains back → card returns to drift
+- Side picked by **card center x** (`positionsRef` vs viewport center; home fallback if still **`0,0`**) — **Session 93** (replaces `homeX`-only)
+- Staging lerp at **`0.06`/frame** toward **`chosenSlotRef`** (center coords) — destination math fixed **Session 93**; lerp factor unchanged
+- After assistant streaming ends, **`ChatPanel`** fires **`portfolio:chat-response-complete`**; **`POST_STREAM_RELEASE_MS`** (2000ms) later → `active` false, `chosenSlotRef` cleared → card returns to drift
 - Active: border `rgba(0,255,159,0.3)`, static `#00ff9f` beacon
 
-**Staging zones (Session 22):** `CARD_H = 160`, `STAGE_GAP = 12`. 5 slots per side, `16px` gap from panel edge. `id="chat-panel"` on `ChatPanel` root div.
+**Staging targets (Session 93):** Physics **`posRef`** = **card center**; **`DOCK_GAP` = `CARD_W / 2` (110)** — half card-width from panel edge; left/right dock **center x** from **`#chat-panel`** **`getBoundingClientRect()`**: `rect.left - DOCK_GAP - CARD_W/2` / `rect.right + DOCK_GAP + CARD_W/2`; **`dockCY = window.innerHeight / 2`**. Multiple activations on one side: **`centerY = dockCY + (i - (n-1)/2) * (CARD_H + 16)`**. `id="chat-panel"` on `ChatPanel` root div.
 
-**OrbitalCard props (Session 23 additions; Session 90):** `cardIndex: number`, `onPositionUpdate: (index, x, y) => void`, `positionsRef`, **`onVideoHover: (index: number) => void`**, **`onVideoLeave: (index: number) => void`**. `CARD_W` / `CARD_H` (220 / 160) and half-sizes for `translate` live in **`OrbitalCard.tsx`** (must match **`OrbitalSystem`** footprint constants).
+**OrbitalCard props (Session 23 additions; Session 90):** `cardIndex: number`, `onPositionUpdate: (index, x, y) => void`, `positionsRef`, **`onVideoHover: (index: number) => void`**, **`onVideoLeave: (index: number) => void`**. No **`leftSlot` / `rightSlot`** — staging from **`portfolio:orbit-staging`** (**Session 93**). `CARD_W` / `CARD_H` (220 / 160) and half-sizes for `translate` live in **`OrbitalCard.tsx`** (must match **`OrbitalSystem`** footprint constants).
 
 **Project shuffle (Session 24):** `shuffleArray<T>()` (Fisher-Yates, module scope) shuffles `PROJECTS` once via `useMemo(() => shuffleArray(PROJECTS), [])` inside `OrbitalSystem`. The render iterates `shuffledProjects` — different order on every page load, stable for the session. `PROJECTS` in `projects.ts` is never mutated. Do not replace `useMemo` with `useState` or `useEffect` — that would cause a flash of unshuffled content.
 

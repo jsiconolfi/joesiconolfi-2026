@@ -8,6 +8,11 @@ import { PROJECTS } from '@/content/projects'
 import { useChatMessages, useChatUI, type ChatCard, type Message } from '@/context/ChatContext'
 import { useNavWidthContext } from '@/context/NavWidthContext'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { CHAT_RESPONSE_COMPLETE_EVENT } from '@/lib/orbitalStaging'
+
+function notifyChatResponseComplete() {
+  window.dispatchEvent(new CustomEvent(CHAT_RESPONSE_COMPLETE_EVENT))
+}
 
 function detectProjectMention(text: string): string | null {
   const lower = text.toLowerCase()
@@ -217,6 +222,7 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
               : m
           )
         )
+        notifyChatResponseComplete()
         return
       }
 
@@ -296,6 +302,7 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
             : m
         )
       )
+      notifyChatResponseComplete()
     } catch (err) {
       console.error('Chat error:', err)
       setMessages(prev =>
@@ -310,6 +317,7 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
             : m
         )
       )
+      notifyChatResponseComplete()
     } finally {
       setIsResponseLoading(false)
     }

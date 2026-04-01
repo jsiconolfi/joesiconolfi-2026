@@ -3,6 +3,11 @@
 import { useEffect, useImperativeHandle, useRef, useState, forwardRef } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Project } from '@/content/projects'
+import {
+  CHAT_RESPONSE_COMPLETE_EVENT,
+  ORBIT_STAGING_EVENT,
+  type OrbitStagingDetail,
+} from '@/lib/orbitalStaging'
 
 interface OrbitalCardProps {
   project: Project
@@ -13,8 +18,6 @@ interface OrbitalCardProps {
   driftXSpeed: number
   driftYSpeed: number
   driftPhase: number
-  leftSlot: { x: number; y: number }
-  rightSlot: { x: number; y: number }
   cardIndex: number
   onPositionUpdate: (index: number, x: number, y: number) => void
   positionsRef: React.MutableRefObject<Array<{ x: number; y: number }>>
@@ -28,6 +31,8 @@ const CARD_W = 220
 const CARD_H = 160
 const HALF_W = CARD_W / 2
 const HALF_H = CARD_H / 2
+/** After assistant streaming finishes, card returns to orbit after this delay */
+const POST_STREAM_RELEASE_MS = 2000
 
 export interface OrbitalCardHandle {
   tick: (now: number) => void
@@ -44,8 +49,6 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
     driftXSpeed,
     driftYSpeed,
     driftPhase,
-    leftSlot,
-    rightSlot,
     cardIndex,
     onPositionUpdate,
     positionsRef,
@@ -63,7 +66,7 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
   const opacityLayerRef = useRef<HTMLDivElement>(null)
 
   const videoRef = useRef<HTMLVideoElement>(null)
-  const deactivateTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const postStreamReleaseTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const activeRef = useRef(false)
   const hoveredRef = useRef(false)
   const chosenSlotRef = useRef<{ x: number; y: number } | null>(null)
@@ -73,41 +76,56 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
   const velRef = useRef({ x: 0, y: 0 })
   const frameCountRef = useRef(0)
 
-  // --- Activation signal ---
+  // --- Dock on staging; release 2s after assistant reply finishes streaming (ChatPanel event) ---
 
   useEffect(() => {
-    function handleSignal(e: Event) {
-      const event = e as CustomEvent<{ projectId: string }>
-      if (event.detail.projectId === project.id) {
-        const vwCenter = window.innerWidth / 2
-        chosenSlotRef.current = homeX < vwCenter ? leftSlot : rightSlot
-        activeRef.current = true
-        setActive(true)
-        if (opacityLayerRef.current) {
-          opacityLayerRef.current.style.opacity = '1'
-        }
-        if (cardRef.current) {
-          cardRef.current.style.zIndex = '15'
-        }
-        onVideoHover(cardIndex)
-        clearTimeout(deactivateTimer.current)
-        deactivateTimer.current = setTimeout(() => {
-          activeRef.current = false
-          setActive(false)
-          chosenSlotRef.current = null
-          if (opacityLayerRef.current) {
-            opacityLayerRef.current.style.opacity = hoveredRef.current ? '0.85' : '0.6'
-          }
-          if (cardRef.current) {
-            cardRef.current.style.zIndex = hoveredRef.current ? '12' : '5'
-          }
-          if (!hoveredRef.current) onVideoLeave(cardIndex)
-        }, 4000)
+    function releaseDockedCard() {
+      activeRef.current = false
+      setActive(false)
+      chosenSlotRef.current = null
+      if (opacityLayerRef.current) {
+        opacityLayerRef.current.style.opacity = hoveredRef.current ? '0.85' : '0.6'
       }
+      if (cardRef.current) {
+        cardRef.current.style.zIndex = hoveredRef.current ? '12' : '5'
+      }
+      if (!hoveredRef.current) onVideoLeave(cardIndex)
     }
-    window.addEventListener('portfolio:project-active', handleSignal)
-    return () => window.removeEventListener('portfolio:project-active', handleSignal)
-  }, [project.id, homeX, leftSlot, rightSlot, cardIndex, onVideoHover, onVideoLeave])
+
+    function handleStaging(e: Event) {
+      const event = e as CustomEvent<OrbitStagingDetail>
+      if (event.detail.projectId !== project.id) return
+      clearTimeout(postStreamReleaseTimerRef.current)
+      postStreamReleaseTimerRef.current = undefined
+      chosenSlotRef.current = { x: event.detail.centerX, y: event.detail.centerY }
+      activeRef.current = true
+      setActive(true)
+      if (opacityLayerRef.current) {
+        opacityLayerRef.current.style.opacity = '1'
+      }
+      if (cardRef.current) {
+        cardRef.current.style.zIndex = '15'
+      }
+      onVideoHover(cardIndex)
+    }
+
+    function handleChatResponseComplete() {
+      if (!activeRef.current) return
+      clearTimeout(postStreamReleaseTimerRef.current)
+      postStreamReleaseTimerRef.current = setTimeout(() => {
+        postStreamReleaseTimerRef.current = undefined
+        releaseDockedCard()
+      }, POST_STREAM_RELEASE_MS)
+    }
+
+    window.addEventListener(ORBIT_STAGING_EVENT, handleStaging)
+    window.addEventListener(CHAT_RESPONSE_COMPLETE_EVENT, handleChatResponseComplete)
+    return () => {
+      window.removeEventListener(ORBIT_STAGING_EVENT, handleStaging)
+      window.removeEventListener(CHAT_RESPONSE_COMPLETE_EVENT, handleChatResponseComplete)
+      clearTimeout(postStreamReleaseTimerRef.current)
+    }
+  }, [project.id, cardIndex, onVideoHover, onVideoLeave])
 
   // --- Drift + velocity physics driven by OrbitalSystem single RAF (`tick`) — direct DOM, no setState per frame ---
 
