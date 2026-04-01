@@ -74,7 +74,7 @@ Project mention detection (Session 14):
 - On match, dispatches `portfolio:project-active` CustomEvent with `{ projectId }` detail
 - Fired immediately when the user sends a message (before the chat API returns)
 - Same CustomEvent pattern as `swirl:keypress`
-- Card picks its staging side (left or right) based on current orbital x vs viewport centerX at the moment of activation
+- **`OrbitalSystem`** listens for **`portfolio:project-active`**, batches IDs in a **`queueMicrotask`**, then dispatches **`portfolio:orbit-staging`** (`src/lib/orbitalStaging.ts`) with **`{ projectId, centerX, centerY }`** in **physics space** (card **center** — same as **`posRef`**). **`OrbitalCard`** listens only to **`portfolio:orbit-staging`** for activation + staging target (**Session 93**). Side (left/right dock) from **`positionsRef`** center **x** vs viewport center (fallback: clamped home if position still **`0,0`**). **`ChatPanel`** emits **`portfolio:chat-response-complete`** when an assistant message finishes streaming; docked cards release **2s** after that (**`POST_STREAM_RELEASE_MS`** in **`OrbitalCard.tsx`**).
 
 Suggestion chips — persistent bar only:
 - Chips appear ONLY in the persistent bar above the input. Never inside message bubbles.
@@ -91,7 +91,7 @@ Ten project cards orbit the chat panel in slow elliptical arcs and dock to stagi
 **Files:**
 - `src/content/projects.ts` — typed `Project` interface + `PROJECTS` array (10 entries)
 - `src/components/ui/OrbitalCard.tsx` — floating card with sine-wave drift + staging lerp; **`forwardRef`** + **`useImperativeHandle`** exposes **`tick(now)`** + **`getVideoElement()`** (**Session 87**, **Session 90** video coordinator). Position written as **`transform: translate(...)`** (**Session 90**).
-- `src/components/ui/OrbitalSystem.tsx` — mounts 10 cards, computes home positions + staging zones; **single shared `requestAnimationFrame` loop** calls each card's **`tick`** when **`pathname === '/'`** (**Session 87**, **Session 90** pause off homepage). **`activeVideoRef`** enforces one playing MP4 (**Session 90**).
+- `src/components/ui/OrbitalSystem.tsx` — mounts 10 cards, computes home positions + **Session 93** staging targets (dock math + multi-mention stagger); **single shared `requestAnimationFrame` loop** calls each card's **`tick`** when **`pathname === '/'`** (**Session 87**, **Session 90** pause off homepage). **`activeVideoRef`** enforces one playing MP4 (**Session 90**). **`src/lib/orbitalStaging.ts`** — **`ORBIT_STAGING_EVENT`** + **`OrbitStagingDetail`** type.
 
 **Mobile (Session 66):** `useIsMobile()` from `src/hooks/useIsMobile.ts` (`true` when `window.innerWidth < 768`). After all hooks, `if (isMobile) return null` — no orbital cards on mobile; **Swirl is unchanged** and still runs in layout.
 
@@ -179,15 +179,19 @@ The old model recalculated position from scratch every frame (`newPos = driftPos
 - Do NOT reintroduce stateless `px = homeX + driftX` as the base position
 
 **Activation flow:**
-1. Type → `detectProjectMention` → `portfolio:project-active` dispatched on send
-2. Click card → `portfolio:query` dispatched → `ChatPanel` auto-submits via `sendMessageRef.current`
-3. Side picked by `homeX < window.innerWidth / 2` (home position determines side, not current drift position)
-4. `lerpRef` `0 → 1` at `0.06`/frame → card lerps from drift position toward staging slot
-5. After 4000ms: `active` false, `chosenSlotRef` cleared → lerpRef drains → card returns to drift
+1. Type → `detectProjectMention` → **`portfolio:project-active`** dispatched on send (**ChatPanel**)
+2. **`OrbitalSystem`** batches project IDs (**`queueMicrotask`**), measures **`#chat-panel`** via **`getBoundingClientRect()`**, computes dock **center** targets, dispatches **`portfolio:orbit-staging`** per card (**Session 93**)
+3. Click card → `portfolio:query` dispatched → `ChatPanel` auto-submits via `sendMessageRef.current`
+4. Side picked by **card center x** (`positionsRef` / home fallback) vs **`window.innerWidth / 2`** (**Session 93** — not `homeX` alone)
+5. Staging lerp at **`0.06`/frame** toward **`chosenSlotRef`** (center coords) — unchanged (**Session 93** fixes destination math only)
+6. **`ChatPanel`** dispatches **`portfolio:chat-response-complete`** when the assistant reply **finishes streaming** (success, **429**, or error). **`OrbitalCard`** waits **`POST_STREAM_RELEASE_MS`** (2000ms) after that event, then clears **`chosenSlotRef`** → card returns to drift
 
-**Staging zones (Session 22):**
-- 5 slots per side, `CARD_H = 160`, `STAGE_GAP = 12`, `16px` gap from panel edge
-- `id="chat-panel"` on `ChatPanel` root div — NOT the centering wrapper in `page.tsx`
+**Staging targets (Session 93 — transform / physics alignment):**
+- Physics **`posRef.x` / `posRef.y`** are **card center** coordinates; DOM uses **`translate(x - 110px, y - 80px)`** (**Session 90**). Staging targets must be **center** points in that same space.
+- **`CARD_W` = 220**, **`CARD_H` = 160**, **`DOCK_GAP` = `CARD_W / 2`** (half card-width gap between chat panel edge and docked card’s nearest vertical edge). Panel edges from measured **`#chat-panel`** rect (tracks **`NavWidthContext`** width, not a hardcoded 560).
+- **Left dock center x:** `rect.left - DOCK_GAP - CARD_W/2`. **Right dock center x:** `rect.right + DOCK_GAP + CARD_W/2`. **Vertical:** `dockCY = window.innerHeight / 2`.
+- **Same-side stagger** when multiple projects activate in one batch: **`STAGGER = CARD_H + 16`**, **`centerY = dockCY + (i - (n-1)/2) * STAGGER`** for **`n`** cards on that side.
+- **`id="chat-panel"`** on `ChatPanel` root div — NOT the centering wrapper in `page.tsx`
 - **Critical:** centering wrapper in `page.tsx` must have `pointer-events-none`. `ChatPanel` root div must have `pointer-events-auto`. Without this pair, the `fixed inset-0` wrapper at `z-20` silently blocks all pointer events to the cards at `z-10`.
 
 **Do NOT reintroduce elliptical orbital math.** Home positions are fixed viewport percentages.
@@ -199,6 +203,7 @@ The old model recalculated position from scratch every frame (`newPos = driftPos
 
 **Performance — Session 30 + Session 73 + Session 87 + Session 90 + Session 92 (homepage / orbital):**
 - **Session 90 — Position via `transform: translate(x, y)`** — outer wrapper is `position: fixed; left: 0; top: 0` with **`transform: translate(x - 110px, y - 80px)`** (`110`/`80` = half of `220×160` footprint). Physics `x,y` remain card-center coordinates; compositor-friendly (no per-frame `left`/`top` layout). **`willChange: 'transform'`** on the wrapper only.
+- **Session 93 — Staging coordinates** — dock targets computed in **`OrbitalSystem`** from **`#chat-panel`** **`getBoundingClientRect()`** + **`DOCK_GAP = CARD_W / 2`**; **`portfolio:orbit-staging`** carries **`centerX`/`centerY`** matching **`posRef`** (see **Staging targets** above). Multi-mention stagger via **`queueMicrotask`** batch.
 - **Session 90 — RAF only on homepage** — `OrbitalSystem` uses `usePathname()` + `isHome = pathname === '/'`; the shared RAF loop **does not run** off `/` (cards freeze at last transform until return). Saves 10× physics per frame on deep routes.
 - **Session 90 — Single orbital video** — `OrbitalSystem` holds **`activeVideoRef`**; **`onVideoHover(index)`** / **`onVideoLeave(index)`** pause any other card’s `<video>` before playing. **`OrbitalCardHandle`** adds **`getVideoElement()`** for the coordinator. Prevents stacked MP4 decodes on fast hover sweeps.
 - **Session 92 — Orbital panel glass restored** — **`backdropFilter` / `WebkitBackdropFilter`: `blur(5px)`** + **`backgroundColor: rgba(22,26,34,0.92)`** on **`position: absolute; inset: 0; zIndex: 0`** (blur **`pointer-events: none`**). **`opacity`** for idle/hover/active on **`opacityLayerRef`** only (sibling above blur), **not** on **`cardRef`**. **Do not** remove blur from Nav, `ChatPanel`, overlays, sticky `*.exe` headers, or `TabBar` when editing orbital cards.
@@ -324,7 +329,7 @@ Smooth Framer Motion transitions between homepage and case study pages. Swirl an
 - Added `usePathname` import — pathname used as dependency in the measure `useEffect`
 - Immediate `measure()` on pathname change + delayed `measure()` after 600ms — catches `chat-panel` element that may still be animating in after transition
 - On case study pages: `chat-panel` not found → `ready` stays as-is, cards keep floating behind the opaque overlay at z-20
-- On return to homepage: delayed measure finds `chat-panel`, recomputes staging slots
+- On return to homepage: delayed measure finds `chat-panel`, sets viewport readiness (**Session 93:** dock targets are computed at activation from the panel rect, not precomputed slot arrays)
 
 **CaseStudyView changes (Session 35):**
 - `backgroundColor: '#0e1015'` removed from `<main>` — background now provided by `PageTransitionWrapper`'s `rgba(14,16,21,0.97)` overlay
