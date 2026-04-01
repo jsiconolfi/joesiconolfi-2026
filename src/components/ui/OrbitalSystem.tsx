@@ -41,19 +41,19 @@ const HOME_POSITIONS = [
   { xPct: 0.72, yPct: 0.92 },  // Cohere Labs    — bottom center-right
 ]
 
-// Drift parameters — each card drifts with unique phase and amplitude
-// Drift is purely visual, small enough that cards never leave their quadrant
+// Session 94 — ambient float: slow cycles, small amplitude, index-based phases so cards never drift in sync
+const DRIFT_PHASE_STEP = (Math.PI * 2) / 10
 const DRIFT_CONFIGS = [
-  { xAmp: 18, yAmp: 22, xSpeed: 0.0008, ySpeed: 0.0006, phase: 0.0 },
-  { xAmp: 22, yAmp: 16, xSpeed: 0.0007, ySpeed: 0.0009, phase: 1.1 },
-  { xAmp: 14, yAmp: 20, xSpeed: 0.0009, ySpeed: 0.0007, phase: 2.2 },
-  { xAmp: 20, yAmp: 18, xSpeed: 0.0006, ySpeed: 0.0008, phase: 3.3 },
-  { xAmp: 16, yAmp: 24, xSpeed: 0.0010, ySpeed: 0.0006, phase: 4.4 },
-  { xAmp: 24, yAmp: 14, xSpeed: 0.0007, ySpeed: 0.0010, phase: 5.5 },
-  { xAmp: 20, yAmp: 18, xSpeed: 0.0008, ySpeed: 0.0007, phase: 0.7 },
-  { xAmp: 16, yAmp: 22, xSpeed: 0.0009, ySpeed: 0.0008, phase: 1.8 },
-  { xAmp: 22, yAmp: 16, xSpeed: 0.0007, ySpeed: 0.0009, phase: 2.9 },
-  { xAmp: 18, yAmp: 20, xSpeed: 0.0008, ySpeed: 0.0007, phase: 4.0 },
+  { xAmp: 10, yAmp: 12, xSpeed: 0.0003, ySpeed: 0.00028, phase: 0 * DRIFT_PHASE_STEP },
+  { xAmp: 12, yAmp: 10, xSpeed: 0.00032, ySpeed: 0.0003, phase: 1 * DRIFT_PHASE_STEP },
+  { xAmp: 8, yAmp: 14, xSpeed: 0.00028, ySpeed: 0.00032, phase: 2 * DRIFT_PHASE_STEP },
+  { xAmp: 14, yAmp: 8, xSpeed: 0.0003, ySpeed: 0.00029, phase: 3 * DRIFT_PHASE_STEP },
+  { xAmp: 11, yAmp: 13, xSpeed: 0.00031, ySpeed: 0.00027, phase: 4 * DRIFT_PHASE_STEP },
+  { xAmp: 13, yAmp: 9, xSpeed: 0.00029, ySpeed: 0.00031, phase: 5 * DRIFT_PHASE_STEP },
+  { xAmp: 9, yAmp: 12, xSpeed: 0.0003, ySpeed: 0.0003, phase: 6 * DRIFT_PHASE_STEP },
+  { xAmp: 12, yAmp: 11, xSpeed: 0.00027, ySpeed: 0.00033, phase: 7 * DRIFT_PHASE_STEP },
+  { xAmp: 10, yAmp: 10, xSpeed: 0.00033, ySpeed: 0.00028, phase: 8 * DRIFT_PHASE_STEP },
+  { xAmp: 14, yAmp: 11, xSpeed: 0.00028, ySpeed: 0.0003, phase: 9 * DRIFT_PHASE_STEP },
 ]
 
 const CARD_W = 220
@@ -89,8 +89,8 @@ export default function OrbitalSystem() {
   const activationQueueRef = useRef<string[]>([])
   const activationFlushScheduledRef = useRef(false)
 
-  // Shared mutable ref — updated every frame by each card.
-  // Using a ref (not state) so updates never trigger re-renders.
+  // Shared positions for Session 93 staging (left/right dock from live card center x) — not collision.
+  // Updated each frame via `onPositionUpdate`; ref (not state) so updates never trigger re-renders.
   const positionsRef = useRef<Array<{ x: number; y: number }>>(
     Array.from({ length: 10 }, () => ({ x: 0, y: 0 }))
   )
@@ -287,7 +287,6 @@ export default function OrbitalSystem() {
             driftPhase={drift.phase}
             cardIndex={i}
             onPositionUpdate={handlePositionUpdate}
-            positionsRef={positionsRef}
             onVideoHover={handleOrbitalVideoHover}
             onVideoLeave={handleOrbitalVideoLeave}
           />

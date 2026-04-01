@@ -90,8 +90,8 @@ Ten project cards orbit the chat panel in slow elliptical arcs and dock to stagi
 
 **Files:**
 - `src/content/projects.ts` — typed `Project` interface + `PROJECTS` array (10 entries)
-- `src/components/ui/OrbitalCard.tsx` — floating card with sine-wave drift + staging lerp; **`forwardRef`** + **`useImperativeHandle`** exposes **`tick(now)`** + **`getVideoElement()`** (**Session 87**, **Session 90** video coordinator). Position written as **`transform: translate(...)`** (**Session 90**).
-- `src/components/ui/OrbitalSystem.tsx` — mounts 10 cards, computes home positions + **Session 93** staging targets (dock math + multi-mention stagger); **single shared `requestAnimationFrame` loop** calls each card's **`tick`** when **`pathname === '/'`** (**Session 87**, **Session 90** pause off homepage). **`activeVideoRef`** enforces one playing MP4 (**Session 90**). **`src/lib/orbitalStaging.ts`** — **`ORBIT_STAGING_EVENT`** + **`OrbitStagingDetail`** type.
+- `src/components/ui/OrbitalCard.tsx` — floating card with sine-wave drift + staging lerp; **`forwardRef`** + **`useImperativeHandle`** exposes **`tick(now)`** + **`getVideoElement()`** (**Session 87**, **Session 90** video coordinator). Position written as **`transform: translate(...)`** (**Session 90**). Listens to **`portfolio:orbit-staging`** for dock; **`portfolio:chat-response-complete`** + **`POST_STREAM_RELEASE_MS`** for return timing (**Session 93**).
+- `src/components/ui/OrbitalSystem.tsx` — mounts 10 cards, computes home positions + **Session 93** staging targets (dock math + multi-mention stagger); **single shared `requestAnimationFrame` loop** calls each card's **`tick`** when **`pathname === '/'`** (**Session 87**, **Session 90** pause off homepage). **`activeVideoRef`** enforces one playing MP4 (**Session 90**). **`src/lib/orbitalStaging.ts`** — **`ORBIT_STAGING_EVENT`**, **`CHAT_RESPONSE_COMPLETE_EVENT`**, **`OrbitStagingDetail`**.
 
 **Mobile (Session 66):** `useIsMobile()` from `src/hooks/useIsMobile.ts` (`true` when `window.innerWidth < 768`). After all hooks, `if (isMobile) return null` — no orbital cards on mobile; **Swirl is unchanged** and still runs in layout.
 
@@ -127,7 +127,7 @@ interface Project {
 - NO data visualizations, NO `rgba(196,174,145,*)` warm amber
 - Active beacon: static `#00ff9f` dot + `boxShadow: 0 0 8px rgba(0,255,159,0.5)` — no pulse
 - Idle `opacity: 0.6`, hovered `opacity: 0.85`, active `opacity: 1`
-- Hover: border → `rgba(255,255,255,0.2)`, `scale(1.02)` (suppressed when active), `zIndex: 12` — implemented in **`globals.css`** via `.orbital-card-root:hover` (no `hovered` React state — **Session 73**)
+- Hover: border → `rgba(255,255,255,0.2)` (**Session 94:** no `scale` — avoids backdrop blur repaint jank), `zIndex: 12` — implemented in **`globals.css`** via `.orbital-card-root:hover` (no `hovered` React state — **Session 73**)
 - Active always overrides hover — active state takes full visual control
 
 **Media rendering (Session 23, updated Session 27):**
@@ -144,36 +144,33 @@ interface Project {
 
 **Position system (Session 22 — replaces all elliptical orbital math):**
 - `HOME_POSITIONS` — 10 fixed positions as `{ xPct, yPct }` viewport fractions. Layout: 3 left, 3 right, 2 top strip, 2 bottom strip. All within viewport, none overlap the chat panel.
-- `DRIFT_CONFIGS` — per-card `{ xAmp, yAmp, xSpeed, ySpeed, phase }`. Gentle sine drift: `sin(elapsed * xSpeed + phase) * xAmp` / `cos(elapsed * ySpeed + phase * 1.3) * yAmp`. Amplitudes ±14–24px.
+- `DRIFT_CONFIGS` — per-card `{ xAmp, yAmp, xSpeed, ySpeed, phase }`. Gentle sine drift: `sin(elapsed * xSpeed + phase) * xAmp` / `cos(elapsed * ySpeed + phase * 1.3) * yAmp`. **Session 94:** amplitudes **8–14px**, speeds **~0.0003** (slow cycles), **`phase = index * (2π/10)`** so cards do not drift in sync.
 - No elliptical math, no radius calculations, no convergence problems.
 
 **Viewport clamping (Session 23):**
 - `clampHome(xPct, yPct, vw, vh)` in `OrbitalSystem.tsx` — ensures every home position keeps the full 220×160 card footprint on screen. `EDGE_PAD = 12`. Re-applied on every resize.
 
-**Soft collision repulsion (Session 23, staggered Session 30, **Session 73** dist²):**
-- `positionsRef` — shared `useRef<Array<{x,y}>>` in `OrbitalSystem`, passed to every card. Updated each RAF frame via `onPositionUpdate` callback. Never triggers re-renders.
-- Each card reads `positionsRef` in its **`tick`** (driven by **`OrbitalSystem`**'s single RAF loop — **Session 87**): if distance to another card < `MIN_DIST = 240`, applies a gentle push proportional to overlap. `REPULSE = 0.6` (impulse to velocity).
-- Repulsion + viewport clamping only apply when card is idle (`activeRef.current === false`). Staged cards are fully exempt.
+**Live positions for staging (Session 93; **Session 95** — no card-card collision):**
+- `positionsRef` — shared `useRef<Array<{x,y}>>` in **`OrbitalSystem`** only. Each card reports **`onPositionUpdate(index, x, y)`** every **`tick`** so **`cardCenterXForIndex`** can pick left vs right dock (**Session 93**). **Session 95** removed pairwise repulsion and **`positionsRef`** is **not** passed into **`OrbitalCard`**; cards may overlap slightly.
 - `startTimeRef` uses lazy initialization on first RAF frame (not `performance.now()` at render time) to satisfy `react-hooks/purity`.
-- **Collision check staggered every 3rd frame:** `frameCountRef.current % 3 === cardIndex % 3` — different cards check on different frames. Cuts collision compute by ~66%. **Session 73:** compare **`distSq`** to `MIN_DIST * MIN_DIST` first; call `sqrt` only when pairs overlap (fewer `sqrt` calls per frame).
 
-**Velocity + damping physics (Session 32 — replaces stateless position model):**
+**Velocity + damping physics (Session 32 — replaces stateless position model; **Session 94** — ambient float tuning; **Session 95** — no collision):**
 
 The old model recalculated position from scratch every frame (`newPos = driftPos + forces`). Forces had no memory so they oscillated. Session 32 introduces proper velocity physics:
 
 - `posRef` and `velRef` — `useRef({ x: 0, y: 0 })` each. Persist state between frames. Never trigger renders.
-- `lerpRef` removed — no longer needed. **`frameCountRef` (Session 73)** — increments each RAF tick; used **only** to stagger collision repulsion (`% 3` vs `cardIndex`); does not drive position lerp.
-- **Spring toward drift target**: `vx += (targetX - x) * SPRING`. `SPRING = 0.018` — gentle follow, not snap.
-- **DAMPING = 0.82** — velocity multiplied by 0.82 every frame. Oscillations decay to zero within ~0.5s regardless of opposing forces.
-- **Collision repulsion adds to velocity** (not position). `REPULSE = 0.6` impulse, then damped. Staggered every 3rd frame per card; damping smooths inter-frame gaps.
+- `lerpRef` removed — no longer needed.
+- **Spring toward drift target** (idle only): `vx += (targetX - x) * SPRING`. **Session 94:** `SPRING = 0.004` — very soft follow, weightless drift (seconds to settle after a nudge).
+- **Session 94:** `DAMPING = 0.96` — velocity decays slowly; movement lingers. Staging dock lerp (**`0.06`**) is unchanged.
+- **Session 95:** No pairwise collision / **`MIN_DIST`** / **`REPULSE`** — soft spring no longer fights repulsion on load or after dock release.
 - **Edge repulsion adds to velocity**. `EDGE_MARGIN = 130px`, `EDGE_FORCE = 0.4`. Force proportional to distance inside margin.
 - **Staging lerp**: when `activeRef.current && chosenSlotRef.current`, card lerps at `0.06` to slot directly. Velocity bled at `0.85x` per frame so return-to-orbit is smooth.
 - **Hard safety clamp (`HARD_MARGIN = 20px`)** — last resort only. Fires only if card somehow exits the viewport despite all soft forces. Does NOT interact with normal physics.
 - Position is initialized on first frame: `if (posRef.current.x === 0 && posRef.current.y === 0) posRef.current = { x: targetX, y: targetY }`
 
-**Physics constants (do not exceed):**
-- `SPRING` ≤ 0.025 — higher makes drift feel snappy not floaty
-- `DAMPING` between 0.78–0.88 — outside this range causes sluggishness or oscillation
+**Physics constants (idle drift — Session 94 targets low-gravity float):**
+- **`SPRING`** and **`DAMPING`** live in **`OrbitalCard.tsx`** (`tick`) for the idle spring only — **Session 94:** `SPRING = 0.004`, `DAMPING = 0.96` (supersedes Session 32’s 0.018 / 0.82 for ambient motion)
+- Older guardrails (`SPRING` ≤ 0.025, `DAMPING` 0.78–0.88) applied before Session 94; do not revert to snappy spring values without an explicit session
 - `HARD_MARGIN` ≤ 20px — it is last resort only, not a regular constraint
 - Do NOT remove `posRef`/`velRef` — position must be stored in refs, not recalculated from drift each frame
 - Do NOT reintroduce stateless `px = homeX + driftX` as the base position
@@ -195,9 +192,9 @@ The old model recalculated position from scratch every frame (`newPos = driftPos
 - **Critical:** centering wrapper in `page.tsx` must have `pointer-events-none`. `ChatPanel` root div must have `pointer-events-auto`. Without this pair, the `fixed inset-0` wrapper at `z-20` silently blocks all pointer events to the cards at `z-10`.
 
 **Do NOT reintroduce elliptical orbital math.** Home positions are fixed viewport percentages.
-**Do NOT change `lerpRef` factor (`0.06`), traffic light colors, or orbital chrome layout.** (**Session 92:** glass **`blur(5px)`** + **`rgba(22,26,34,0.92)`** on the **absolute inset-0 blur layer** inside **`cardRef`** (content **`zIndex: 1`**) — traffic lights / borders / scale hover unchanged.)
-**Do NOT reduce `MIN_DIST` below 220** (card width). Current value: 240.
-**`positionsRef` must remain a `useRef`** — never convert to `useState`.
+**Do NOT change** staging lerp factor **`0.06`**, traffic light colors, or orbital chrome layout. (**Session 92:** glass **`blur(5px)`** + **`rgba(22,26,34,0.92)`** on the **absolute inset-0 blur layer** inside **`cardRef`**. **Session 94:** hover uses border brightening only — **no** `scale` on **`.orbital-card-panel`**.)
+**Do NOT reintroduce** orbital pairwise collision repulsion (**Session 95** removed it).
+**`positionsRef` in `OrbitalSystem` must remain a `useRef`** (staging side detection) — never convert to `useState`.
 
 **Project shuffle (Session 24):** `shuffleArray<T>()` (Fisher-Yates, module scope in `OrbitalSystem.tsx`) is called once via `useMemo(() => shuffleArray(PROJECTS), [])`. The render iterates `shuffledProjects`. Each page load gets a different layout; positions are stable within a session. `PROJECTS` in `projects.ts` is never mutated. Must use `useMemo` — `useState` or `useEffect` would cause a visible flash of the unshuffled order.
 
@@ -207,9 +204,11 @@ The old model recalculated position from scratch every frame (`newPos = driftPos
 - **Session 90 — RAF only on homepage** — `OrbitalSystem` uses `usePathname()` + `isHome = pathname === '/'`; the shared RAF loop **does not run** off `/` (cards freeze at last transform until return). Saves 10× physics per frame on deep routes.
 - **Session 90 — Single orbital video** — `OrbitalSystem` holds **`activeVideoRef`**; **`onVideoHover(index)`** / **`onVideoLeave(index)`** pause any other card’s `<video>` before playing. **`OrbitalCardHandle`** adds **`getVideoElement()`** for the coordinator. Prevents stacked MP4 decodes on fast hover sweeps.
 - **Session 92 — Orbital panel glass restored** — **`backdropFilter` / `WebkitBackdropFilter`: `blur(5px)`** + **`backgroundColor: rgba(22,26,34,0.92)`** on **`position: absolute; inset: 0; zIndex: 0`** (blur **`pointer-events: none`**). **`opacity`** for idle/hover/active on **`opacityLayerRef`** only (sibling above blur), **not** on **`cardRef`**. **Do not** remove blur from Nav, `ChatPanel`, overlays, sticky `*.exe` headers, or `TabBar` when editing orbital cards.
+- **Session 94 — Ambient drift + hover perf:** Idle spring **`SPRING = 0.004`**, **`DAMPING = 0.96`** in **`OrbitalCard`**; **`DRIFT_CONFIGS`** in **`OrbitalSystem`** — smaller amplitudes (**8–14px**), **~0.0003** speeds, **`phase = index * (2π/10)`**. **`.orbital-card-panel`**: **`will-change: transform`**, hover border only (**no** **`scale`** — avoids blur repaint with video).
+- **Session 95 — No orbital collision:** Pairwise **`MIN_DIST`/repulsion** and **`frameCountRef` stagger** removed from **`OrbitalCard`**; **`positionsRef`** stays in **`OrbitalSystem`** for **Session 93** dock side only.
 - **OrbitalCard position is direct DOM** — `setDisplayPos` state removed; no per-frame React updates.
 - **OrbitalCard opacity/zIndex are imperative** — **`opacity`** on **`opacityLayerRef`**; **`zIndex`** on **`cardRef`** (pointer enter/leave and activation). **`hoveredRef`** mirrors pointer hover **without** `setState` — used only for async deactivation timer + leave coordination.
-- **Session 73 — hover visuals are CSS-only** — classes `orbital-card-root`, `orbital-card-panel`, `orbital-card-panel--active`, footer helpers in **`globals.css`**. Moving the cursor across cards does **not** re-render React for border, shadow, scale, role color, or footer copy swap.
+- **Session 73 — hover visuals are CSS-only** — classes `orbital-card-root`, `orbital-card-panel`, `orbital-card-panel--active`, footer helpers in **`globals.css`**. Moving the cursor across cards does **not** re-render React for border, shadow, role color, or footer copy swap. **Session 94:** **`will-change: transform`** on **`.orbital-card-panel`**; no hover **scale**.
 - **Session 73 — active beacon** always in DOM; shown with `.orbital-card-root--active .orbital-card-beacon { display: block }` (no conditional mount on `active`).
 - **OrbitalCard video** — play/pause coordinated by **`OrbitalSystem`** (Session 90). **`preload="metadata"`** on `<video>` (**Session 74**) — required so MP4-backed cards show a poster at rest.
 - **Swirl DPR capped at 1.5** (`Math.min(window.devicePixelRatio ?? 1, 1.5)`) — 30% fewer canvas fill ops/frame on Retina; invisible at character sizes.
@@ -219,8 +218,8 @@ The old model recalculated position from scratch every frame (`newPos = driftPos
 
 **Do NOT modify:** `Swirl.tsx` particle logic / color math / RAF timing (DPR cap and `willChange` are the only allowed changes)
 **Do NOT modify:** `SwirlDotGrid.tsx`, `HiDotGrid.tsx`
-**Do NOT change:** `lerpRef` factor (`0.06`), traffic light colors, card visual design
-**Do NOT reintroduce:** elliptical orbital math, `next/image` in OrbitalCard (intentional exception), or **per-card `requestAnimationFrame`** in `OrbitalCard` (**Session 87** — one RAF in `OrbitalSystem` calls **`tick(now)`** on each card)
+**Do NOT change:** staging lerp factor (`0.06`), traffic light colors, card visual design (terminal chrome, **Session 94:** no hover grow — border-only hover)
+**Do NOT reintroduce:** elliptical orbital math, `next/image` in OrbitalCard (intentional exception), pairwise **card-card collision** repulsion (**Session 95** removed), or **per-card `requestAnimationFrame`** in `OrbitalCard` (**Session 87** — one RAF in `OrbitalSystem` calls **`tick(now)`** on each card)
 **Do NOT remove:** `willChange: 'transform'` on OrbitalCard wrapper (**Session 90** — not `left`/`top`), `willChange: 'contents'` on Swirl canvas, `willChange: 'transform'` + `translateZ(0)` on CaseStudyThumbnail — load-bearing for compositor layering.
 **`@keyframes pulse`** remains in `globals.css` (not used by cards currently)
 **`@keyframes thinking-shimmer`** in `globals.css` — used by `ThinkingText`: `0%/100% { color: #555555 }`, `50% { color: #aaaaaa }`, 1.6s ease-in-out infinite. Each character has an 80ms stagger delay.

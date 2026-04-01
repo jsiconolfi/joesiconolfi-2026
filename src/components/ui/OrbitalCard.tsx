@@ -20,7 +20,6 @@ interface OrbitalCardProps {
   driftPhase: number
   cardIndex: number
   onPositionUpdate: (index: number, x: number, y: number) => void
-  positionsRef: React.MutableRefObject<Array<{ x: number; y: number }>>
   /** Parent coordinates single active MP4 — pause others before play */
   onVideoHover: (index: number) => void
   onVideoLeave: (index: number) => void
@@ -51,7 +50,6 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
     driftPhase,
     cardIndex,
     onPositionUpdate,
-    positionsRef,
     onVideoHover,
     onVideoLeave,
   },
@@ -74,7 +72,6 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
   // Velocity-based physics state — persists between frames, never triggers renders
   const posRef = useRef({ x: 0, y: 0 })
   const velRef = useRef({ x: 0, y: 0 })
-  const frameCountRef = useRef(0)
 
   // --- Dock on staging; release 2s after assistant reply finishes streaming (ChatPanel event) ---
 
@@ -138,7 +135,6 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
       tick(now: number) {
         if (startTimeRef.current === null) startTimeRef.current = now
         const elapsed = now - startTimeRef.current
-        frameCountRef.current += 1
 
         const vw = window.innerWidth
         const vh = window.innerHeight
@@ -156,34 +152,14 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
         let { x: vx, y: vy } = velRef.current
 
         if (!activeRef.current || !chosenSlotRef.current) {
-          const SPRING = 0.018
-          const DAMPING = 0.82
+          // Session 94 — soft spring + high damping: weightless drift, long settle (idle only; staging lerp unchanged below)
+          const SPRING = 0.004
+          const DAMPING = 0.96
 
           vx += (targetX - x) * SPRING
           vy += (targetY - y) * SPRING
           vx *= DAMPING
           vy *= DAMPING
-        }
-
-        if (!activeRef.current && frameCountRef.current % 3 === cardIndex % 3) {
-          const MIN_DIST = 240
-          const MIN_DIST_SQ = MIN_DIST * MIN_DIST
-          const REPULSE = 0.6
-
-          const others = positionsRef.current
-          for (let j = 0; j < others.length; j++) {
-            if (j === cardIndex) continue
-            const other = others[j]
-            if (!other || (other.x === 0 && other.y === 0)) continue
-            const dx = x - other.x
-            const dy = y - other.y
-            const distSq = dx * dx + dy * dy
-            if (distSq >= MIN_DIST_SQ || distSq === 0) continue
-            const dist = Math.sqrt(distSq)
-            const force = ((MIN_DIST - dist) / MIN_DIST) * REPULSE
-            vx += (dx / dist) * force
-            vy += (dy / dist) * force
-          }
         }
 
         if (!activeRef.current) {
@@ -233,7 +209,6 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
       driftPhase,
       cardIndex,
       onPositionUpdate,
-      positionsRef,
     ]
   )
 
@@ -331,7 +306,7 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
           aria-hidden
         />
 
-        {/* Terminal window — border / shadow / hover scale from globals.css (no hover React state) */}
+        {/* Terminal window — border / shadow from globals.css (no hover React state; Session 94 — no hover scale) */}
         <div
           className={`orbital-card-panel ${active ? 'orbital-card-panel--active' : ''}`}
           onClick={handleClick}
