@@ -106,6 +106,22 @@ body {
   }
 }
 
+/* Chat panel traffic-light dots — glyph opacity driven by CSS :hover, not React state */
+.chat-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-dot-glyph {
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+.chat-dot:hover .chat-dot-glyph {
+  opacity: 1;
+}
+
 /* Orbital cards (Session 73 hover; Session 92 — blur layer sibling to opacity layer; no ancestor opacity
    on blur. Border / shadow / hover scale here. */
 .orbital-card-panel {

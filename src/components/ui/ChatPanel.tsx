@@ -118,17 +118,19 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
   } = useChatMessages()
   const { desktopNavWidthPx } = useNavWidthContext()
   const isOverlay = variant === 'overlay'
-  const [closeHovered, setCloseHovered] = useState(false)
-  const [yellowHovered, setYellowHovered] = useState(false)
-  const [greenHovered, setGreenHovered] = useState(false)
   const [input, setInput] = useState('')
   const [isResponseLoading, setIsResponseLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const sendMessageRef = useRef<(content: string) => void>(() => {})
+  const scrollRafRef = useRef(0)
 
   function scrollToBottom() {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (scrollRafRef.current) return
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = 0
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    })
   }
 
   useEffect(() => {
@@ -227,6 +229,21 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
       let buffer = ''
       let fullText = ''
 
+      // RAF-batch streaming text renders — at most 1 React update per display frame.
+      // Tokens arrive faster than 60fps can display; accumulate in a plain ref and
+      // flush via requestAnimationFrame so the render scheduler is not saturated.
+      const msgId = assistantMessage.id
+      let streamRafId = 0
+      let pendingDisplayText = ''
+
+      function flushStreamText() {
+        streamRafId = 0
+        const t = pendingDisplayText
+        setMessages(prev =>
+          prev.map(m => (m.id === msgId ? { ...m, content: t, isStreaming: true } : m))
+        )
+      }
+
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
@@ -246,15 +263,10 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
 
             if (parsed.type === 'text' && typeof parsed.text === 'string') {
               fullText += parsed.text
-              const displayText = fullText.replace(CARDS_STRIP_REGEX, '').trim()
-              // Update on every parsed line (each server token) — do not batch or debounce
-              setMessages(prev =>
-                prev.map(m =>
-                  m.id === assistantMessage.id
-                    ? { ...m, content: displayText, isStreaming: true }
-                    : m
-                )
-              )
+              pendingDisplayText = fullText.replace(CARDS_STRIP_REGEX, '').trim()
+              if (!streamRafId) {
+                streamRafId = requestAnimationFrame(flushStreamText)
+              }
             }
 
             if (parsed.type === 'cards' && Array.isArray(parsed.cards)) {
@@ -271,6 +283,9 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
           }
         }
       }
+
+      // Cancel any pending RAF flush and commit the final text synchronously
+      if (streamRafId) cancelAnimationFrame(streamRafId)
 
       const displayText = fullText.replace(CARDS_STRIP_REGEX, '').trim()
       // Cards already merged on this message from `cards` NDJSON lines — do not overwrite here
@@ -365,8 +380,7 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
                 title="Close"
                 aria-label="Close chat"
                 onClick={() => closeChatOverlay()}
-                onMouseEnter={() => setCloseHovered(true)}
-                onMouseLeave={() => setCloseHovered(false)}
+                className="chat-dot"
                 style={{
                   width: 10,
                   height: 10,
@@ -382,25 +396,11 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
                   ...mobileTouch,
                 }}
               >
-                {closeHovered && (
-                  <span
-                    style={{
-                      fontSize: 7,
-                      lineHeight: 1,
-                      color: 'rgba(0,0,0,0.65)',
-                      fontWeight: 500,
-                      userSelect: 'none',
-                      pointerEvents: 'none',
-                    }}
-                  >
-                    ×
-                  </span>
-                )}
+                <span className="chat-dot-glyph" style={{ fontSize: 7, lineHeight: 1, color: 'rgba(0,0,0,0.65)', fontWeight: 500, userSelect: 'none', pointerEvents: 'none' }}>×</span>
               </button>
               <span
                 role="presentation"
-                onMouseEnter={() => setYellowHovered(true)}
-                onMouseLeave={() => setYellowHovered(false)}
+                className="chat-dot"
                 style={{
                   width: 10,
                   height: 10,
@@ -412,28 +412,14 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
                   flexShrink: 0,
                 }}
               >
-                {yellowHovered && (
-                  <span
-                    style={{
-                      fontSize: 7,
-                      lineHeight: 1,
-                      color: 'rgba(0,0,0,0.5)',
-                      fontWeight: 500,
-                      userSelect: 'none',
-                      pointerEvents: 'none',
-                    }}
-                  >
-                    −
-                  </span>
-                )}
+                <span className="chat-dot-glyph" style={{ fontSize: 7, lineHeight: 1, color: 'rgba(0,0,0,0.5)', fontWeight: 500, userSelect: 'none', pointerEvents: 'none' }}>−</span>
               </span>
               <button
                 type="button"
                 title="New conversation"
                 aria-label="New conversation"
                 onClick={() => resetConversation()}
-                onMouseEnter={() => setGreenHovered(true)}
-                onMouseLeave={() => setGreenHovered(false)}
+                className="chat-dot"
                 style={{
                   width: 10,
                   height: 10,
@@ -449,20 +435,7 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
                   ...mobileTouch,
                 }}
               >
-                {greenHovered && (
-                  <span
-                    style={{
-                      fontSize: 7,
-                      lineHeight: 1,
-                      color: 'rgba(0,0,0,0.5)',
-                      fontWeight: 500,
-                      userSelect: 'none',
-                      pointerEvents: 'none',
-                    }}
-                  >
-                    +
-                  </span>
-                )}
+                <span className="chat-dot-glyph" style={{ fontSize: 7, lineHeight: 1, color: 'rgba(0,0,0,0.5)', fontWeight: 500, userSelect: 'none', pointerEvents: 'none' }}>+</span>
               </button>
             </>
           ) : (
