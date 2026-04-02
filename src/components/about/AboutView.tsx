@@ -405,7 +405,6 @@ export default function AboutView() {
             <div style={{
               width: isMobile ? 120 : 200,
               height: isMobile ? 120 : 200,
-              margin: isMobile ? '0 auto' : undefined,
               borderRadius: 8,
               overflow: 'hidden',
               border: '1px solid rgba(255,255,255,0.08)',
