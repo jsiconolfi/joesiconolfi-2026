@@ -62,16 +62,20 @@ const CARD_H = 160
 const DOCK_GAP = CARD_W / 2
 /** Session 93 — vertical spacing between stacked dock centers when multiple cards activate on the same side */
 const STAGGER = CARD_H + 16
-const EDGE_PAD = 12
+/**
+ * Must match `VIEWPORT_MARGIN` in `OrbitalCard.tsx` — same center bounds as runtime `tick` clamp
+ * (minY = MARGIN + CARD_H/2, maxY = vh - MARGIN - CARD_H/2, etc.)
+ */
+const HOME_MARGIN = 16
 
 // Clamp a percentage-based position so the card stays fully on screen
 function clampHome(xPct: number, yPct: number, vw: number, vh: number) {
   const rawX = xPct * vw
   const rawY = yPct * vh
-  const minX = CARD_W / 2 + EDGE_PAD
-  const maxX = vw - CARD_W / 2 - EDGE_PAD
-  const minY = CARD_H / 2 + EDGE_PAD
-  const maxY = vh - CARD_H / 2 - EDGE_PAD
+  const minX = CARD_W / 2 + HOME_MARGIN
+  const maxX = vw - CARD_W / 2 - HOME_MARGIN
+  const minY = CARD_H / 2 + HOME_MARGIN
+  const maxY = vh - CARD_H / 2 - HOME_MARGIN
   return {
     x: Math.max(minX, Math.min(maxX, rawX)),
     y: Math.max(minY, Math.min(maxY, rawY)),

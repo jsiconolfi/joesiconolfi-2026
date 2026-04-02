@@ -25,11 +25,19 @@ interface OrbitalCardProps {
   onVideoLeave: (index: number) => void
 }
 
-/** Matches `CARD_W` / `CARD_H` in OrbitalSystem — center of card in physics space */
+/** Matches `CARD_W` / `CARD_H` in OrbitalSystem */
 const CARD_W = 220
 const CARD_H = 160
 const HALF_W = CARD_W / 2
 const HALF_H = CARD_H / 2
+/**
+ * Physics space: `posRef` is the card **center** in CSS pixels (same as staging `centerX` / `centerY`).
+ * DOM: `translate(centerX - HALF_W, centerY - HALF_H)` with `fixed; left:0; top:0` — not top-left.
+ * Session 97 — hard clamp uses center bounds (not top-left):
+ *   minX = MARGIN + CARD_W/2,  maxX = vw - MARGIN - CARD_W/2
+ *   minY = MARGIN + CARD_H/2,  maxY = vh - MARGIN - CARD_H/2
+ */
+const VIEWPORT_MARGIN = 16
 /** After assistant streaming finishes, card returns to orbit after this delay */
 const POST_STREAM_RELEASE_MS = 2000
 
@@ -139,10 +147,16 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
         const vw = window.innerWidth
         const vh = window.innerHeight
 
+        // Same center bounds as `clampHome` in OrbitalSystem (HOME_MARGIN === VIEWPORT_MARGIN)
+        const minX = VIEWPORT_MARGIN + HALF_W
+        const maxX = vw - VIEWPORT_MARGIN - HALF_W
+        const minY = VIEWPORT_MARGIN + HALF_H
+        const maxY = vh - VIEWPORT_MARGIN - HALF_H
+
         const driftX = Math.sin(elapsed * driftXSpeed + driftPhase) * driftXAmp
         const driftY = Math.cos(elapsed * driftYSpeed + driftPhase * 1.3) * driftYAmp
-        const targetX = homeX + driftX
-        const targetY = homeY + driftY
+        const targetX = Math.max(minX, Math.min(maxX, homeX + driftX))
+        const targetY = Math.max(minY, Math.min(maxY, homeY + driftY))
 
         if (posRef.current.x === 0 && posRef.current.y === 0) {
           posRef.current = { x: targetX, y: targetY }
@@ -162,16 +176,7 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
           vy *= DAMPING
         }
 
-        if (!activeRef.current) {
-          const EDGE_MARGIN = 130
-          const EDGE_FORCE = 0.4
-
-          if (x < EDGE_MARGIN) vx += (EDGE_MARGIN - x) / EDGE_MARGIN * EDGE_FORCE
-          if (x > vw - EDGE_MARGIN) vx -= (x - (vw - EDGE_MARGIN)) / EDGE_MARGIN * EDGE_FORCE
-          if (y < EDGE_MARGIN) vy += (EDGE_MARGIN - y) / EDGE_MARGIN * EDGE_FORCE
-          if (y > vh - EDGE_MARGIN) vy -= (y - (vh - EDGE_MARGIN)) / EDGE_MARGIN * EDGE_FORCE
-        }
-
+        // Staging lerp runs here, then viewport clamp below (never clamp before lerp)
         if (activeRef.current && chosenSlotRef.current) {
           const slot = chosenSlotRef.current
           x += (slot.x - x) * 0.06
@@ -183,9 +188,13 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
           y += vy
         }
 
-        const HARD_MARGIN = 20
-        x = Math.max(HARD_MARGIN, Math.min(vw - HARD_MARGIN, x))
-        y = Math.max(HARD_MARGIN, Math.min(vh - HARD_MARGIN, y))
+        // Session 97 — hard clamp on card *center* (not a force; zero velocity on boundary hit)
+        const xUnclamped = x
+        const yUnclamped = y
+        x = Math.max(minX, Math.min(maxX, x))
+        y = Math.max(minY, Math.min(maxY, y))
+        if (x !== xUnclamped) vx = 0
+        if (y !== yUnclamped) vy = 0
 
         posRef.current.x = x
         posRef.current.y = y

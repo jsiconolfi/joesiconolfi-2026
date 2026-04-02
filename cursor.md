@@ -212,6 +212,7 @@ State shape:
 - **Client (`ChatPanel`):** For each parsed NDJSON line in the read loop, **`setMessages`** updates the streaming assistant row immediately (**Session 77** — no debounce). **`{ type: 'cards' }`** lines update **only** the current assistant row’s **`cards`** in state (**Session 78**); stream end sets **`isStreaming: false`** without replacing **`cards`**. No global cards state; new assistants start with **`cards: undefined`**. Strips displayed card JSON via `CARDS_STRIP_REGEX`; failures → `Something went wrong. Try again.` (**Session 78:** error row sets **`cards: undefined`**). **Session 80:** if **`response.status === 429`**, set the current assistant bubble text to the hourly cooldown copy and **`isStreaming: false`** before returning (no NDJSON read).
 - **Input gating:** Send, chips, and `handleSend` no-op while `messages.length === 0` so the three-phase greeting is not interrupted and the first API turn always includes thread context after `INITIAL_MESSAGE` exists.
 - **Session 75 — System prompt:** First person throughout. Opening: "You are Joe Siconolfi... Speak in first person as Joe". Sections **Who I am**, **My approach**, **My philosophy**, **My technical approach and hands-on model work**, **My career**, **My projects**, **My beliefs**; **How to answer** ends with first-person instructions. Card rules in prompt use **your** for background / thinking / work.
+- **Session 96 / Session 97 — Card keys (`route.ts`):** **`SYSTEM_PROMPT`** includes a **`CRITICAL CARD RULE`** block immediately **before** "Surfacing contextual cards" (waypoint vs waypoint-sync disambiguation). Surfacing bullets: design system / components / Sherpa → **`waypoint`** + **`sherpa`**; token sync / Figma-to-code / waypoint-sync / token pipelines → **`waypoint-sync` only**, never **`waypoint`**. **`CARD_META`** includes **`waypoint-sync`** with **`href: '/work/waypoint-sync'`**. Parsed trailing **`{"cards":[...]}`** is validated with **exact** key membership: **`.filter((c) => c in CARD_META)`** (not substring match).
 - **Session 74 — Contextual card hover (`ChatPanel.tsx`):** Border and background stay fixed; only `.card-title` and `.card-arrow` colors change via `onMouseEnter` / `onMouseLeave` (`querySelector`), aligned with **Chat with me** (text highlight, not surface highlight).
 - **Session 76 — Contextual cards:** Not `<a href>`. **`useRouter` from `next/navigation`**: internal paths → **`router.push(card.href)`** (preserves **`PageTransitionWrapper` / AnimatePresence**); **`mailto:`** or href ending **`.pdf`** → **`window.open(href, '_blank')`**. **`role="button"`**, **`tabIndex={0}`**, **`Enter`** on `onKeyDown`. Compact single-line rows (label + arrow only); no description in UI; padding `8px 12px`; stack `gap: 6`, `marginTop: 10`; title rest `rgba(255,255,255,0.7)` fontWeight 300.
 
@@ -290,8 +291,9 @@ Z-index stack: Swirl `z-0` → OrbitalSystem `z-10` → PageTransitionWrapper `z
 - `DRIFT_CONFIGS` array — per-card `{ xAmp, yAmp, xSpeed, ySpeed, phase }`. Drift: `sin(elapsed * xSpeed + phase) * xAmp` on X, `cos(elapsed * ySpeed + phase * 1.3) * yAmp` on Y. **Session 94:** amplitudes **8–14px**, speeds **~0.0003**, **`phase = index * (2π/10)`** — slow, independent float.
 - No elliptical math, no radius calculations, no convergence problems.
 
-**Viewport clamping (Session 23 — added to OrbitalSystem):**
-- `clampHome(xPct, yPct, vw, vh)` — clamps each home position so the card's full 220×160 footprint stays within the viewport. `EDGE_PAD = 12`. Applied to every card on mount and resize.
+**Viewport clamping (Session 23 — OrbitalSystem; **Session 97** — OrbitalCard):**
+- `clampHome(xPct, yPct, vw, vh)` — clamps each home position so the card's full 220×160 footprint stays within the viewport. **Session 97:** **`HOME_MARGIN` = 16px** (aligned with per-frame clamp). Applied on mount and resize.
+- **Session 97 — `OrbitalCard` `tick`:** After physics, **hard clamp** on **card center** `posRef` with **16px** inset (`min/max` derived from **center** coordinates and **110/80** half-extents). **Zero velocity** on an axis when that axis hits a bound. Not a force — no edge bounce.
 - Cards near viewport edges (top/bottom strips at 6%/92% yPct, left/right columns at 6–10%/86–90% xPct) are nudged inward so they're always fully visible.
 
 **Velocity + damping physics (Session 32 — replaces all prior stateless position models; **Session 94** idle tuning; **Session 95** no collision):**
@@ -299,9 +301,9 @@ Z-index stack: Swirl `z-0` → OrbitalSystem `z-10` → PageTransitionWrapper `z
 - **Spring** (**Session 94:** `SPRING = 0.004`): `vx += (targetX - x) * SPRING` — very soft follow toward drift target (idle only).
 - **Damping** (**Session 94:** `DAMPING = 0.96`): velocity decays slowly — weightless, long-settle motion.
 - **Session 95:** Pairwise collision repulsion (**`MIN_DIST`**, **`REPULSE`**, staggered **`frameCountRef`**) removed — no longer fights the soft spring.
-- **Edge repulsion** adds impulse to velocity. `EDGE_MARGIN = 130px`, `EDGE_FORCE = 0.4`. Proportional to how far inside the margin the card is.
+- **Session 96:** Per-frame **edge repulsion removed** from **`OrbitalCard`** (`EDGE_MARGIN` / `EDGE_FORCE` velocity nudges) — caused edge oscillation with Session 94 slow spring. Do not reintroduce edge velocity forces without an explicit session.
+- **Session 97:** **Hard position clamp** every frame after physics — **16px** margin, **center-based** bounds, **zero velocity** on boundary hit. Replaces incorrect **`HARD_MARGIN`** clamp that treated **center** like **top-left**.
 - **Staging**: lerp at `0.06` directly to slot. Velocity bled at `0.85x` per frame.
-- **Hard safety clamp** (`HARD_MARGIN = 20px`) — fires only if card exits viewport entirely. Does not interact with normal physics. Do NOT remove it.
 - **Session 94** superseded the Session 32 spring/damping guardrails for idle drift — current values **`0.004` / `0.96`** in **`OrbitalCard`**. Do NOT reintroduce `px = homeX + driftX` as the base position each frame.
 
 **Activation — two triggers:**
@@ -320,7 +322,7 @@ Z-index stack: Swirl `z-0` → OrbitalSystem `z-10` → PageTransitionWrapper `z
 
 **Do NOT reintroduce elliptical orbital math.** Home positions are fixed viewport percentages.
 **Do NOT change** staging lerp factor **`0.06`**, traffic light colors, or orbital chrome layout. (**Session 92:** orbital glass on **`absolute` inset-0 layer** under **`zIndex: 1`** content. **Session 94:** no hover **scale** on the panel.)
-**Do NOT reintroduce** orbital pairwise collision physics (**Session 95** removed).
+**Do NOT reintroduce** orbital pairwise collision physics (**Session 95** removed) or per-frame edge velocity repulsion (**Session 96** removed).
 
 **Project assets (Session 23):** `/public/projects/` — current files on disk:
 - MP4 (video): `waypoint.mp4`, `sherpa.mp4`, `waypoint-sync.mp4`, `channelai.mp4`, `statespace.mp4`, `seudo.mp4`, `kernel.mp4`, `cohere-labs.mp4`
