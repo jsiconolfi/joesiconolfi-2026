@@ -439,7 +439,7 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 **Breakpoint:** `768px`. Shared hook `src/hooks/useIsMobile.ts` — `'use client'`, `useState(false)` + `useEffect` with `resize` listener; `isMobile === window.innerWidth < 768`. Use this hook (not ad-hoc media queries) for responsive behavior unless a static CSS approach is explicitly required.
 
 - **OrbitalSystem:** `if (isMobile) return null` after all hooks — no cards on mobile; do not partially render. Swirl stays mounted in layout (`Swirl.tsx` unchanged).
-- **Nav:** Desktop pill unchanged. Mobile: full-width bar (logo / hamburger / Chat); hamburger opens fixed overlay `z-index: 45` with large link labels; active route `#00ff9f`; Chat calls **`useChatUI().toggle()`** (**Session 87:** prefer **`useChatUI`** for open/close/toggle so streaming does not re-render Nav). **NavWrapper:** inner `width: 100%` when mobile.
+- **Nav:** Desktop pill unchanged. Mobile: full-width bar (logo / hamburger / Chat); hamburger opens fixed overlay `z-index: 45` with large link labels; active route `#00ff9f`; Chat calls **`useChatUI().toggle()`** (**Session 87:** prefer **`useChatUI`** for open/close/toggle so streaming does not re-render Nav). **Session 98:** mobile **Chat with me** matches desktop (dark glass + white border + **`HiDotGrid`** 2.5/1.5), plus **`minHeight: 44`** and **`touchAction: 'manipulation'`**. **NavWrapper:** inner `width: 100%` when mobile.
 - **ChatPanel:** Root `width` / `maxWidth` — mobile `calc(100vw - 32px)` / `100%`, desktop **`desktopNavWidthPx` + `px`** from **`NavWidthContext`** (**Session 75**). Mobile height **`calc(100dvh - 140px)`**; flex column + scrollable messages (Session 68). **Embedded** = gray chrome; **overlay** = colored chrome (Session 69).
 - **Homepage `page.tsx`:** `'use client'` + `useIsMobile` — **Session 68 mobile:** wrapper `top: 80px`, `left/right/bottom: 0`, `padding: 16px`, `alignItems: flex-start`; desktop `top: 0`, centered. Name block `bottom: 100` / `left: 16` on mobile vs `32` desktop.
 - **ChatOverlay (Session 71, **Session 75**):** Dialog root **no `py-20`**, **no horizontal padding on desktop**; mobile `paddingLeft`/`paddingRight` `16px` only. Inner **`motion.div`** width — mobile **`calc(100vw - 32px)`**; desktop same **`NavWidthContext`** pixel width as embedded chat — **no `max-w-2xl`**, matches homepage chat placement.
@@ -464,7 +464,7 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 **Page sticky chrome (Session 71):** `AboutView`, `TimelineView`, `LabView`, `WorkGrid` sticky `*.exe` headers use **colored** traffic lights (`#ff5f57` / `#febc2e` / `#28c840`): red `<button type="button">` → `router.push('/')`, shows `×` on hover; yellow/green show `−` / `+` on hover only; **inner glyph spans use `pointerEvents: 'none'`** so the button receives clicks.
 
 **Per-file highlights:**
-- **AboutView:** Photo/bio stack vertical on mobile; photo **120×120** centered; name block centered; facts + connect (left) and Spotify + sports widgets (right) stack on mobile; facts label width **100** mobile; Spotify link **`maxWidth: '100%'`**; Spotify row touch + 44px height on mobile; **Session 83:** connect links horizontal row under facts (**no** `→` arrows), **`minHeight: 44`** + **`touchAction: 'manipulation'`** on mobile; right column widgets **`gap: 14`** (Spotify, Knicks, Mets).
+- **AboutView:** Photo/bio stack vertical on mobile (`alignItems: flex-start` on the photo+bio row); photo **120×120** centered via **`margin: 0 auto`** on the image wrapper only; **Session 98:** name / role / location block **`textAlign: 'left'`** on mobile (not centered). facts + connect (left) and Spotify + sports widgets (right) stack on mobile; facts label width **100** mobile; Spotify link **`maxWidth: '100%'`**; Spotify row touch + 44px height on mobile; **Session 83:** connect links horizontal row under facts (**no** `→` arrows), **`minHeight: 44`** + **`touchAction: 'manipulation'`** on mobile; right column widgets **`gap: 14`** (Spotify, Knicks, Mets).
 - **TimelineView:** Resume download link **44px** min height + `touchAction`; **`EraBlock`** receives `isMobile` — summary **`wordBreak: 'break-word'`**; case study **`button`** `minHeight: 44`, `touchAction`, `type="button"`.
 - **LabView:** Beliefs **single column** on mobile (`flex` / `gap: 8`); note **`marginTop: 4`** mobile; filter input **`maxWidth: '100%'`** mobile, **`fontSize: 16`** mobile (iOS); tag/clear/suggestion buttons **44px** + `touchAction`; experiment copy **`wordBreak`**.
 - **WorkGrid:** Grid **`1fr`** mobile; header **22px**; card chrome row **`minHeight: 44`** mobile; whole card **`touchAction: 'manipulation'`**; **`role="button"`** + **`aria-label`** + keyboard **Enter/Space** for a11y.
@@ -489,7 +489,7 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 
 **ChatOverlay (Session 71, **Session 75**):** Root **`fixed inset-0`** flex center — **no `py-20`**; mobile horizontal inset **`16px`** each side; desktop panel wrapper width from **`NavWidthContext`** (matches nav pill); mobile **`calc(100vw - 32px)`** — **no `max-w-2xl`**, matches homepage chat placement.
 
-## Nav (Session 7 — updated Session 33, Session 65, Session 66, Session 68, Session 69)
+## Nav (Session 7 — updated Session 33, Session 65, Session 66, Session 68, Session 69, Session 98)
 
 `src/components/layout/Nav.tsx` — pill nav (desktop), frosted glass, centered top, `'use client'`:
 - Links left to right: `case studies` (dropdown) / `about` / `timeline` / `the lab` / "Chat with me" button
@@ -498,7 +498,7 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 - The `work` link was replaced in Session 27 with `<CaseStudiesDropdown />` — a button that opens a `320px` frosted-glass dropdown with 4 featured projects + hover-play video thumbnails
 - Glass: inline styles (`backdropFilter: blur(12px)`, `backgroundColor: rgba(255,255,255,0.05)`, `border: 1px solid rgba(255,255,255,0.1)`)
 - **Active route (Session 65):** `usePathname()` + `isActive(href)` (`/` exact match; else `pathname.startsWith(href)`). Text links: idle `rgba(255,255,255,0.6)`; current route or hover → `#00ff9f` (via `NavTextLink` + hover state). Logo has no active color.
-- "Chat with me" button at the right: warm amber pill containing `<HiDotGrid dotSize={2.5} gap={1.5} speed={1.2} />`, border brightens on hover — grid animates continuously regardless of hover (Session 66 mobile Chat pill: `dotSize={3}` `gap={2}`)
+- "Chat with me" at the right: dark glass **`backgroundColor: rgba(22,26,34,0.7)`**, **`border: 1px solid rgba(255,255,255,0.15)`**, **`text-white hover:text-accent-neon`**, `<HiDotGrid dotSize={2.5} gap={1.5} speed={1.2} />` in padded span — grid animates continuously. **Mobile:** same classes/styles as desktop, label **"Chat with me"**, **`minHeight: 44`**, **`touchAction: 'manipulation'`** (Session 98).
 
 **Mobile nav (Session 69):** Bar `z-index: 46`; menu overlay `z-index: 45`, always in DOM, `opacity` / `pointerEvents` only; hamburger **two-line → X** morph; staggered link animation `i * 60ms`; `useEffect` on `pathname` closes menu (`eslint-disable-next-line react-hooks/set-state-in-effect` on `setMenuOpen`).
 
@@ -582,7 +582,7 @@ Dynamic pages at `/work/[slug]` for all 10 projects.
 
 **Next case study chain (loops):** waypoint → statespace → channel → seudo → wafer → sherpa → waypoint-sync → kernel → mushroom → cohere-labs → waypoint
 
-## About page (Session 44, bio Session 84, sports widgets Session 82, layout Session 83, last result Session 88, compact last result Session 89)
+## About page (Session 44, bio Session 84, sports widgets Session 82, layout Session 83, last result Session 88, compact last result Session 89, mobile header Session 98)
 
 Live at `/about`. Scrollable content page, same visual system as case study pages.
 
@@ -595,7 +595,7 @@ Live at `/about`. Scrollable content page, same visual system as case study page
 - `src/app/api/sports/mets/route.ts` — Mets schedule/score, same pattern (**Session 82**)
 - `src/lib/espnSchedule.ts` — typed helpers for ESPN schedule JSON (`competition[0].status`, `score.value` / `displayValue`) (**Session 82**)
 
-**Layout (Session 67, Session 83):** 880px max-width, `padding: isMobile ? '100px 20px 80px' : '120px 48px 160px'`, `width: '100%'`, `boxSizing`. Photo+bio: stack on mobile (flex column, 120px photo centered); bottom grid: **left** — facts then **connect** (divider, horizontal row, label-only links, hover `#00ff9f`); **right** — Spotify + Knicks + Mets only, column **`gap: 14`** (no extra `marginTop` on sports blocks). See **Mobile content pages — Session 67** in this file.
+**Layout (Session 67, Session 83, Session 98):** 880px max-width, `padding: isMobile ? '100px 20px 80px' : '120px 48px 160px'`, `width: '100%'`, `boxSizing`. Photo+bio: stack on mobile (flex column, **`alignItems: flex-start`**, 120px photo centered via image wrapper margin); name / role / location **`textAlign: 'left'`** on all breakpoints. Bottom grid: **left** — facts then **connect** (divider, horizontal row, label-only links, hover `#00ff9f`); **right** — Spotify + Knicks + Mets only, column **`gap: 14`** (no extra `marginTop` on sports blocks). See **Mobile content pages — Session 67** in this file.
 
 **Terminal chrome:** sticky, `zIndex: 40`, `rgba(10,12,16,0.98)` + `blur(12px)`. **Session 71:** **colored** traffic lights (red → `/`). Title: `about.exe`.
 
