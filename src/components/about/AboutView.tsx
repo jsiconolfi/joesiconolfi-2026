@@ -397,7 +397,7 @@ export default function AboutView() {
           gridTemplateColumns: isMobile ? undefined : '200px 1fr',
           gap: isMobile ? 32 : 48,
           marginBottom: 72,
-          alignItems: 'start',
+          alignItems: isMobile ? 'flex-start' : 'start',
         }}>
 
           {/* Photo column */}
@@ -414,7 +414,7 @@ export default function AboutView() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/joe.png" alt="Joe Siconolfi" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
             </div>
-            <div style={{ marginTop: 12, textAlign: isMobile ? 'center' : 'left' }}>
+            <div style={{ marginTop: 12, textAlign: 'left' }}>
               <p style={{ fontSize: 14, fontWeight: 400, color: 'rgba(255,255,255,0.9)', margin: '0 0 4px' }}>Joe Siconolfi</p>
               <p style={{ fontSize: 11, fontWeight: 300, color: 'rgba(0,255,159,0.7)', margin: '0 0 4px' }}>Staff Design Engineer</p>
               <p style={{ fontSize: 11, fontWeight: 300, color: 'rgba(255,255,255,0.35)', margin: 0 }}>Cohere · San Francisco Bay</p>

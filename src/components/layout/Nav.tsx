@@ -147,24 +147,18 @@ export default function Nav() {
               toggle()
               setMenuOpen(false)
             }}
+            className="flex items-center gap-2.5 px-4 py-1.5 rounded-full font-mono text-xs font-light text-white hover:text-accent-neon transition-colors duration-200"
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '7px 14px',
+              backgroundColor: 'rgba(22, 26, 34, 0.7)',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
               minHeight: 44,
-              backgroundColor: 'rgba(196,174,145,0.08)',
-              border: '1px solid rgba(196,174,145,0.2)',
-              borderRadius: 100,
-              cursor: 'pointer',
-              fontFamily: 'var(--font-mono)',
-              fontSize: 11,
-              fontWeight: 300,
-              color: 'rgba(255,255,255,0.8)',
+              touchAction: 'manipulation',
             }}
           >
-            <HiDotGrid dotSize={3} gap={2} speed={1.2} />
-            Chat
+            <span style={{ paddingLeft: '2px' }}>
+              <HiDotGrid dotSize={2.5} gap={1.5} speed={1.2} />
+            </span>
+            Chat with me
           </button>
         </div>
 

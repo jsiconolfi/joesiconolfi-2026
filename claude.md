@@ -224,11 +224,11 @@ The old model recalculated position from scratch every frame (`newPos = driftPos
 **`@keyframes pulse`** remains in `globals.css` (not used by cards currently)
 **`@keyframes thinking-shimmer`** in `globals.css` — used by `ThinkingText`: `0%/100% { color: #555555 }`, `50% { color: #aaaaaa }`, 1.6s ease-in-out infinite. Each character has an 80ms stagger delay.
 
-### The Nav (`src/components/layout/Nav.tsx`) — updated Session 27, Session 65, Session 66, Session 68, Session 69
+### The Nav (`src/components/layout/Nav.tsx`) — updated Session 27, Session 65, Session 66, Session 68, Session 69, Session 98
 
 **Desktop:** `case studies` (dropdown) / `about` / `timeline` / `the lab` / "Chat with me" button. Order left to right: case studies ∨ · about · timeline · the lab · [Chat with me]. `about` links to `/about` (built Session 44). `timeline` links to `/timeline` (built Session 49). `the lab` links to `/lab` (built Session 60). "lab" is gone — only "the lab" exists (updated Session 33).
 
-**Mobile (Session 66–69):** Full-width bar with **`position: relative; z-index: 46`** so it stacks **above** the menu overlay (`z-index: 45`). Hamburger: **two** lines, `gap: 6`, morph to **X** via `translateY(±3.75px)` + `rotate(±45deg)` when `menuOpen` (CSS only, `0.25s`). **Menu overlay (Session 69):** always mounted; **`opacity` + `pointerEvents`** toggle (not conditional render) so fade-out can complete; `rgba(14,16,21,0.92)` + `blur(20px)`; nav rows **left-aligned**, `fontSize: 32`, `translateX(-16px)` → `0` with **`transition-delay: i * 60ms`**; bottom **linkedin** / **github** links with extra delay after rows. `useRouter().push` on row click + `setMenuOpen(false)`; **`useEffect` on `pathname`** closes menu (browser back). **Chat** pill: `toggle()` + close menu. **NavWrapper (Session 66):** inner `width: 100%` when mobile.
+**Mobile (Session 66–69):** Full-width bar with **`position: relative; z-index: 46`** so it stacks **above** the menu overlay (`z-index: 45`). Hamburger: **two** lines, `gap: 6`, morph to **X** via `translateY(±3.75px)` + `rotate(±45deg)` when `menuOpen` (CSS only, `0.25s`). **Menu overlay (Session 69):** always mounted; **`opacity` + `pointerEvents`** toggle (not conditional render) so fade-out can complete; `rgba(14,16,21,0.92)` + `blur(20px)`; nav rows **left-aligned**, `fontSize: 32`, `translateX(-16px)` → `0` with **`transition-delay: i * 60ms`**; bottom **linkedin** / **github** links with extra delay after rows. `useRouter().push` on row click + `setMenuOpen(false)`; **`useEffect` on `pathname`** closes menu (browser back). **Chat** pill: `toggle()` + close menu — **Session 98 (revised):** same **desktop** Chat control: dark glass **`backgroundColor: rgba(22,26,34,0.7)`**, **`border: 1px solid rgba(255,255,255,0.15)`**, Tailwind classes **`text-white hover:text-accent-neon`**, **`HiDotGrid`** `dotSize={2.5}` `gap={1.5}` `speed={1.2}` in padded span, label **"Chat with me"**, **`minHeight: 44`**, **`touchAction: 'manipulation'`** (not warm amber). **NavWrapper (Session 66):** inner `width: 100%` when mobile.
 
 **ChatOverlay (Session 66, animation Session 69, **Session 71** positioning, **Session 75** width):** `useIsMobile()`. Renders `<ChatPanel variant="overlay" />`. **Session 71:** Dialog root `fixed inset-0` flex center — **no `py-20`**, **no `px-4` on desktop**; mobile only `paddingLeft`/`paddingRight` `16px` (matches homepage `32px` total horizontal inset with panel `calc(100vw - 32px)`). Inner `motion.div`: **`width`** — mobile `calc(100vw - 32px)`; desktop **`desktopNavWidthPx` + `px`** from **`NavWidthContext`** (**Session 75**, same value as embedded `ChatPanel`) — **no `max-w-2xl`**, so overlay panel centers identically to the homepage chat. **Panel motion:** `useAnimation()` — open from above (`y: '-100vh'` → `0`), close down (`y: '100vh'`), reset to `-100vh`; `duration: 0.45`, same ease as page transitions. Root `opacity` / `visibility` close delay aligned to `0.45s`.
 
@@ -272,11 +272,10 @@ The `work` link is replaced by `<CaseStudiesDropdown />` — a hover-triggered f
 - "See all case studies" footer row now calls `router.push('/work')` on click (previously only closed the dropdown)
 - `setOpen(false)` fires before the push
 
-**Nav "Chat with me" button (Session 10, unchanged):**
-- Warm amber pill button at the right of the nav
-- Contains `HiDotGrid` (5×5, dotSize 4, gap 2.5, speed 1.2) spelling "HI" with a left-to-right shimmer
-- Grid animates continuously from mount — no hover trigger
-- Button border brightens on hover; the grid itself is unaffected by hover
+**Nav "Chat with me" button (Session 10, **Session 98** styling):**
+- Right side of desktop nav: dark glass **`rgba(22,26,34,0.7)`**, **`border: 1px solid rgba(255,255,255,0.15)`**, **`text-white`** with **`hover:text-accent-neon`** (`#00ff9f`). **`HiDotGrid`** `dotSize={2.5}` `gap={1.5}` `speed={1.2}` in a span with **`paddingLeft: 2px`**.
+- Grid animates continuously from mount — no hover trigger on the grid itself
+- **Mobile:** same button as desktop (shared classes + styles) plus **`minHeight: 44`** and **`touchAction: 'manipulation'`**
 
 New RAF-loop animation primitives (Session 10):
 - `src/components/ui/HiDotGrid.tsx` — 5×5 "HI" letterform grid with warm hue shimmer wave
@@ -489,7 +488,7 @@ Card grid. Glance: title + one-line thesis only. Expand: problem, decision, outc
 - Key projects: Waypoint design system, Sherpa Figma plugin (RAG-based, Pinecone + Cohere models), waypoint-sync (Figma-to-code token sync), Channel AI, Statespace/Aimlab.
 - Frame each as a bet made at the right time, not a list of deliverables.
 
-### About page — Session 44, bio Session 84, sports widgets Session 82, layout Session 83, last result Session 88, compact last result Session 89
+### About page — Session 44, bio Session 84, sports widgets Session 82, layout Session 83, last result Session 88, compact last result Session 89, mobile header Session 98
 
 Live at `/about`. Scrollable content page with terminal chrome header.
 
@@ -503,9 +502,9 @@ Live at `/about`. Scrollable content page with terminal chrome header.
 **Layout (Session 67 mobile, **Session 71** chrome):**
 - Terminal chrome header: `position: sticky, top: 0, zIndex: 40`, `rgba(10,12,16,0.98)` + `blur(12px)`. **Colored** traffic lights (**Session 71**): red button → `router.push('/')`, hover `×`; yellow/green `−` / `+` on hover only; glyph spans **`pointerEvents: 'none'`**. Title: `about.exe`.
 - **`useIsMobile()`** — content `padding: isMobile ? '100px 20px 80px' : '120px 48px 160px'`, `maxWidth: 880`, `width: '100%'`, `boxSizing: 'border-box'`. `<main overflowX: hidden>`.
-- Photo + bio: **mobile** — `flex` column, `gap: 32`; **desktop** — grid `200px 1fr`, `gap: 48`. `marginBottom: 72`.
-- Photo: **mobile** `120×120`, `margin: 0 auto`; **desktop** `200×200`. `/joe.png`, `borderRadius: 8`, `objectFit: cover`. Raw `<img>` with `eslint-disable-next-line @next/next/no-img-element`.
-- Name/role below photo: **`marginTop: 12`**, **`textAlign: center`** on mobile / left desktop. name 14px 400 weight, role `rgba(0,255,159,0.7)` 11px 300, location `rgba(255,255,255,0.35)` 11px 300
+- Photo + bio: **mobile** — `flex` column, `gap: 32`, **`alignItems: 'flex-start'`**; **desktop** — grid `200px 1fr`, `gap: 48`, **`alignItems: 'start'`**. `marginBottom: 72`.
+- Photo: **mobile** `120×120`, `margin: 0 auto` on the image wrapper only (centered square); **desktop** `200×200`. `/joe.png`, `borderRadius: 8`, `objectFit: cover`. Raw `<img>` with `eslint-disable-next-line @next/next/no-img-element`.
+- Name/role below photo: **`marginTop: 12`**, **`textAlign: 'left'`** always (**Session 98** — not centered on mobile; Session 67 centering on the name block was incorrect). name 14px 400 weight, role `rgba(0,255,159,0.7)` 11px 300, location `rgba(255,255,255,0.35)` 11px 300
 - Facts + widgets: **mobile** single column `flex`; **desktop** grid `1fr 1fr`, `gap: 48`. Facts label width **100** mobile / **120** desktop. Spotify link **`maxWidth: '100%'`** mobile; Spotify card **`minHeight: 44`** + **`touchAction: 'manipulation'`** on mobile. **Session 83:** **connect** lives under facts in the **left** column (divider + horizontal row, label-only, hover `#00ff9f`); connect links **`minHeight: 44`** + **`touchAction: 'manipulation'`** on mobile. **Right** column: Spotify + Knicks + Mets only, column **`gap: 14`** (tight widget stack).
 - Bio: 4 paragraphs, 13px fontWeight 300 lineHeight 1.8 `rgba(255,255,255,0.65)`. Copy is **verbatim** — never rewrite (**Session 84**).
 - Horizontal divider `rgba(255,255,255,0.06)` separates bio from bottom section
