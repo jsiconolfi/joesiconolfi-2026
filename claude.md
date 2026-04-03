@@ -272,6 +272,7 @@ The `work` link is replaced by `<CaseStudiesDropdown />` — a hover-triggered f
 - `image` field removed — all 4 assets are mp4
 - Assets: `waypoint.mp4`, `wafer.mp4`, `channelai.mp4`, `seudo.mp4`
 - All 4 now have `url` set: `/work/waypoint`, `/work/wafer`, `/work/channel`, `/work/seudo`
+- **Channel AI** dropdown description matches case study tagline: **Making open-source AI feel like a consumer product**
 
 **CaseStudiesDropdown browse footer (Session 40):**
 - "See all case studies" footer row now calls `router.push('/work')` on click (previously only closed the dropdown)
@@ -433,7 +434,7 @@ interface Tab {
 
 ### Work (case studies) — updated Session 40
 
-Case study pages are now live at `/work/[slug]` for all 10 projects.
+Case study pages are now live at `/work/[slug]` for all 10 projects. **Canonical copy** for taglines, roles, hooks, hard parts, decisions, and outcomes lives in **`src/content/case-studies.ts`** (updated with the latest case study rewrite). **`src/app/api/chat/route.ts`** `SYSTEM_PROMPT` "My projects" blurbs and **`CARD_META` descriptions** should stay aligned with that file when case study positioning changes. **Channel AI** is framed as **consumer UX for open-source frontier models** (iOS, exploration, switching, streaming states, transparency), not legacy "AI writing tools." **waypoint-sync** case study year is **2026**; copy covers **design-map.json** as contract, **two-tier** primitives vs semantics, and **AI-operated sync / parity scoring**. **Wafer Systems** case study year is **2025–present**. **Mushroom** tagline emphasizes **pre-playbook** voice and conversational LLM work.
 
 **Files (Session 34, updated Session 40):**
 - `src/content/case-studies.ts` — `CaseStudy` interface + `CASE_STUDIES` array (10 entries) + `getCaseStudy(slug)` + `getAllSlugs()` helpers
@@ -469,7 +470,7 @@ interface CaseStudy {
 - Sticky `*.exe` page chrome **removed** — persistent **`TabBar`** (colored traffic lights on active tab, desktop) + nav. **`/work/[slug]`** colored-window metaphor = tab bar + overlay/chat chrome, not a second sticky header in the scroll body.
 - **`useIsMobile()`** — content column `maxWidth: isMobile ? '100%' : 720`, `padding: isMobile ? '20px 20px 80px' : '120px 24px 120px'` (**Session 71:** desktop top `120px` to match other deep pages), `width: '100%'`, `boxSizing: 'border-box'`. `<main overflowX: hidden>`.
 - Hero asset (if present): `16/9` aspect ratio, `borderRadius: 8`. **Video:** `autoPlay={!isMobile}`, `muted`, `loop`, `playsInline`, **`preload="metadata"`** — **no autoplay on mobile** (Session 67); desktop keeps ambient autoplay.
-- Header block: year (muted, uppercase) → name (h1, 32px) → tagline → role (terminal green `rgba(0,255,159,0.7)`, 12px, fontWeight 300, sentence case — no uppercase, no letterSpacing)
+- Header block: year (muted, uppercase) → name (h1, 32px) → tagline → role (terminal green `rgba(0,255,159,0.85)`, 12px, fontWeight 300, sentence case — no uppercase, no letterSpacing)
 - Sections in order: `the problem` (hook) → `the hard part` (full only) → `key decisions` or `what I did` → `outcome`
 - Decision artifact videos: same as hero — **`autoPlay={!isMobile}`**, **`preload="metadata"`** (Session 67)
 - Next case study: **`type="button"`** — full width on mobile, `justifyContent: center`, `minHeight: 44` mobile, `touchAction: 'manipulation'`
@@ -490,7 +491,7 @@ interface CaseStudy {
 waypoint → statespace → channel → seudo → wafer → sherpa → waypoint-sync → kernel → mushroom → cohere-labs → waypoint (loops)
 
 Card grid. Glance: title + one-line thesis only. Expand: problem, decision, outcome — inline, never navigates away. Immerse: full case study with artifacts, code, process.
-- Key projects: Waypoint design system, Sherpa Figma plugin (RAG-based, Pinecone + Cohere models), waypoint-sync (Figma-to-code token sync), Channel AI, Statespace/Aimlab.
+- Key projects: Waypoint design system, Sherpa Figma plugin (RAG-based, Pinecone + Cohere models), waypoint-sync (Figma-to-code token sync, design-map.json, parity tooling), Channel AI (open-source model UX, shipped iOS), Statespace/Aim Lab (training system + Kernel integration).
 - Frame each as a bet made at the right time, not a list of deliverables.
 
 ### About page — Session 44, bio Session 84, sports widgets Session 82, layout Session 83, last result Session 88, compact last result Session 89, mobile header Session 98
@@ -509,7 +510,7 @@ Live at `/about`. Scrollable content page with terminal chrome header.
 - **`useIsMobile()`** — content `padding: isMobile ? '100px 20px 80px' : '120px 48px 160px'`, `maxWidth: 880`, `width: '100%'`, `boxSizing: 'border-box'`. `<main overflowX: hidden>`.
 - Photo + bio: **mobile** — `flex` column, `gap: 32`, **`alignItems: 'flex-start'`**; **desktop** — grid `200px 1fr`, `gap: 48`, **`alignItems: 'start'`**. `marginBottom: 72`.
 - Photo: **mobile** `120×120`, **left-aligned** (no `margin: 0 auto` on wrapper); **desktop** `200×200`. `/joe.png`, `borderRadius: 8`, `objectFit: cover`. Raw `<img>` with `eslint-disable-next-line @next/next/no-img-element`.
-- Name/role below photo: **`marginTop: 12`**, **`textAlign: 'left'`** always (**Session 98** — not centered on mobile; Session 67 centering on the name block was incorrect). name 14px 400 weight, role `rgba(0,255,159,0.7)` 11px 300, location `rgba(255,255,255,0.35)` 11px 300
+- Name/role below photo: **`marginTop: 12`**, **`textAlign: 'left'`** always (**Session 98** — not centered on mobile; Session 67 centering on the name block was incorrect). name 14px 400 weight, role `rgba(0,255,159,0.85)` 11px 300, location `rgba(255,255,255,0.35)` 11px 300
 - Facts + widgets: **mobile** single column `flex`; **desktop** grid `1fr 1fr`, `gap: 48`. Facts label width **100** mobile / **120** desktop. Spotify link **`maxWidth: '100%'`** mobile; Spotify card **`minHeight: 44`** + **`touchAction: 'manipulation'`** on mobile. **Session 83:** **connect** lives under facts in the **left** column (divider + horizontal row, label-only, hover `#00ff9f`); connect links **`minHeight: 44`** + **`touchAction: 'manipulation'`** on mobile. **Right** column: Spotify + Knicks + Mets only, column **`gap: 14`** (tight widget stack).
 - Bio: 4 paragraphs, 13px fontWeight 300 lineHeight 1.8 `rgba(255,255,255,0.65)`. Copy is **verbatim** — never rewrite (**Session 84**).
 - Horizontal divider `rgba(255,255,255,0.06)` separates bio from bottom section
@@ -537,7 +538,7 @@ const BIO = [
 - Spotify green is `#1ed760` — NOT `#00ff9f`. Do not confuse them.
 - Album art uses raw `<img>` with `eslint-disable-next-line @next/next/no-img-element`
 
-**Knicks / Mets widgets (Session 82, **Session 88 — last result**, **Session 89 — single-line last result**):** **`SportsWidget`** in `AboutView.tsx` — **`/api/sports/knicks`**, **`/api/sports/mets`**. ESPN unofficial JSON only (**no env vars**). Next game: opponent, home/away, formatted local time; live: scores, NBA `Q` + clock or MLB `shortDetail`; **live** pill `#00ff9f`. **Session 88:** Successful responses (`live`, `upcoming`, `off_season`) include optional **`lastGame`**: most recent completed event (`competitionState === 'post'` or `status.type.completed`), with opponent name/abbr, final scores, **`won`** (boolean), **`isHome`**, ISO **`date`**. Knicks payload uses **`knicksScore`** / **`opponentScore`**; Mets uses **`metsScore`** / **`opponentScore`**. **`SportsWidget`** renders **last result** below the main state (divider `rgba(255,255,255,0.05)`). **Session 89:** One row only: **`display: flex`**, **`justifyContent: space-between`** — **last result** label left (9px uppercase dim, `fontWeight: 300`); right cluster **`gap: 6`**: **W** **`rgba(0,255,159,0.7)`**, **L** **`rgba(255,255,255,0.3)`**, score, **`vs` / `@`** opponent abbr. No stacked label above the score. Omit block when **`lastGame`** is null/undefined. Team name labels (**knicks** / **mets**) use **`rgba(255,255,255,0.75)`** (not team blue accents). **`setInterval` 60_000**, cleanup on unmount. Routes return JSON `status`: `live` | `upcoming` | `off_season`; HTTP 500 → `{ status: 'error' }` (no **`lastGame`** on error).
+**Knicks / Mets widgets (Session 82, **Session 88 — last result**, **Session 89 — single-line last result**):** **`SportsWidget`** in `AboutView.tsx` — **`/api/sports/knicks`**, **`/api/sports/mets`**. ESPN unofficial JSON only (**no env vars**). Next game: opponent, home/away, formatted local time; live: scores, NBA `Q` + clock or MLB `shortDetail`; **live** pill `#00ff9f`. **Session 88:** Successful responses (`live`, `upcoming`, `off_season`) include optional **`lastGame`**: most recent completed event (`competitionState === 'post'` or `status.type.completed`), with opponent name/abbr, final scores, **`won`** (boolean), **`isHome`**, ISO **`date`**. Knicks payload uses **`knicksScore`** / **`opponentScore`**; Mets uses **`metsScore`** / **`opponentScore`**. **`SportsWidget`** renders **last result** below the main state (divider `rgba(255,255,255,0.05)`). **Session 89:** One row only: **`display: flex`**, **`justifyContent: space-between`** — **last result** label left (9px uppercase dim, `fontWeight: 300`); right cluster **`gap: 6`**: **W** **`rgba(0,255,159,0.85)`**, **L** **`rgba(255,255,255,0.3)`**, score, **`vs` / `@`** opponent abbr. No stacked label above the score. Omit block when **`lastGame`** is null/undefined. Team name labels (**knicks** / **mets**) use **`rgba(255,255,255,0.75)`** (not team blue accents). **`setInterval` 60_000**, cleanup on unmount. Routes return JSON `status`: `live` | `upcoming` | `off_season`; HTTP 500 → `{ status: 'error' }` (no **`lastGame`** on error).
 
 **Connect links (Session 83):** Under facts in the left column: horizontal row (`gap: 24`, `flexWrap`), text labels only (**no** `→` prefix). Hover **`#00ff9f`**. `mailto:` has no `target`/`rel`; https opens `_blank` + `noopener noreferrer`. Data: **`LINKS`** in `AboutView.tsx`. No `next/link` — external or `mailto:`.
 
@@ -602,7 +603,7 @@ interface FeedEntry {
 - "Currently thinking about": questions with **`wordBreak: 'break-word'`** on mobile-narrow viewports
 - "Things I hold true": **mobile** — single column `flex`, `gap: 8`, note col **`marginTop: 4`**; **desktop** — two-column grid (`1fr 1fr`, gap 32). Left: statement (`rgba(255,255,255,0.85)`, 13px weight 400). Right: note (`rgba(255,255,255,0.4)`, 12px weight 300). Rows separated by `rgba(255,255,255,0.05)` border-bottom.
 - Experiment cards: terminal chrome with **gray dots** (`rgba(255,255,255,0.15)`) — NOT colored. Cards are not interactive/closeable.
-- Status badge colors: `in progress`/`ongoing` → `rgba(0,255,159,0.7)`, `shipped` → `rgba(0,255,159,0.4)`, `archived` → `rgba(255,255,255,0.25)`
+- Status badge colors: `in progress`/`ongoing` → `rgba(0,255,159,0.85)`, `shipped` → `rgba(0,255,159,0.4)`, `archived` → `rgba(255,255,255,0.25)`
 - Experiment descriptions: `text.split('\n\n').map((para) => <p>)` — renders multi-paragraph bodies correctly
 - Notes field: `borderLeft: '2px solid rgba(0,255,159,0.2)'`, `color: rgba(0,255,159,0.45)`
 - Feed section label + **tag search filter** (Session 63, Session 67): `activeTags` + `filterQuery`; `filteredFeed` OR across active tags; suggestions `slice(0, 6)`; client-side only, no URL persistence. **Mobile:** filter input **`maxWidth: '100%'`**, **`fontSize: 16`** (iOS), **`minHeight: 44`**; tag pills + clear + suggestion rows **`minHeight: 44`** + **`touchAction: 'manipulation'`**. Experiment card chrome row **`minHeight: 44`** mobile; titles/body **`wordBreak: 'break-word'`**.
@@ -708,7 +709,7 @@ interface TimelineEra {
 
 - **Waypoint**: Cohere's internal design system (TypeScript, React, Tailwind). Joe is the sole design engineer.
 - **Sherpa**: A Figma plugin using RAG (Pinecone vector store + Cohere models) grounded in Waypoint documentation. Built to help designers query the design system conversationally.
-- **waypoint-sync**: A two-way Figma-to-code token synchronization layer. Uses `design-map.json` as the source of truth, built with Claude Code and Cursor.
+- **waypoint-sync**: A two-way Figma-to-code token synchronization layer. Uses `design-map.json` as the contract between design and code (primitives vs semantics), operated via Claude Code and Cursor, with design-to-code parity scoring for drift checks.
 - **Waypoint npm package**: Packaging Waypoint components, icons, and design tokens as a unified private package for external clients (RBC).
 
 These are the things that make the Lab section and The Seam section real and specific. Use them for content stubs.

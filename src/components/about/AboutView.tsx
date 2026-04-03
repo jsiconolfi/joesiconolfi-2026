@@ -20,15 +20,15 @@ const BIO = [
 ]
 
 const FACTS = [
-  { label: 'hometown', value: 'Huntington, NY' },
+  { label: 'from', value: 'New York' },
   { label: 'based', value: 'San Francisco Bay' },
   { label: 'years in tech', value: '15+' },
-  { label: 'mindset', value: 'Designer + engineer, no handoff' },
+  { label: 'mindset', value: 'Designer + engineer' },
   { label: 'record collection', value: 'Growing, never finished' },
   { label: 'sports', value: 'Knicks. Mets. Send help.' },
-  { label: 'education', value: 'MBA + BS Computer Science, Full Sail' },
+  { label: 'education', value: 'MBA + BS Computer Science & HCI' },
   { label: 'reading', value: 'Genesis: Artificial Intelligence, Hope, and the Human Spirit' },
-  { label: 'building', value: 'Waypoint, Sherpa + frontier model UX at Cohere' },
+  { label: 'building', value: 'at Cohere, Wafer Systems, and Seudo AI' },
 ]
 
 const LINKS = [
@@ -251,7 +251,7 @@ function SportsWidget({ team, apiPath }: SportsWidgetProps) {
               style={{
                 fontSize: 11,
                 fontWeight: 300,
-                color: lastGameRow.won ? 'rgba(0,255,159,0.7)' : 'rgba(255,255,255,0.3)',
+                color: lastGameRow.won ? 'rgba(0,255,159,0.85)' : 'rgba(255,255,255,0.3)',
                 fontFamily: 'var(--font-mono)',
               }}
             >
@@ -312,7 +312,7 @@ export default function AboutView() {
   return (
     <main style={{ minHeight: '100vh', fontFamily: 'var(--font-mono, monospace)', overflowX: 'hidden' }}>
 
-      {/* Page content — top padding clears nav; window chrome is layout TabBar */}
+{/* Page content — top padding clears nav; window chrome is layout TabBar (same as /work/[slug]) */}
       <div style={{
         maxWidth: 880,
         margin: '0 auto',
@@ -346,7 +346,7 @@ export default function AboutView() {
             </div>
             <div style={{ marginTop: 12, textAlign: 'left' }}>
               <p style={{ fontSize: 14, fontWeight: 400, color: 'rgba(255,255,255,0.9)', margin: '0 0 4px' }}>Joe Siconolfi</p>
-              <p style={{ fontSize: 11, fontWeight: 300, color: 'rgba(0,255,159,0.7)', margin: '0 0 4px' }}>Staff Design Engineer</p>
+              <p style={{ fontSize: 11, fontWeight: 300, color: 'rgba(0,255,159,0.85)', margin: '0 0 4px' }}>Staff Design Engineer</p>
               <p style={{ fontSize: 11, fontWeight: 300, color: 'rgba(255,255,255,0.35)', margin: 0 }}>Cohere · San Francisco Bay</p>
             </div>
           </div>

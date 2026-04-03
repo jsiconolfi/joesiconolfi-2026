@@ -7,9 +7,9 @@ import { LAB_FEED } from '@/content/lab-feed'
 import type { FeedEntryType } from '@/content/lab-feed'
 
 const STATUS_COLORS: Record<string, string> = {
-  'in progress': 'rgba(0,255,159,0.7)',
+  'in progress': 'rgba(0,255,159,0.85)',
   'shipped':     'rgba(0,255,159,0.4)',
-  'ongoing':     'rgba(0,255,159,0.7)',
+  'ongoing':     'rgba(0,255,159,0.85)',
   'archived':    'rgba(255,255,255,0.25)',
 }
 
@@ -88,7 +88,7 @@ export default function LabView() {
   return (
     <main style={{ minHeight: '100vh', fontFamily: 'var(--font-mono, monospace)', overflowX: 'hidden' }}>
 
-      {/* Content — top padding clears nav; window chrome is layout TabBar */}
+{/* Content — top padding clears nav; window chrome is layout TabBar (same as /work/[slug]) */}
       <div style={{
         maxWidth: 760,
         margin: '0 auto',

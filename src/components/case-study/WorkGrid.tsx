@@ -99,7 +99,7 @@ export default function WorkGrid() {
   return (
     <main style={{ minHeight: '100vh', fontFamily: 'var(--font-mono, monospace)', overflowX: 'hidden' }}>
 
-      {/* Content — top padding clears nav; window chrome is layout TabBar */}
+{/* Content — top padding clears nav; window chrome is layout TabBar (same as /work/[slug]) */}
       <div style={{
         padding: isMobile ? '140px 20px 80px' : '140px 48px 120px',
         boxSizing: 'border-box',
