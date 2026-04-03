@@ -99,9 +99,9 @@ export default function WorkGrid() {
   return (
     <main style={{ minHeight: '100vh', fontFamily: 'var(--font-mono, monospace)', overflowX: 'hidden' }}>
 
-      {/* Content — window chrome lives in layout TabBar (same as /work/[slug]) */}
+{/* Content — top padding clears nav; window chrome is layout TabBar (same as /work/[slug]) */}
       <div style={{
-        padding: isMobile ? '100px 20px 80px' : '100px 48px 120px',
+        padding: isMobile ? '140px 20px 80px' : '140px 48px 120px',
         boxSizing: 'border-box',
         width: '100%',
         maxWidth: '100%',

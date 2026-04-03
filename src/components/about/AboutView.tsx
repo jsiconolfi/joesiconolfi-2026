@@ -312,11 +312,11 @@ export default function AboutView() {
   return (
     <main style={{ minHeight: '100vh', fontFamily: 'var(--font-mono, monospace)', overflowX: 'hidden' }}>
 
-      {/* Page content — window chrome lives in layout TabBar (same as /work/[slug]) */}
+{/* Page content — top padding clears nav; window chrome is layout TabBar (same as /work/[slug]) */}
       <div style={{
         maxWidth: 880,
         margin: '0 auto',
-        padding: isMobile ? '100px 20px 80px' : '120px 48px 160px',
+        padding: isMobile ? '140px 20px 80px' : '160px 48px 160px',
         boxSizing: 'border-box',
         width: '100%',
       }}>
