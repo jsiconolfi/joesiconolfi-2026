@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { IBM_Plex_Mono } from 'next/font/google'
-import Swirl from '@/components/ui/Swirl'
+import SwirlWrapper from '@/components/layout/SwirlWrapper'
 import OrbitalSystem from '@/components/ui/OrbitalSystem'
 import NavWrapper from '@/components/layout/NavWrapper'
 import TabBar from '@/components/layout/TabBar'
@@ -46,7 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       >
         <TabProvider>
           {/* Persistent background — never unmounts across navigation */}
-          <Swirl className="fixed inset-0 w-screen h-screen z-0" />
+          <SwirlWrapper />
           <OrbitalSystem />
 
           {/* Tab bar — appears at top on /work/* pages */}

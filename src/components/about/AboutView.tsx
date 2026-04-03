@@ -35,6 +35,7 @@ const FACTS = [
 const LINKS = [
   { label: 'linkedin', url: 'https://www.linkedin.com/in/joe-siconolfi/' },
   { label: 'github', url: 'https://github.com/Jsiconolfi' },
+  { label: 'x', url: 'https://x.com/JoeSiggo' },
   { label: 'email', url: 'mailto:jsiconolfi@gmail.com' },
 ]
 
