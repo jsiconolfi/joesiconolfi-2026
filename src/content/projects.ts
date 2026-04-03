@@ -42,7 +42,7 @@ export const PROJECTS: Project[] = [
   {
     id: 'channel',
     name: 'Channel AI',
-    role: 'AI-native creative tools for content teams',
+    role: 'Design Engineer, Product Design Lead',
     image: '/projects/channelai.mp4',
     video: '/projects/channelai.mp4',
     keywords: ['channel', 'channel ai', 'creative', 'writing'],
@@ -59,7 +59,7 @@ export const PROJECTS: Project[] = [
   {
     id: 'mushroom',
     name: 'Mushroom',
-    role: 'LLM-powered voice interfaces',
+    role: 'LLM-powered voice interfaces before there was a playbook',
     image: '/projects/mushroom.jpg',
     keywords: ['mushroom', 'voice', 'llm', 'conversational'],
     url: '/work/mushroom',

@@ -1,16 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { LAB_EXPERIMENTS } from '@/content/lab-experiments'
 import { LAB_FEED } from '@/content/lab-feed'
 import type { FeedEntryType } from '@/content/lab-feed'
 
 const STATUS_COLORS: Record<string, string> = {
-  'in progress': 'rgba(0,255,159,0.7)',
+  'in progress': 'rgba(0,255,159,0.85)',
   'shipped':     'rgba(0,255,159,0.4)',
-  'ongoing':     'rgba(0,255,159,0.7)',
+  'ongoing':     'rgba(0,255,159,0.85)',
   'archived':    'rgba(255,255,255,0.25)',
 }
 
@@ -64,11 +63,7 @@ const THINKING = [
 ]
 
 export default function LabView() {
-  const router = useRouter()
   const isMobile = useIsMobile()
-  const [closeHovered, setCloseHovered] = useState(false)
-  const [yellowHovered, setYellowHovered] = useState(false)
-  const [greenHovered, setGreenHovered] = useState(false)
   const [activeTags, setActiveTags] = useState<string[]>([])
   const [filterQuery, setFilterQuery] = useState('')
 
@@ -93,72 +88,7 @@ export default function LabView() {
   return (
     <main style={{ minHeight: '100vh', fontFamily: 'var(--font-mono, monospace)', overflowX: 'hidden' }}>
 
-      {/* Terminal chrome — colored traffic lights; red → home (Session 71) */}
-      <div style={{
-        position: 'sticky', top: 0, zIndex: 40,
-        backgroundColor: 'rgba(10, 12, 16, 0.98)',
-        backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 6,
-      }}>
-        <button
-          type="button"
-          title="Home"
-          onClick={() => router.push('/')}
-          onMouseEnter={() => setCloseHovered(true)}
-          onMouseLeave={() => setCloseHovered(false)}
-          style={{
-            width: 12, height: 12, borderRadius: '50%',
-            backgroundColor: '#ff5f57',
-            border: 'none', cursor: 'pointer', padding: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0,
-            touchAction: 'manipulation',
-          }}
-        >
-          {closeHovered && (
-            <span style={{
-              fontSize: 8, lineHeight: 1,
-              color: 'rgba(0,0,0,0.65)',
-              fontWeight: 500, userSelect: 'none',
-              pointerEvents: 'none',
-            }}>×</span>
-          )}
-        </button>
-        <span
-          onMouseEnter={() => setYellowHovered(true)}
-          onMouseLeave={() => setYellowHovered(false)}
-          style={{
-            width: 12, height: 12, borderRadius: '50%',
-            backgroundColor: '#febc2e',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0, cursor: 'default',
-          }}
-        >
-          {yellowHovered && (
-            <span style={{ fontSize: 8, lineHeight: 1, color: 'rgba(0,0,0,0.5)', fontWeight: 500, userSelect: 'none', pointerEvents: 'none' }}>−</span>
-          )}
-        </span>
-        <span
-          onMouseEnter={() => setGreenHovered(true)}
-          onMouseLeave={() => setGreenHovered(false)}
-          style={{
-            width: 12, height: 12, borderRadius: '50%',
-            backgroundColor: '#28c840',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0, cursor: 'default',
-          }}
-        >
-          {greenHovered && (
-            <span style={{ fontSize: 8, lineHeight: 1, color: 'rgba(0,0,0,0.5)', fontWeight: 500, userSelect: 'none', pointerEvents: 'none' }}>+</span>
-          )}
-        </span>
-        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 10, fontWeight: 300 }}>
-          lab.exe
-        </span>
-      </div>
-
-      {/* Content */}
+      {/* Content — window chrome lives in layout TabBar (same as /work/[slug]) */}
       <div style={{
         maxWidth: 760,
         margin: '0 auto',

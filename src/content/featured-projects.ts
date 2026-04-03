@@ -24,7 +24,7 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
   {
     id: 'channel',
     name: 'Channel AI',
-    description: 'AI-native creative tools for content teams',
+    description: 'Making open-source AI feel like a consumer product',
     video: '/projects/channelai.mp4',
     url: '/work/channel',
   },

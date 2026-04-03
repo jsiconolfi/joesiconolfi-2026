@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import { useIsMobile } from '@/hooks/useIsMobile'
 
 interface NowPlaying {
@@ -21,15 +20,15 @@ const BIO = [
 ]
 
 const FACTS = [
-  { label: 'hometown', value: 'Huntington, NY' },
+  { label: 'from', value: 'New York' },
   { label: 'based', value: 'San Francisco Bay' },
   { label: 'years in tech', value: '15+' },
-  { label: 'mindset', value: 'Designer + engineer, no handoff' },
+  { label: 'mindset', value: 'Designer + engineer' },
   { label: 'record collection', value: 'Growing, never finished' },
   { label: 'sports', value: 'Knicks. Mets. Send help.' },
-  { label: 'education', value: 'MBA + BS Computer Science, Full Sail' },
+  { label: 'education', value: 'MBA + BS Computer Science & HCI' },
   { label: 'reading', value: 'Genesis: Artificial Intelligence, Hope, and the Human Spirit' },
-  { label: 'building', value: 'Waypoint, Sherpa + frontier model UX at Cohere' },
+  { label: 'building', value: 'at Cohere, Wafer Systems, and Seudo AI' },
 ]
 
 const LINKS = [
@@ -252,7 +251,7 @@ function SportsWidget({ team, apiPath }: SportsWidgetProps) {
               style={{
                 fontSize: 11,
                 fontWeight: 300,
-                color: lastGameRow.won ? 'rgba(0,255,159,0.7)' : 'rgba(255,255,255,0.3)',
+                color: lastGameRow.won ? 'rgba(0,255,159,0.85)' : 'rgba(255,255,255,0.3)',
                 fontFamily: 'var(--font-mono)',
               }}
             >
@@ -288,11 +287,7 @@ function SportsWidget({ team, apiPath }: SportsWidgetProps) {
 }
 
 export default function AboutView() {
-  const router = useRouter()
   const isMobile = useIsMobile()
-  const [closeHovered, setCloseHovered] = useState(false)
-  const [yellowHovered, setYellowHovered] = useState(false)
-  const [greenHovered, setGreenHovered] = useState(false)
   const [nowPlaying, setNowPlaying] = useState<NowPlaying | null>(null)
   const [spotifyLoading, setSpotifyLoading] = useState(true)
   const pollRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
@@ -317,72 +312,7 @@ export default function AboutView() {
   return (
     <main style={{ minHeight: '100vh', fontFamily: 'var(--font-mono, monospace)', overflowX: 'hidden' }}>
 
-      {/* Terminal chrome - colored traffic lights; red → home (Session 71) */}
-      <div style={{
-        position: 'sticky', top: 0, zIndex: 40,
-        backgroundColor: 'rgba(10, 12, 16, 0.98)',
-        backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 6,
-      }}>
-        <button
-          type="button"
-          title="Home"
-          onClick={() => router.push('/')}
-          onMouseEnter={() => setCloseHovered(true)}
-          onMouseLeave={() => setCloseHovered(false)}
-          style={{
-            width: 12, height: 12, borderRadius: '50%',
-            backgroundColor: '#ff5f57',
-            border: 'none', cursor: 'pointer', padding: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0,
-            touchAction: 'manipulation',
-          }}
-        >
-          {closeHovered && (
-            <span style={{
-              fontSize: 8, lineHeight: 1,
-              color: 'rgba(0,0,0,0.65)',
-              fontWeight: 500, userSelect: 'none',
-              pointerEvents: 'none',
-            }}>×</span>
-          )}
-        </button>
-        <span
-          onMouseEnter={() => setYellowHovered(true)}
-          onMouseLeave={() => setYellowHovered(false)}
-          style={{
-            width: 12, height: 12, borderRadius: '50%',
-            backgroundColor: '#febc2e',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0, cursor: 'default',
-          }}
-        >
-          {yellowHovered && (
-            <span style={{ fontSize: 8, lineHeight: 1, color: 'rgba(0,0,0,0.5)', fontWeight: 500, userSelect: 'none', pointerEvents: 'none' }}>−</span>
-          )}
-        </span>
-        <span
-          onMouseEnter={() => setGreenHovered(true)}
-          onMouseLeave={() => setGreenHovered(false)}
-          style={{
-            width: 12, height: 12, borderRadius: '50%',
-            backgroundColor: '#28c840',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0, cursor: 'default',
-          }}
-        >
-          {greenHovered && (
-            <span style={{ fontSize: 8, lineHeight: 1, color: 'rgba(0,0,0,0.5)', fontWeight: 500, userSelect: 'none', pointerEvents: 'none' }}>+</span>
-          )}
-        </span>
-        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 10, fontWeight: 300 }}>
-          about.exe
-        </span>
-      </div>
-
-      {/* Page content */}
+      {/* Page content — window chrome lives in layout TabBar (same as /work/[slug]) */}
       <div style={{
         maxWidth: 880,
         margin: '0 auto',
@@ -416,7 +346,7 @@ export default function AboutView() {
             </div>
             <div style={{ marginTop: 12, textAlign: 'left' }}>
               <p style={{ fontSize: 14, fontWeight: 400, color: 'rgba(255,255,255,0.9)', margin: '0 0 4px' }}>Joe Siconolfi</p>
-              <p style={{ fontSize: 11, fontWeight: 300, color: 'rgba(0,255,159,0.7)', margin: '0 0 4px' }}>Staff Design Engineer</p>
+              <p style={{ fontSize: 11, fontWeight: 300, color: 'rgba(0,255,159,0.85)', margin: '0 0 4px' }}>Staff Design Engineer</p>
               <p style={{ fontSize: 11, fontWeight: 300, color: 'rgba(255,255,255,0.35)', margin: 0 }}>Cohere · San Francisco Bay</p>
             </div>
           </div>

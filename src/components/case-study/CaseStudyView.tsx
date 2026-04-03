@@ -101,7 +101,7 @@ export default function CaseStudyView({ caseStudy }: Props) {
           <p
             style={{
               fontSize: 12,
-              color: 'rgba(0,255,159,0.7)',
+              color: 'rgba(0,255,159,0.85)',
               margin: 0,
               fontWeight: 300,
             }}

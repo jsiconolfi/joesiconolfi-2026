@@ -1,17 +1,46 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { TIMELINE } from '@/content/timeline'
 import type { TimelineEra } from '@/content/timeline'
 import { useIsMobile } from '@/hooks/useIsMobile'
 
+const footerLinkStyle: CSSProperties = { color: '#00ff9f', textDecoration: 'none' }
+
+function TimelineLink({
+  href,
+  children,
+  download,
+  style,
+}: {
+  href: string
+  children: ReactNode
+  download?: boolean
+  style?: CSSProperties
+}) {
+  return (
+    <a
+      href={href}
+      download={download ? true : undefined}
+      target={download ? undefined : '_blank'}
+      rel={download ? undefined : 'noopener noreferrer'}
+      style={{ ...footerLinkStyle, ...style }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.textDecoration = 'underline'
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.textDecoration = 'none'
+      }}
+    >
+      {children}
+    </a>
+  )
+}
+
 export default function TimelineView() {
   const router = useRouter()
   const isMobile = useIsMobile()
-  const [closeHovered, setCloseHovered] = useState(false)
-  const [yellowHovered, setYellowHovered] = useState(false)
-  const [greenHovered, setGreenHovered] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
   const eraRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
@@ -22,9 +51,21 @@ export default function TimelineView() {
   useEffect(() => {
     const scrollContainer = document.querySelector('[data-scroll-container]') as HTMLElement | null
     if (!scrollContainer) return
+    const scrollEl = scrollContainer
 
     function findActiveEra() {
       const targetY = window.innerHeight * 0.4
+      const maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight
+      const gapToEnd = maxScroll - scrollEl.scrollTop
+      // Closest-center misses the last era when it sits low in the viewport; pin to last item near scroll end
+      const nearBottom = maxScroll > 0 && gapToEnd < 120
+      if (nearBottom && TIMELINE.length > 0) {
+        const lastId = TIMELINE[TIMELINE.length - 1].id
+        if (eraRefs.current.has(lastId)) {
+          setActiveId(lastId)
+          return
+        }
+      }
 
       let closestId: string | null = null
       let closestDistance = Infinity
@@ -45,80 +86,14 @@ export default function TimelineView() {
     // rAF ensures DOM is fully painted before the first measurement
     requestAnimationFrame(findActiveEra)
 
-    scrollContainer.addEventListener('scroll', findActiveEra, { passive: true })
-    return () => scrollContainer.removeEventListener('scroll', findActiveEra)
+    scrollEl.addEventListener('scroll', findActiveEra, { passive: true })
+    return () => scrollEl.removeEventListener('scroll', findActiveEra)
   }, [])
 
   return (
     <main style={{ minHeight: '100vh', fontFamily: 'var(--font-mono, monospace)', overflowX: 'hidden' }}>
 
-      {/* Terminal chrome — colored traffic lights; red → home (Session 71) */}
-      <div style={{
-        position: 'sticky', top: 0, zIndex: 40,
-        backgroundColor: 'rgba(10, 12, 16, 0.98)',
-        backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 6,
-      }}>
-        <button
-          type="button"
-          title="Home"
-          onClick={() => router.push('/')}
-          onMouseEnter={() => setCloseHovered(true)}
-          onMouseLeave={() => setCloseHovered(false)}
-          style={{
-            width: 12, height: 12, borderRadius: '50%',
-            backgroundColor: '#ff5f57',
-            border: 'none', cursor: 'pointer', padding: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0,
-            touchAction: 'manipulation',
-          }}
-        >
-          {closeHovered && (
-            <span style={{
-              fontSize: 8, lineHeight: 1,
-              color: 'rgba(0,0,0,0.65)',
-              fontWeight: 500, userSelect: 'none',
-              pointerEvents: 'none',
-            }}>×</span>
-          )}
-        </button>
-        <span
-          onMouseEnter={() => setYellowHovered(true)}
-          onMouseLeave={() => setYellowHovered(false)}
-          style={{
-            width: 12, height: 12, borderRadius: '50%',
-            backgroundColor: '#febc2e',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0, cursor: 'default',
-          }}
-        >
-          {yellowHovered && (
-            <span style={{ fontSize: 8, lineHeight: 1, color: 'rgba(0,0,0,0.5)', fontWeight: 500, userSelect: 'none', pointerEvents: 'none' }}>−</span>
-          )}
-        </span>
-        <span
-          onMouseEnter={() => setGreenHovered(true)}
-          onMouseLeave={() => setGreenHovered(false)}
-          style={{
-            width: 12, height: 12, borderRadius: '50%',
-            backgroundColor: '#28c840',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0, cursor: 'default',
-          }}
-        >
-          {greenHovered && (
-            <span style={{ fontSize: 8, lineHeight: 1, color: 'rgba(0,0,0,0.5)', fontWeight: 500, userSelect: 'none', pointerEvents: 'none' }}>+</span>
-          )}
-        </span>
-        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 10, fontWeight: 300 }}>
-          timeline.exe
-        </span>
-
-      </div>
-
-      {/* Page content */}
+      {/* Page content — window chrome lives in layout TabBar (same as /work/[slug]) */}
       <div style={{
         maxWidth: 760,
         margin: '0 auto',
@@ -138,7 +113,7 @@ export default function TimelineView() {
           <p style={{ fontSize: 13, fontWeight: 300, color: 'rgba(255,255,255,0.4)', margin: 0, lineHeight: 1.6 }}>
             From MySpace CSS to AI systems at Cohere. Every role compounded the next.
           </p>
-          <a
+          <TimelineLink
             href="/JoeSiconolfi_Resume-2026.pdf"
             download
             style={{
@@ -148,19 +123,14 @@ export default function TimelineView() {
               marginTop: 20,
               fontSize: 11,
               fontWeight: 300,
-              color: 'rgba(255,255,255,0.4)',
-              textDecoration: 'none',
               fontFamily: 'var(--font-mono)',
-              transition: 'color 0.2s ease',
               minHeight: isMobile ? 44 : undefined,
               touchAction: 'manipulation',
             }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#00ff9f')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}
           >
-            <span style={{ fontSize: 10, color: 'rgba(0,255,159,0.5)' }}>↓</span>
-            download resume
-          </a>
+            <span style={{ fontSize: 10, color: 'inherit' }}>↓</span>
+            Download resume
+          </TimelineLink>
         </div>
 
         {/* Timeline — single static rail + era blocks on top */}
@@ -204,7 +174,10 @@ export default function TimelineView() {
             margin: 0,
             lineHeight: 1.6,
           }}>
-            Currently at Cohere, San Francisco · Staff Design Engineer
+            Design + Engineering · Currently at <TimelineLink href="https://cohere.com/">Cohere</TimelineLink>
+            , side projects at <TimelineLink href="https://wafer.systems/">Wafer Systems</TimelineLink>
+            {' '}and <TimelineLink href="http://seudo.ai/">Seudo AI</TimelineLink>
+            {' '}
           </p>
         </div>
       </div>
@@ -222,7 +195,7 @@ interface EraBlockProps {
 
 function EraBlock({ era, isActive, isMobile, onRef, onCaseStudy }: EraBlockProps) {
   const isCompact = era.type === 'compact'
-  const isCurrent = era.id === 'cohere'
+  const isCurrent = era.id === 'cohere' || era.id === 'wafer' || era.id === 'seudo'
 
   return (
     <div
@@ -284,7 +257,7 @@ function EraBlock({ era, isActive, isMobile, onRef, onCaseStudy }: EraBlockProps
               letterSpacing: '0.06em',
               textTransform: 'uppercase',
             }}>
-              now
+              Active
             </span>
           )}
         </div>
@@ -292,7 +265,7 @@ function EraBlock({ era, isActive, isMobile, onRef, onCaseStudy }: EraBlockProps
         {/* Role */}
         <p style={{
           fontSize: isCompact ? 10 : 11,
-          color: isActive ? 'rgba(0,255,159,0.7)' : 'rgba(0,255,159,0.25)',
+          color: isActive ? 'rgba(0,255,159,0.85)' : 'rgba(0,255,159,0.25)',
           margin: isCompact ? '0 0 6px' : '0 0 10px',
           fontWeight: 300,
           transition: 'color 0.35s ease',
