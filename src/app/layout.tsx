@@ -49,7 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <SwirlWrapper />
           <OrbitalSystem />
 
-          {/* Tab bar — appears at top on /work/* pages */}
+          {/* Tab bar — case study tabs on /work/[slug]; window chrome on /work, /about, /timeline, /lab */}
           <TabBar />
 
           <ChatProvider>

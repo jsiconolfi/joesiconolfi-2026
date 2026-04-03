@@ -9,9 +9,6 @@ import { useIsMobile } from '@/hooks/useIsMobile'
 export default function TimelineView() {
   const router = useRouter()
   const isMobile = useIsMobile()
-  const [closeHovered, setCloseHovered] = useState(false)
-  const [yellowHovered, setYellowHovered] = useState(false)
-  const [greenHovered, setGreenHovered] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
   const eraRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
@@ -52,77 +49,11 @@ export default function TimelineView() {
   return (
     <main style={{ minHeight: '100vh', fontFamily: 'var(--font-mono, monospace)', overflowX: 'hidden' }}>
 
-      {/* Terminal chrome — colored traffic lights; red → home (Session 71) */}
-      <div style={{
-        position: 'sticky', top: 0, zIndex: 40,
-        backgroundColor: 'rgba(10, 12, 16, 0.98)',
-        backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 6,
-      }}>
-        <button
-          type="button"
-          title="Home"
-          onClick={() => router.push('/')}
-          onMouseEnter={() => setCloseHovered(true)}
-          onMouseLeave={() => setCloseHovered(false)}
-          style={{
-            width: 12, height: 12, borderRadius: '50%',
-            backgroundColor: '#ff5f57',
-            border: 'none', cursor: 'pointer', padding: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0,
-            touchAction: 'manipulation',
-          }}
-        >
-          {closeHovered && (
-            <span style={{
-              fontSize: 8, lineHeight: 1,
-              color: 'rgba(0,0,0,0.65)',
-              fontWeight: 500, userSelect: 'none',
-              pointerEvents: 'none',
-            }}>×</span>
-          )}
-        </button>
-        <span
-          onMouseEnter={() => setYellowHovered(true)}
-          onMouseLeave={() => setYellowHovered(false)}
-          style={{
-            width: 12, height: 12, borderRadius: '50%',
-            backgroundColor: '#febc2e',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0, cursor: 'default',
-          }}
-        >
-          {yellowHovered && (
-            <span style={{ fontSize: 8, lineHeight: 1, color: 'rgba(0,0,0,0.5)', fontWeight: 500, userSelect: 'none', pointerEvents: 'none' }}>−</span>
-          )}
-        </span>
-        <span
-          onMouseEnter={() => setGreenHovered(true)}
-          onMouseLeave={() => setGreenHovered(false)}
-          style={{
-            width: 12, height: 12, borderRadius: '50%',
-            backgroundColor: '#28c840',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0, cursor: 'default',
-          }}
-        >
-          {greenHovered && (
-            <span style={{ fontSize: 8, lineHeight: 1, color: 'rgba(0,0,0,0.5)', fontWeight: 500, userSelect: 'none', pointerEvents: 'none' }}>+</span>
-          )}
-        </span>
-        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginLeft: 10, fontWeight: 300 }}>
-          timeline.exe
-        </span>
-
-      </div>
-
-      {/* Page content */}
+      {/* Page content — top padding clears nav; window chrome is layout TabBar */}
       <div style={{
         maxWidth: 760,
         margin: '0 auto',
-        padding: isMobile ? '100px 20px 80px' : '120px 48px 160px',
+        padding: isMobile ? '140px 20px 80px' : '160px 48px 160px',
         boxSizing: 'border-box',
         width: '100%',
       }}>
