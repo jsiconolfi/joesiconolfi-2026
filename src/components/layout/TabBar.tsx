@@ -8,8 +8,27 @@ import { getCaseStudy } from '@/content/case-studies'
 
 export const TAB_BAR_HEIGHT = 38
 
+function pathnameIsWorkIndex(pathname: string): boolean {
+  return pathname === '/work' || pathname === '/work/'
+}
+
+/** Fixed top bar title for /work index, /about, /timeline, /lab — matches case study TabBar chrome. */
+function staticChromeExe(pathname: string): string | null {
+  if (pathnameIsWorkIndex(pathname)) return 'case-studies.exe'
+  if (pathname === '/about') return 'about.exe'
+  if (pathname === '/timeline') return 'timeline.exe'
+  if (pathname === '/lab') return 'lab.exe'
+  return null
+}
+
 /** Active-tab traffic lights only; own state so hover resets when this row unmounts (Session 81). */
-function TabActiveTrafficLights({ onClose }: { onClose: () => void }) {
+function TabActiveTrafficLights({
+  onClose,
+  closeButtonTitle = 'Close tab',
+}: {
+  onClose: () => void
+  closeButtonTitle?: string
+}) {
   const [hoveredRed, setHoveredRed] = useState(false)
   const [hoveredYellow, setHoveredYellow] = useState(false)
   const [hoveredGreen, setHoveredGreen] = useState(false)
@@ -21,7 +40,7 @@ function TabActiveTrafficLights({ onClose }: { onClose: () => void }) {
     >
       <button
         type="button"
-        title="Close tab"
+        title={closeButtonTitle}
         onClick={e => {
           e.stopPropagation()
           onClose()
@@ -173,6 +192,65 @@ export default function TabBar() {
     })
     setActiveSlug(slug)
   }, [pathname, openTab, setActiveSlug])
+
+  const chromeExe = staticChromeExe(pathname)
+  if (chromeExe) {
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: TAB_BAR_HEIGHT,
+          backgroundColor: 'rgba(10, 12, 16, 0.98)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          display: 'flex',
+          alignItems: 'stretch',
+          zIndex: 50,
+          overflow: 'hidden',
+        }}
+      >
+        <div
+          style={{
+            flex: 1,
+            minWidth: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: isMobile ? '0 6px 0 8px' : '0 8px 0 10px',
+            cursor: 'default',
+            backgroundColor: 'rgba(255,255,255,0.05)',
+            borderBottom: '1px solid #161a22',
+          }}
+        >
+          {!isMobile && (
+            <TabActiveTrafficLights
+              onClose={() => router.push('/')}
+              closeButtonTitle="Home"
+            />
+          )}
+          <span
+            style={{
+              fontFamily: 'var(--font-mono, monospace)',
+              fontSize: 11,
+              fontWeight: 400,
+              color: 'rgba(255,255,255,0.85)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
+            {chromeExe}
+          </span>
+        </div>
+      </div>
+    )
+  }
 
   if (!pathname.startsWith('/work/')) return null
 

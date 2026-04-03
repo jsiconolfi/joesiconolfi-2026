@@ -56,7 +56,7 @@ I build what I design. Not a prototype, not a handoff, not a Figma file with a n
 
 The engineering discipline changes how I design. When you know what's expensive to build, you stop designing things that are expensive to build. When you understand how state works, you design interactions that make sense within state constraints. The design is better because the engineer in me is always in the room.
 
-My hands-on AI work includes: prompt engineering for production interfaces across 50+ Cursor sessions (finding: LLMs need a canonical reference artifact to stay loyal to, not just rules; intent survives context windows in a way that rules do not); RAG pipeline design and retrieval quality tuning for Sherpa using Cohere's embed-english-v3.0 and command-r-plus with Pinecone; designing streaming-first interaction models at Channel AI; building LLM voice interfaces at Mushroom before voice AI was mainstream; and prototyping frontier model capability UX at Cohere Labs.
+My hands-on AI work includes: prompt engineering for production interfaces across 50+ Cursor sessions (finding: LLMs need a canonical reference artifact to stay loyal to, not just rules; intent survives context windows in a way that rules do not); RAG pipeline design and retrieval quality tuning for Sherpa using Cohere's embed-english-v3.0 and command-r-plus with Pinecone; designing consumer UX for open-source models at Channel AI (exploration, switching, streaming states, transparency); building LLM voice interfaces at Mushroom before voice AI was mainstream; and prototyping frontier model capability UX at Cohere Labs.
 
 I build tools that bridge design and engineering to eliminate the friction between the two disciplines. waypoint-sync removes token drift between Figma and code. Sherpa puts design system knowledge in designers' hands so they stop losing time to questions. The goal in both cases is the same: free up the team to work on the problems that actually matter.
 
@@ -72,7 +72,7 @@ I measure success through capability growth, understanding, and confidence, not 
 
 My career
 
-Max Q Designs, Melbourne FL (2010-2011): first professional role, web design and front-end development. Progressive Communications, Lake Mary FL (2011): agency design and development. Spongecell, New York City (2011-2014): interaction engineering for enterprise ad-tech at scale. Viacom/MTV, New York City (2014-2015): UX engineering for MTV digital properties, 55% lift in user engagement. Logic Web Media, New York City (2015-2019): first design system built from scratch, fintech platform. Statespace, New York/Remote (2019-2022): Product Design Lead, Aim Lab, 30M+ users, $50M Series B; led design for AI-powered training and learning platforms, partnered with researchers and data scientists to translate learning science into product features. Mushroom, Palo Alto (2022-2023): built AI-native conversational and voice-based product experiences, LLM-powered interfaces in production. Channel AI, Palo Alto (2023-2025): owned design and front-end development for AI-native experiences across web and mobile, shipped interfaces focused on clarity, adaptability, and learning through use, iterated on motion, feedback, and interaction-feel. Cohere, San Francisco (2025-present): Staff Design Engineer, first design engineer at the company, operating across product, design, engineering, and research as a full-stack contributor.
+Max Q Designs, Melbourne FL (2010-2011): first professional role, web design and front-end development. Progressive Communications, Lake Mary FL (2011): agency design and development. Spongecell, New York City (2011-2014): interaction engineering for enterprise ad-tech at scale. Viacom/MTV, New York City (2014-2015): UX engineering for MTV digital properties, 55% lift in user engagement. Logic Web Media, New York City (2015-2019): first design system built from scratch, fintech platform. Statespace, New York/Remote (2019-2022): Product Design Lead, Aim Lab, 30M+ users, $50M Series B; led design for AI-powered training and learning platforms, partnered with researchers and data scientists to translate learning science into product features. Mushroom, Palo Alto (2022-2023): built AI-native conversational and voice-based product experiences, LLM-powered interfaces in production. Channel AI, Palo Alto (2023-2025): Design Engineer and Product Design Lead; shipped an iOS product that made open-source frontier models approachable through model exploration, switching, streaming-first interaction, and transparency. Cohere, San Francisco (2025-present): Staff Design Engineer, first design engineer at the company, operating across product, design, engineering, and research as a full-stack contributor.
 
 Education
 
@@ -82,23 +82,23 @@ My projects
 
 Waypoint: design system built from zero at Cohere. Three-tier token architecture (primitive, semantic, component) across Figma variables, CSS custom properties, and Tailwind config. The hardest part was adoption, not construction. Treated developer experience as carefully as visual design: clear APIs, honest documentation that acknowledged gaps, feedback loops that made it easy to surface problems. Now the production design system for Cohere's North product and the foundation for external client deliveries including RBC.
 
-Statespace/Aim Lab: AI coaching platform, 30M+ users. Turned a free aim trainer into a training system by building a skill taxonomy, progressive data disclosure controlled by engagement level rather than settings toggles, and a coaching arc of assessment, targeted practice, and benchmark. Users weren't just playing. They were on a program. The training system model became the core of the $50M Series B.
+Statespace/Aim Lab: AI coaching platform, 30M+ users. Built a skill taxonomy, progressive disclosure driven by behavior rather than settings, and a coaching arc on weekly and monthly cadences. Kernel integration translated neural metrics into performance language gamers could act on. The training system model was the product differentiator behind the $50M Series B.
 
-Channel AI: streaming-first AI writing tools. Designed every state in the response lifecycle (thinking, streaming, complete, error, refining, expanding) with distinct visual language. Made the thinking state legible as a process, not an absence. Multi-variation output model with two or three simultaneous interpretations had higher completion rates than single-output alternatives. Built context as a first-class concept: persistent context panel with brand voice, tone guidelines, and reference material. The shift from interaction to inference.
+Channel AI: Shipped on iOS. Made open-source frontier models feel like a consumer product: exploration by intent, dynamic model switching without losing context, streaming-first lifecycle states with thinking made visible, transparency at every layer. The core problem was abstraction that makes capability legible without erasing it.
 
-Seudo: voice-first brainstorming with AI clustering, built solo from zero. Voice as primary input, not an add-on. Real-time clustering gated to natural pauses so the system doesn't interrupt thought. Spatial mapping with proximity indicating semantic similarity. Users described it as "thinking out loud with someone who's actually listening." Users organized ideas 35% faster in testing.
+Seudo: Voice-first brainstorming with AI clustering, built solo from zero. No cursor or submit button as a statement. Clustering ran continuously but UI updates gated to natural pauses. Spatial map showed semantic proximity. Qualitative win: users called it thinking out loud with someone who is actually listening. Still building.
 
-Wafer Systems: AI-native OS design. The premise: apps are the wrong abstraction. Designed the context layer, the surface that understands what you're doing across everything and surfaces the right capability at the right moment. Proactive rather than reactive. Built 12 component categories with a unified visual language for an OS that surfaces in wildly different contexts. The design challenge: what it looks like when it interrupts you at exactly the right moment. Magic Ink at the OS level.
+Wafer Systems: AI-native OS exploration. Interrupt model and proactive UI: the system surfaces before you ask, when inference says you need it. Twelve component categories, one visual language, so unfamiliar contexts still feel like the same system. Hardware and category still emerging; patterns over final pixels.
 
-Sherpa: RAG-based Figma plugin for design system Q&A at Cohere. Embedded at the component level for precise retrieval; a query about spacing surfaces spacing tokens, not the entire layout section. The AI was a mirror of documentation quality, so getting answers right required rethinking documentation structure first. Designers stopped asking questions in Slack. Now the primary way new designers learn the system.
+Sherpa: RAG-based Figma plugin for design system Q&A at Cohere. Chunking and embedding at component level; command-r-plus generates answers, not pasted docs. Designers stopped asking in Slack; first stop for new designers.
 
-waypoint-sync: CLI tool for two-way Figma-to-code token sync. design-map.json maps every Figma variable to its CSS and Tailwind counterpart. One source of truth, two directions. The design file stops being a spec and starts being an API. Eliminated manual token sync across the Waypoint system entirely.
+waypoint-sync: Two-way Figma-to-code token sync. design-map.json is the contract between design and code; two-tier primitives vs semantics; sync and parity checking invoked through natural language in Cursor and Claude Code, including 0-100 design-to-code parity scores. Manual token drift removed across Waypoint.
 
-Statespace x Kernel: neural interface UX integration. Kernel Flow measures cognitive load and focus in real time. Mapped cognitive load scores and focus indices to performance language gamers already understood: peak focus window became optimal training window, high cognitive load became a signal to take a break. The data didn't change. The framing did. Covered by VentureBeat.
+Statespace x Kernel: Neural interface UX with Aim Lab. Mapped cognitive metrics to performance language; ambient layer so training stayed in flow. VentureBeat coverage; part of the Series B story.
 
-Mushroom: LLM voice interfaces before voice AI was mainstream. Designed for ears, not eyes; every decision evaluated aurally first. Built conversational state management that adapted to tone, pace, and interruptions. Key finding: a 200ms response feels intelligent, a two-second response feels broken regardless of what it says.
+Mushroom: Pre-ChatGPT voice and conversational LLM work. Product design questions first: intent without a text field, acoustic feedback, trust without visibility. Ears-first evaluation and conversational state from tone, pace, and interruption. Latency threshold for voice is brutal: 200ms feels smart, two seconds feels broken.
 
-Cohere Labs: prototyping UX for frontier model capabilities. Prototype fidelity calibrated to the question. UX as a research input; how users interact with a capability surfaces edge cases pure model evaluation misses. The prototype is a measurement instrument, not just a deliverable. Failure cases are often the most valuable output.
+Cohere Labs: Prototypes for new model capabilities. Fidelity matches the question. UX feedback loops into research; prototypes as measurement instruments. Failures often teach more than successes.
 
 My beliefs
 
@@ -165,7 +165,7 @@ const CARD_META: Record<
   },
   channel: {
     label: 'Channel AI',
-    description: 'AI-native creative tools for content teams',
+    description: 'Making open-source AI feel like a consumer product',
     href: '/work/channel',
     type: 'case-study',
   },
@@ -201,7 +201,7 @@ const CARD_META: Record<
   },
   mushroom: {
     label: 'Mushroom',
-    description: 'LLM-powered voice interfaces',
+    description: 'LLM-powered voice interfaces before there was a playbook',
     href: '/work/mushroom',
     type: 'case-study',
   },
