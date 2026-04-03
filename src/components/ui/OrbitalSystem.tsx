@@ -102,8 +102,10 @@ export default function OrbitalSystem() {
   /** Imperative `tick` targets — filled by each `OrbitalCard` ref; driven by one shared RAF below. */
   const cardTickRefs = useRef<Array<OrbitalCardHandle | null>>(new Array(10).fill(null))
 
-  /** Session 90 — at most one orbital MP4 decoding at a time */
+  /** Session 90 — which card’s video is currently active for single-playback coordination */
   const activeVideoRef = useRef<HTMLVideoElement | null>(null)
+  /** Session 99 — delayed leave pause; cancel if pointer re-enters within 80ms (Session 102: never `video.style.opacity`) */
+  const leaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const isHome = pathname === '/'
 
@@ -113,30 +115,56 @@ export default function OrbitalSystem() {
   }, [])
 
   const handleOrbitalVideoHover = useCallback((index: number) => {
-    const next = cardTickRefs.current[index]?.getVideoElement() ?? null
-    if (activeVideoRef.current && activeVideoRef.current !== next) {
-      activeVideoRef.current.pause()
-      activeVideoRef.current.currentTime = 0
+    if (leaveTimerRef.current) {
+      clearTimeout(leaveTimerRef.current)
+      leaveTimerRef.current = null
     }
-    if (next) {
-      activeVideoRef.current = next
-      next.currentTime = 0
-      if (next.readyState >= 2) {
-        next.play().catch(() => {})
+
+    const prevVideo = activeVideoRef.current
+    const newVideo = cardTickRefs.current[index]?.getVideoElement() ?? null
+
+    // Same card re-entered before delayed leave hide — still visible; keep playback
+    if (prevVideo && prevVideo === newVideo) {
+      return
+    }
+
+    if (prevVideo && prevVideo !== newVideo) {
+      requestAnimationFrame(() => {
+        prevVideo.pause()
+      })
+    }
+
+    activeVideoRef.current = newVideo
+    if (newVideo) {
+      newVideo.currentTime = 0
+      if (newVideo.readyState >= 2) {
+        newVideo.play().catch(() => {})
       } else {
-        next.addEventListener('canplay', () => next.play().catch(() => {}), { once: true })
+        newVideo.addEventListener('canplay', () => newVideo.play().catch(() => {}), { once: true })
       }
-    } else {
-      activeVideoRef.current = null
     }
   }, [])
 
   const handleOrbitalVideoLeave = useCallback((index: number) => {
     const vid = cardTickRefs.current[index]?.getVideoElement() ?? null
-    if (vid && activeVideoRef.current === vid) {
-      vid.pause()
-      vid.currentTime = 0
+    if (!vid || activeVideoRef.current !== vid) return
+
+    leaveTimerRef.current = setTimeout(() => {
+      const video = activeVideoRef.current
       activeVideoRef.current = null
+      if (video) {
+        requestAnimationFrame(() => {
+          video.pause()
+          // Session 99: do not reset currentTime on leave
+        })
+      }
+      leaveTimerRef.current = null
+    }, 80)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current)
     }
   }, [])
 

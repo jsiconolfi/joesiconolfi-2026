@@ -39,6 +39,7 @@ const MOBILE_NAV_LINKS = [
 const MOBILE_SOCIAL_LINKS = [
   { label: 'linkedin', url: 'https://linkedin.com/in/joesiconolfi' },
   { label: 'github', url: 'https://github.com/joesiconolfi' },
+  { label: 'x', url: 'https://x.com/JoeSiggo' },
 ] as const
 
 export default function Nav() {

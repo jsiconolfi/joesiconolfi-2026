@@ -8,6 +8,10 @@ import {
   ORBIT_STAGING_EVENT,
   type OrbitStagingDetail,
 } from '@/lib/orbitalStaging'
+import {
+  onOrbitalCardPointerEnter,
+  onOrbitalCardPointerLeave,
+} from '@/lib/swirlPointerShield'
 
 interface OrbitalCardProps {
   project: Project
@@ -67,9 +71,8 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
   const [active, setActive] = useState(false)
   const [imgError, setImgError] = useState(false)
 
-  // Transform + z-index on cardRef; opacity must NOT wrap backdrop-filter (breaks blur in WebKit/Blink)
+  // Transform on cardRef (tick); z-index + opacity via globals.css :hover / --active (Session 102 — no inline hover styles)
   const cardRef = useRef<HTMLDivElement>(null)
-  const opacityLayerRef = useRef<HTMLDivElement>(null)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const postStreamReleaseTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -88,12 +91,6 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
       activeRef.current = false
       setActive(false)
       chosenSlotRef.current = null
-      if (opacityLayerRef.current) {
-        opacityLayerRef.current.style.opacity = hoveredRef.current ? '0.85' : '0.6'
-      }
-      if (cardRef.current) {
-        cardRef.current.style.zIndex = hoveredRef.current ? '12' : '5'
-      }
       if (!hoveredRef.current) onVideoLeave(cardIndex)
     }
 
@@ -105,12 +102,6 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
       chosenSlotRef.current = { x: event.detail.centerX, y: event.detail.centerY }
       activeRef.current = true
       setActive(true)
-      if (opacityLayerRef.current) {
-        opacityLayerRef.current.style.opacity = '1'
-      }
-      if (cardRef.current) {
-        cardRef.current.style.zIndex = '15'
-      }
       onVideoHover(cardIndex)
     }
 
@@ -204,7 +195,7 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
         onPositionUpdate(cardIndex, x, y)
 
         if (cardRef.current) {
-          cardRef.current.style.transform = `translate(${x - HALF_W}px, ${y - HALF_H}px)`
+          cardRef.current.style.transform = `translate(${x - HALF_W}px, ${y - HALF_H}px) translateZ(0)`
         }
       },
     }),
@@ -225,26 +216,23 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
 
   function handleWrapperEnter() {
     hoveredRef.current = true
-    if (!activeRef.current) {
-      if (opacityLayerRef.current) {
-        opacityLayerRef.current.style.opacity = '0.85'
-      }
-      if (cardRef.current) {
-        cardRef.current.style.zIndex = '12'
-      }
+    onOrbitalCardPointerEnter()
+    if (process.env.NODE_ENV === 'development') {
+      // Session 102 — card wrapper: only transform (+ willChange/geometry) is set via inline style; hover z-index/opacity are CSS (:hover / --active)
+      console.log(
+        '[OrbitalCard] mouseenter: card wrapper — no opacity/zIndex inline writes; globals.css .orbital-card-root:hover + .orbital-card-opacity-layer'
+      )
     }
     onVideoHover(cardIndex)
   }
 
   function handleWrapperLeave() {
     hoveredRef.current = false
-    if (!activeRef.current) {
-      if (opacityLayerRef.current) {
-        opacityLayerRef.current.style.opacity = '0.6'
-      }
-      if (cardRef.current) {
-        cardRef.current.style.zIndex = '5'
-      }
+    onOrbitalCardPointerLeave()
+    if (process.env.NODE_ENV === 'development') {
+      console.log(
+        '[OrbitalCard] mouseleave: card wrapper — no opacity/zIndex inline writes; CSS :hover off restores idle layers'
+      )
     }
     if (!activeRef.current) onVideoLeave(cardIndex)
   }
@@ -272,16 +260,15 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
       style={{
         left: 0,
         top: 0,
-        transform: `translate(${homeX - HALF_W}px, ${homeY - HALF_H}px)`,
+        transform: `translate(${homeX - HALF_W}px, ${homeY - HALF_H}px) translateZ(0)`,
         width: `${CARD_W}px`,
-        zIndex: 5,
         willChange: 'transform',
         borderRadius: '8px',
       }}
       onMouseEnter={handleWrapperEnter}
       onMouseLeave={handleWrapperLeave}
     >
-      {/* Blur + tint behind card content — not on transform node; pointer-events none so panel receives clicks */}
+      {/* Session 100 — solid dark fill only (no backdrop-filter: avoids sampling animated Swirl every frame) */}
       <div
         aria-hidden
         style={{
@@ -289,20 +276,16 @@ const OrbitalCard = forwardRef<OrbitalCardHandle, OrbitalCardProps>(function Orb
           inset: 0,
           zIndex: 0,
           borderRadius: '8px',
-          backdropFilter: 'blur(5px)',
-          WebkitBackdropFilter: 'blur(5px)',
-          backgroundColor: 'rgba(22, 26, 34, 0.92)',
+          backgroundColor: 'rgba(14, 16, 21, 0.88)',
           pointerEvents: 'none',
         }}
       />
 
       <div
-        ref={opacityLayerRef}
+        className="orbital-card-opacity-layer"
         style={{
           position: 'relative',
           zIndex: 1,
-          opacity: 0.6,
-          transition: 'opacity 0.3s ease',
         }}
       >
         {/* Active beacon — static dot; visibility toggled via CSS (.orbital-card-root--active) */}

@@ -122,16 +122,44 @@ body {
   opacity: 1;
 }
 
-/* Orbital cards (Session 73 hover; Session 92 — blur layer sibling to opacity layer; Session 94 — no hover
-   scale (avoids blur repaint jank); will-change on panel for compositor layer. */
+/* Orbital cards (Session 73 hover; Session 100 — no backdrop-filter; Session 94 — no hover scale;
+   Session 101 — no CSS transform on orbital elements; position transform is JS-only on cardRef.
+   will-change: transform + translateZ(0) only on outer wrapper in OrbitalCard.tsx — not here.)
+   Session 102 — z-index + opacity-layer opacity live here only (no inline style on hover in TS). */
+.orbital-card-root {
+  z-index: 5;
+}
+
+.orbital-card-root:hover {
+  z-index: 12;
+}
+
+.orbital-card-root--active,
+.orbital-card-root--active:hover {
+  z-index: 15;
+}
+
+/* Opacity on inner layer — compositor-friendly; not inline on pointer events */
+.orbital-card-opacity-layer {
+  opacity: 0.6;
+  transition: opacity 0.1s ease;
+}
+
+.orbital-card-root:hover .orbital-card-opacity-layer {
+  opacity: 0.85;
+}
+
+.orbital-card-root--active .orbital-card-opacity-layer,
+.orbital-card-root--active:hover .orbital-card-opacity-layer {
+  opacity: 1;
+}
+
 .orbital-card-panel {
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  transform: translateZ(0);
-  will-change: transform;
   transition:
-    border 0.3s ease,
-    box-shadow 0.3s ease;
+    border 0.1s ease,
+    box-shadow 0.1s ease;
 }
 
 .orbital-card-root:hover .orbital-card-panel:not(.orbital-card-panel--active) {
@@ -143,7 +171,6 @@ body {
   box-shadow:
     0 12px 40px rgba(0, 0, 0, 0.6),
     0 0 0 1px rgba(0, 255, 159, 0.1);
-  transform: translateZ(0) scale(1);
 }
 
 .orbital-card-role {
@@ -175,7 +202,7 @@ body {
 
 .orbital-card-footer-idle {
   color: rgba(255, 255, 255, 0.15);
-  transition: opacity 0.2s ease;
+  transition: opacity 0.1s ease;
 }
 
 .orbital-card-footer-prompt {
@@ -185,7 +212,7 @@ body {
   opacity: 0;
   pointer-events: none;
   color: rgba(255, 255, 255, 0.4);
-  transition: opacity 0.2s ease;
+  transition: opacity 0.1s ease;
 }
 
 .orbital-card-root:hover .orbital-card-footer-idle {
