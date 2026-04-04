@@ -5,30 +5,37 @@ import { useRouter } from 'next/navigation'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { CASE_STUDIES, type CaseStudy } from '@/content/case-studies'
 
-/** Sort key from `year` strings like `2019–2022`, `2025–present`, `2026` (en-dash in content). */
-function parseCaseStudyYearRange(year: string): { start: number; end: number } {
-  const raw = year.trim()
-  const parts = raw.split(/\u2013/)
-  if (parts.length === 1) {
-    const n = parseInt(parts[0]!, 10)
-    return { start: n, end: n }
-  }
-  const start = parseInt(parts[0]!, 10)
-  const endPart = parts[1]!
-  if (/present/i.test(endPart)) {
-    return { start, end: 9999 }
-  }
-  const end = parseInt(endPart, 10)
-  return { start, end: Number.isFinite(end) ? end : start }
-}
+/**
+ * Fixed display order for `/work` grid (curated; not `CASE_STUDIES` source order).
+ * Any case study whose slug is not listed is appended after these, in source order.
+ */
+const WORK_GRID_SLUG_ORDER: readonly string[] = [
+  'waypoint',
+  'wafer',
+  'seudo',
+  'cohere-labs',
+  'sherpa',
+  'waypoint-sync',
+  'channel',
+  'channel-prism',
+  'channel-nexus',
+  'mushroom',
+  'statespace',
+  'kernel',
+]
 
-/** Newest first: by start year, then end year, then slug. */
-function compareCaseStudiesNewestFirst(a: CaseStudy, b: CaseStudy): number {
-  const pa = parseCaseStudyYearRange(a.year)
-  const pb = parseCaseStudyYearRange(b.year)
-  if (pa.start !== pb.start) return pb.start - pa.start
-  if (pa.end !== pb.end) return pb.end - pa.end
-  return a.slug.localeCompare(b.slug)
+function caseStudiesInWorkGridOrder(studies: CaseStudy[]): CaseStudy[] {
+  const bySlug = new Map(studies.map(cs => [cs.slug, cs]))
+  const ordered: CaseStudy[] = []
+  for (const slug of WORK_GRID_SLUG_ORDER) {
+    const cs = bySlug.get(slug)
+    if (cs) ordered.push(cs)
+  }
+  const listed = new Set(WORK_GRID_SLUG_ORDER)
+  for (const cs of studies) {
+    if (!listed.has(cs.slug)) ordered.push(cs)
+  }
+  return ordered
 }
 
 function GridThumbnail({ cs }: { cs: CaseStudy }) {
@@ -125,10 +132,7 @@ export default function WorkGrid() {
   const router = useRouter()
   const isMobile = useIsMobile()
 
-  const caseStudiesNewestFirst = useMemo(
-    () => [...CASE_STUDIES].sort(compareCaseStudiesNewestFirst),
-    []
-  )
+  const caseStudiesOrdered = useMemo(() => caseStudiesInWorkGridOrder(CASE_STUDIES), [])
 
   return (
     <main style={{ minHeight: '100vh', fontFamily: 'var(--font-mono, monospace)', overflowX: 'hidden' }}>
@@ -167,7 +171,7 @@ export default function WorkGrid() {
             color: 'rgba(255,255,255,0.4)',
             margin: 0,
           }}>
-            {caseStudiesNewestFirst.length} projects — design, engineering, and everything between
+            {caseStudiesOrdered.length} projects — design, engineering, and everything between
           </p>
         </div>
 
@@ -181,7 +185,7 @@ export default function WorkGrid() {
             gap: 16,
           }}
         >
-          {caseStudiesNewestFirst.map(cs => (
+          {caseStudiesOrdered.map(cs => (
             <div
               key={cs.id}
               role="button"
