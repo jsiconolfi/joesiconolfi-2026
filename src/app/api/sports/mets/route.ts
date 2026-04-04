@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import {
   competitionState,
+  ESPN_MLB_SCOREBOARD,
   getEventsFromSchedule,
   getPrimaryCompetition,
+  getPrimaryCompetitionFromScoreboard,
   parseCompetitorPoints,
   pickHomeAway,
   type EspnScheduleEvent,
@@ -57,7 +59,13 @@ export async function GET() {
 
     const liveGame = events.find((e) => competitionState(e) === 'in')
     if (liveGame) {
-      const comp = getPrimaryCompetition(liveGame)
+      const scheduleComp = getPrimaryCompetition(liveGame)
+      const comp =
+        (await getPrimaryCompetitionFromScoreboard(
+          liveGame.id ?? '',
+          ESPN_MLB_SCOREBOARD,
+          liveGame.date,
+        )) ?? scheduleComp
       const { home, away } = pickHomeAway(comp)
       const mets = home?.team?.abbreviation === 'NYM' ? home : away
       const opponent = home?.team?.abbreviation === 'NYM' ? away : home
