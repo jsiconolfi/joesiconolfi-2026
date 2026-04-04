@@ -293,6 +293,13 @@ New RAF-loop animation primitives (Session 10):
 - Glance: three one-liners. Expand: each shows a real example from actual work. Immerse: links to writing and thinking.
 - Principles: skill development through use / human-AI collaboration / making AI understandable + controllable.
 
+### SEO and metadata (Session 104)
+
+- **Global** `metadata` in **`src/app/layout.tsx`**: `metadataBase` (`https://joesiconolfi.com`), `title.default` **`Joe Siconolfi — Designer, engineer, & creative cosmonaut.`** with **`template: '%s | Joe Siconolfi'`**, site description, keywords, authors, Open Graph, Twitter card (`@JoeSiggo`), robots. Default OG/Twitter image **`/og-image.png`** (1200×630 placeholder; solid `#161a22` until replaced).
+- **Homepage:** **`src/app/page.tsx`** is a server component exporting **`metadata`** (`title.absolute` matches the default title so the template is not applied twice) and **`HomePageClient`** (`src/components/home/HomePageClient.tsx`) for the chat overlay UI.
+- **`/about`**, **`/work`**, **`/timeline`**, **`/lab`**: each route **`page.tsx`** exports **`metadata`** (short `title` + description + `openGraph`).
+- **`/work/[slug]`:** **`generateMetadata`** uses **`getCaseStudy`**, **`name`**, **`tagline`**, **`heroAsset`** (raster only for OG; else fallback **`/og-image.png`**). **`params`** is a **`Promise`** (await in **`generateMetadata`** and the page).
+
 ### Background color (Session 36)
 
 `#161a22` must be set in **two places** — both are required:
@@ -440,7 +447,7 @@ Case study pages are now live at `/work/[slug]` for **12** entries in **`CASE_ST
 - `src/content/case-studies.ts` — `CaseStudy` interface + `CASE_STUDIES` array (**12 entries**, Session 103) + `getCaseStudy(slug)` + `getAllSlugs()` helpers
 - `src/app/work/page.tsx` — `/work` index page, renders `<WorkGrid />` (Session 40)
 - `src/components/case-study/WorkGrid.tsx` — `'use client'` grid of all case studies in **`CASE_STUDIES`**. **Session 71:** Sticky **`case-studies.exe`** header uses **colored** traffic lights — red `<button type="button">` → `router.push('/')`, hover `×`; yellow/green hover `−` / `+` only; inner glyph spans use **`pointerEvents: 'none'`**. **Per-card** chrome: **gray** dots only (informational cards). **`useIsMobile()`** — content padding `isMobile ? '100px 20px 80px' : '100px 48px 120px'`; grid `1fr` on mobile vs `auto-fill minmax(280px,1fr)`; h1 **22px** mobile / **28px** desktop; card chrome row **`minHeight: 44`** mobile; cards **`touchAction: 'manipulation'`**, **`role="button"`**, **`aria-label`**, Enter/Space keyboard. 16/9 thumbnails via `GridThumbnail`: `preload="metadata"`, hover play mp4, leave pause/reset; **Session 103:** **`onError`** on hero **`<img>`** / **`<video>`** falls back to the same grid placeholder as missing **`heroAsset`**. `<main overflowX: hidden>`.
-- `src/app/work/[slug]/page.tsx` — async dynamic route, `generateStaticParams` for all slugs from **`getAllSlugs()`**, calls `notFound()` for unknown slugs. **Next.js 15+:** `params` typed as `Promise<{ slug: string }>`, awaited before use. Page function is `async`.
+- `src/app/work/[slug]/page.tsx` — async dynamic route, **`generateMetadata`** (Session 104) + **`generateStaticParams`** for all slugs from **`getAllSlugs()`**, calls `notFound()` for unknown slugs. **Next.js 15+:** `params` typed as `Promise<{ slug: string }>`, awaited before use in both the page and **`generateMetadata`**. Page function is `async`.
 - `src/components/case-study/CaseStudyView.tsx` — `'use client'` component rendering the full case study page; **Session 103:** **`CaseStudyHero`** / **`DecisionArtifact`** + **`CaseStudyMediaPlaceholder`** — **`onError`** on hero and decision **`<img>`** / **`<video>`** for missing or broken assets
 
 **CaseStudy interface:**

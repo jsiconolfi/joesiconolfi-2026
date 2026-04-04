@@ -45,6 +45,14 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
 
 - `searchParams` follows the same rule — type as `Promise<{ [key: string]: string | string[] | undefined }>` and await.
 
+## SEO and metadata (Session 104)
+
+- **Global** `export const metadata` in **`src/app/layout.tsx`**: `metadataBase` (`https://joesiconolfi.com`), `title.default` + **`template: '%s | Joe Siconolfi'`**, site-wide `description`, `keywords`, `authors`, `creator`, **`openGraph`** (type, locale, url, siteName, title, description, images), **`twitter`** (`summary_large_image`, creator `@JoeSiggo`), **`robots`** / `googleBot` preview hints. Shared OG/Twitter image: **`/public/og-image.png`** (1200×630; placeholder solid `#161a22` until a branded asset replaces it).
+- **Homepage** (`/`): **`src/app/page.tsx`** is a **server component** that exports **`metadata`** (including **`title.absolute`** so the root template does not double-append `| Joe Siconolfi`) and renders **`HomePageClient`** — the chat + name block UI lives in **`src/components/home/HomePageClient.tsx`** (`'use client'`), because client pages cannot export route metadata.
+- **Inner pages** with static copy: **`src/app/about/page.tsx`**, **`work/page.tsx`**, **`timeline/page.tsx`**, **`lab/page.tsx`** each export **`metadata`** with a short **`title`** (e.g. `About`, `Case Studies`) so the resolved document title is **`[Title] | Joe Siconolfi`**, plus page-specific **`description`** and **`openGraph.url`**.
+- **Case studies** (`/work/[slug]`): **`generateMetadata`** in **`src/app/work/[slug]/page.tsx`** — **`await params`**, **`getCaseStudy(slug)`**; uses **`caseStudy.name`** for title, **`tagline`** for description; **`openGraph`** / **`twitter`** images use **`heroAsset`** when it is a raster image (png/jpg/gif/webp), otherwise **`/og-image.png`** (video heroes do not ship as OG images).
+- **Copy rule for metadata:** do not use em dashes in long-form meta **descriptions**; the primary **site title** string uses the typographic em dash between the name and the role line per the homepage tab title spec. **Favicon:** `src/app/favicon.ico` only — no `icons` entry in `metadata`.
+
 ## TypeScript rules
 
 - Strict mode on. No implicit `any`.
