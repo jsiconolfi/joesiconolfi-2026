@@ -20,12 +20,58 @@ const ibmPlexMono = IBM_Plex_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Joe Siconolfi — Design + Engineering',
-  description: 'Design engineer by trade and a creative cosmonaut by nature',
+  title: {
+    default: 'Joe Siconolfi — Designer, engineer, & creative cosmonaut.',
+    template: '%s | Joe Siconolfi',
+  },
+  description:
+    '15+ years designing and building AI-native products, design systems, and frontier model experiences.',
+  keywords: [
+    'design engineer',
+    'AI product design',
+    'design systems',
+    'frontend engineering',
+    'Cohere',
+    'San Francisco',
+  ],
+  authors: [{ name: 'Joe Siconolfi', url: 'https://joesiconolfi.com' }],
+  creator: 'Joe Siconolfi',
+  metadataBase: new URL('https://joesiconolfi.com'),
   openGraph: {
-    title: 'Joe Siconolfi — Design + Engineering',
-    description: 'Design engineer by trade and a creative cosmonaut by nature',
     type: 'website',
+    locale: 'en_US',
+    url: 'https://joesiconolfi.com',
+    siteName: 'Joe Siconolfi',
+    title: 'Joe Siconolfi — Designer, engineer, & creative cosmonaut.',
+    description:
+      '15+ years designing and building AI-native products, design systems, and frontier model experiences.',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Joe Siconolfi — Designer, engineer, & creative cosmonaut.',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Joe Siconolfi — Designer, engineer, & creative cosmonaut.',
+    description:
+      '15+ years designing and building AI-native products, design systems, and frontier model experiences.',
+    images: ['/og-image.png'],
+    creator: '@JoeSiggo',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
   },
 }
 
