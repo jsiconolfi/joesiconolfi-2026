@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import type { CaseStudy } from '@/content/case-studies'
@@ -31,38 +32,9 @@ export default function CaseStudyView({ caseStudy }: Props) {
           width: '100%',
         }}
       >
-        {/* Hero asset */}
+        {/* Hero asset — Session 103: missing/broken assets fall back to grid placeholder */}
         {caseStudy.heroAsset && (
-          <div
-            style={{
-              width: '100%',
-              aspectRatio: '16/9',
-              borderRadius: 8,
-              overflow: 'hidden',
-              marginBottom: 48,
-              border: '1px solid rgba(255,255,255,0.06)',
-              backgroundColor: 'rgba(255,255,255,0.03)',
-            }}
-          >
-            {caseStudy.heroAsset.endsWith('.mp4') ? (
-              <video
-                src={caseStudy.heroAsset}
-                autoPlay={!isMobile}
-                muted
-                loop
-                playsInline
-                preload="metadata"
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-            ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={caseStudy.heroAsset}
-                alt={caseStudy.name}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-            )}
-          </div>
+          <CaseStudyHero caseStudy={caseStudy} isMobile={isMobile} />
         )}
 
         {/* Header */}
@@ -148,34 +120,11 @@ export default function CaseStudyView({ caseStudy }: Props) {
                 </h3>
                 <p style={bodyStyle}>{decision.body}</p>
                 {decision.artifact && (
-                  <div
-                    style={{
-                      marginTop: 16,
-                      borderRadius: 6,
-                      overflow: 'hidden',
-                      border: '1px solid rgba(255,255,255,0.06)',
-                      backgroundColor: 'rgba(255,255,255,0.02)',
-                    }}
-                  >
-                    {decision.artifact.endsWith('.mp4') ? (
-                      <video
-                        src={decision.artifact}
-                        autoPlay={!isMobile}
-                        muted
-                        loop
-                        playsInline
-                        preload="metadata"
-                        style={{ width: '100%', display: 'block' }}
-                      />
-                    ) : (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={decision.artifact}
-                        alt={decision.title}
-                        style={{ width: '100%', display: 'block' }}
-                      />
-                    )}
-                  </div>
+                  <DecisionArtifact
+                    artifact={decision.artifact}
+                    title={decision.title}
+                    isMobile={isMobile}
+                  />
                 )}
               </div>
             ))}
@@ -243,6 +192,129 @@ export default function CaseStudyView({ caseStudy }: Props) {
         )}
       </div>
     </main>
+  )
+}
+
+function CaseStudyMediaPlaceholder({ label }: { label: string }) {
+  return (
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        minHeight: 120,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundImage: `
+          linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)
+        `,
+        backgroundSize: '20px 20px',
+      }}
+    >
+      <span
+        style={{
+          fontSize: 9,
+          color: 'rgba(255,255,255,0.12)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.1em',
+          textAlign: 'center',
+          padding: '0 12px',
+        }}
+      >
+        {label}
+      </span>
+    </div>
+  )
+}
+
+function CaseStudyHero({ caseStudy, isMobile }: { caseStudy: CaseStudy; isMobile: boolean }) {
+  const [failed, setFailed] = useState(false)
+  const { heroAsset, name, slug } = caseStudy
+  if (!heroAsset) return null
+
+  return (
+    <div
+      style={{
+        width: '100%',
+        aspectRatio: '16/9',
+        borderRadius: 8,
+        overflow: 'hidden',
+        marginBottom: 48,
+        border: '1px solid rgba(255,255,255,0.06)',
+        backgroundColor: 'rgba(255,255,255,0.03)',
+      }}
+    >
+      {failed ? (
+        <CaseStudyMediaPlaceholder label={slug} />
+      ) : heroAsset.endsWith('.mp4') ? (
+        <video
+          src={heroAsset}
+          autoPlay={!isMobile}
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={heroAsset}
+          alt={name}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          onError={() => setFailed(true)}
+        />
+      )}
+    </div>
+  )
+}
+
+function DecisionArtifact({
+  artifact,
+  title,
+  isMobile,
+}: {
+  artifact: string
+  title: string
+  isMobile: boolean
+}) {
+  const [failed, setFailed] = useState(false)
+
+  return (
+    <div
+      style={{
+        marginTop: 16,
+        borderRadius: 6,
+        overflow: 'hidden',
+        border: '1px solid rgba(255,255,255,0.06)',
+        backgroundColor: 'rgba(255,255,255,0.02)',
+      }}
+    >
+      {failed ? (
+        <CaseStudyMediaPlaceholder label={title} />
+      ) : artifact.endsWith('.mp4') ? (
+        <video
+          src={artifact}
+          autoPlay={!isMobile}
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          style={{ width: '100%', display: 'block' }}
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={artifact}
+          alt={title}
+          style={{ width: '100%', display: 'block' }}
+          onError={() => setFailed(true)}
+        />
+      )}
+    </div>
   )
 }
 

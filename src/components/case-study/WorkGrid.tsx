@@ -1,12 +1,39 @@
 'use client'
 
-import { useRef } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { CASE_STUDIES, type CaseStudy } from '@/content/case-studies'
 
+/** Sort key from `year` strings like `2019–2022`, `2025–present`, `2026` (en-dash in content). */
+function parseCaseStudyYearRange(year: string): { start: number; end: number } {
+  const raw = year.trim()
+  const parts = raw.split(/\u2013/)
+  if (parts.length === 1) {
+    const n = parseInt(parts[0]!, 10)
+    return { start: n, end: n }
+  }
+  const start = parseInt(parts[0]!, 10)
+  const endPart = parts[1]!
+  if (/present/i.test(endPart)) {
+    return { start, end: 9999 }
+  }
+  const end = parseInt(endPart, 10)
+  return { start, end: Number.isFinite(end) ? end : start }
+}
+
+/** Newest first: by start year, then end year, then slug. */
+function compareCaseStudiesNewestFirst(a: CaseStudy, b: CaseStudy): number {
+  const pa = parseCaseStudyYearRange(a.year)
+  const pb = parseCaseStudyYearRange(b.year)
+  if (pa.start !== pb.start) return pb.start - pa.start
+  if (pa.end !== pb.end) return pb.end - pa.end
+  return a.slug.localeCompare(b.slug)
+}
+
 function GridThumbnail({ cs }: { cs: CaseStudy }) {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const [imageFailed, setImageFailed] = useState(false)
 
   function handleEnter() {
     const video = videoRef.current
@@ -34,7 +61,7 @@ function GridThumbnail({ cs }: { cs: CaseStudy }) {
         position: 'relative',
       }}
     >
-      {cs.heroAsset ? (
+      {cs.heroAsset && !imageFailed ? (
         cs.heroAsset.endsWith('.mp4') ? (
           <video
             ref={videoRef}
@@ -46,6 +73,7 @@ function GridThumbnail({ cs }: { cs: CaseStudy }) {
             onLoadedMetadata={e => {
               ;(e.currentTarget as HTMLVideoElement).currentTime = 0
             }}
+            onError={() => setImageFailed(true)}
             style={{
               width: '100%',
               height: '100%',
@@ -58,6 +86,7 @@ function GridThumbnail({ cs }: { cs: CaseStudy }) {
           <img
             src={cs.heroAsset}
             alt={cs.name}
+            onError={() => setImageFailed(true)}
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           />
         )
@@ -96,6 +125,11 @@ export default function WorkGrid() {
   const router = useRouter()
   const isMobile = useIsMobile()
 
+  const caseStudiesNewestFirst = useMemo(
+    () => [...CASE_STUDIES].sort(compareCaseStudiesNewestFirst),
+    []
+  )
+
   return (
     <main style={{ minHeight: '100vh', fontFamily: 'var(--font-mono, monospace)', overflowX: 'hidden' }}>
 
@@ -125,7 +159,7 @@ export default function WorkGrid() {
             letterSpacing: '-0.02em',
             color: 'rgba(255,255,255,0.9)',
           }}>
-            15 years of building AI-native products
+            Designed it. Built it. Shipped it.
           </h1>
           <p style={{
             fontSize: 13,
@@ -133,7 +167,7 @@ export default function WorkGrid() {
             color: 'rgba(255,255,255,0.4)',
             margin: 0,
           }}>
-            {CASE_STUDIES.length} projects — design, engineering, and everything between
+            {caseStudiesNewestFirst.length} projects — design, engineering, and everything between
           </p>
         </div>
 
@@ -147,7 +181,7 @@ export default function WorkGrid() {
             gap: 16,
           }}
         >
-          {CASE_STUDIES.map(cs => (
+          {caseStudiesNewestFirst.map(cs => (
             <div
               key={cs.id}
               role="button"
