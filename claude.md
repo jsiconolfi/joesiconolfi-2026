@@ -432,16 +432,16 @@ interface Tab {
 - Render TabBar on non-`/work/*` routes
 - Add tabs for the `/work` index page (only `/work/[slug]` routes create tabs)
 
-### Work (case studies) — updated Session 40
+### Work (case studies) — updated Session 40, **Session 103**
 
-Case study pages are now live at `/work/[slug]` for all 10 projects. **Canonical copy** for taglines, roles, hooks, hard parts, decisions, and outcomes lives in **`src/content/case-studies.ts`** (updated with the latest case study rewrite). **`src/app/api/chat/route.ts`** `SYSTEM_PROMPT` "My projects" blurbs and **`CARD_META` descriptions** should stay aligned with that file when case study positioning changes. **Channel AI** is framed as **consumer UX for open-source frontier models** (iOS, exploration, switching, streaming states, transparency), not legacy "AI writing tools." **waypoint-sync** case study year is **2026**; copy covers **design-map.json** as contract, **two-tier** primitives vs semantics, and **AI-operated sync / parity scoring**. **Wafer Systems** case study year is **2025–present**. **Mushroom** tagline emphasizes **pre-playbook** voice and conversational LLM work.
+Case study pages are now live at `/work/[slug]` for **12** entries in **`CASE_STUDIES`** (orbital **`projects.ts`** remains 10 projects; **`channel-nexus`** and **`channel-prism`** are additional Channel AI case studies without separate orbital cards). **Canonical copy** for taglines, roles, hooks, hard parts, decisions, and outcomes lives in **`src/content/case-studies.ts`** (updated with the latest case study rewrite). **`src/app/api/chat/route.ts`** `SYSTEM_PROMPT` "My projects" blurbs and **`CARD_META` descriptions** should stay aligned with that file when case study positioning changes. **Channel AI** is framed as **consumer UX for open-source frontier models** (iOS, exploration, switching, streaming states, transparency), not legacy "AI writing tools." **Session 103:** **`channel-nexus`** (multi-model comparison / Nexus) and **`channel-prism`** (image generation / Prism) sit **after `channel`** in the next-case-study chain; both reuse **`heroAsset: '/projects/channelai.mp4'`** (same as the main **Channel AI** case study) for grid/hero thumbnails. Decision **`artifact`** PNG paths under **`/projects/channel-nexus/`** and **`/projects/channel-prism/`** may ship before assets exist — **`CaseStudyView`** and **`WorkGrid`** **`GridThumbnail`** use **`onError`** fallbacks so missing files do not break layout. **waypoint-sync** case study year is **2026**; copy covers **design-map.json** as contract, **two-tier** primitives vs semantics, and **AI-operated sync / parity scoring**. **Wafer Systems** case study year is **2025–present**. **Mushroom** tagline emphasizes **pre-playbook** voice and conversational LLM work.
 
 **Files (Session 34, updated Session 40):**
-- `src/content/case-studies.ts` — `CaseStudy` interface + `CASE_STUDIES` array (10 entries) + `getCaseStudy(slug)` + `getAllSlugs()` helpers
+- `src/content/case-studies.ts` — `CaseStudy` interface + `CASE_STUDIES` array (**12 entries**, Session 103) + `getCaseStudy(slug)` + `getAllSlugs()` helpers
 - `src/app/work/page.tsx` — `/work` index page, renders `<WorkGrid />` (Session 40)
-- `src/components/case-study/WorkGrid.tsx` — `'use client'` grid of all 10 case studies. **Session 71:** Sticky **`case-studies.exe`** header uses **colored** traffic lights — red `<button type="button">` → `router.push('/')`, hover `×`; yellow/green hover `−` / `+` only; inner glyph spans use **`pointerEvents: 'none'`**. **Per-card** chrome: **gray** dots only (informational cards). **`useIsMobile()`** — content padding `isMobile ? '100px 20px 80px' : '100px 48px 120px'`; grid `1fr` on mobile vs `auto-fill minmax(280px,1fr)`; h1 **22px** mobile / **28px** desktop; card chrome row **`minHeight: 44`** mobile; cards **`touchAction: 'manipulation'`**, **`role="button"`**, **`aria-label`**, Enter/Space keyboard. 16/9 thumbnails via `GridThumbnail`: `preload="metadata"`, hover play mp4, leave pause/reset. `<main overflowX: hidden>`.
-- `src/app/work/[slug]/page.tsx` — async dynamic route, `generateStaticParams` for all 10 slugs, calls `notFound()` for unknown slugs. **Next.js 15+:** `params` typed as `Promise<{ slug: string }>`, awaited before use. Page function is `async`.
-- `src/components/case-study/CaseStudyView.tsx` — `'use client'` component rendering the full case study page
+- `src/components/case-study/WorkGrid.tsx` — `'use client'` grid of all case studies in **`CASE_STUDIES`**. **Session 71:** Sticky **`case-studies.exe`** header uses **colored** traffic lights — red `<button type="button">` → `router.push('/')`, hover `×`; yellow/green hover `−` / `+` only; inner glyph spans use **`pointerEvents: 'none'`**. **Per-card** chrome: **gray** dots only (informational cards). **`useIsMobile()`** — content padding `isMobile ? '100px 20px 80px' : '100px 48px 120px'`; grid `1fr` on mobile vs `auto-fill minmax(280px,1fr)`; h1 **22px** mobile / **28px** desktop; card chrome row **`minHeight: 44`** mobile; cards **`touchAction: 'manipulation'`**, **`role="button"`**, **`aria-label`**, Enter/Space keyboard. 16/9 thumbnails via `GridThumbnail`: `preload="metadata"`, hover play mp4, leave pause/reset; **Session 103:** **`onError`** on hero **`<img>`** / **`<video>`** falls back to the same grid placeholder as missing **`heroAsset`**. `<main overflowX: hidden>`.
+- `src/app/work/[slug]/page.tsx` — async dynamic route, `generateStaticParams` for all slugs from **`getAllSlugs()`**, calls `notFound()` for unknown slugs. **Next.js 15+:** `params` typed as `Promise<{ slug: string }>`, awaited before use. Page function is `async`.
+- `src/components/case-study/CaseStudyView.tsx` — `'use client'` component rendering the full case study page; **Session 103:** **`CaseStudyHero`** / **`DecisionArtifact`** + **`CaseStudyMediaPlaceholder`** — **`onError`** on hero and decision **`<img>`** / **`<video>`** for missing or broken assets
 
 **CaseStudy interface:**
 ```ts
@@ -463,7 +463,7 @@ interface CaseStudy {
 ```
 
 **Two types:**
-- `'full'` (6 entries): waypoint, statespace, channel, seudo, wafer, sherpa — includes `hardPart` section
+- `'full'` (8 entries): waypoint, statespace, channel, **channel-nexus**, **channel-prism**, seudo, wafer, sherpa — includes `hardPart` section
 - `'quick'` (4 entries): waypoint-sync, kernel, mushroom, cohere-labs — no `hardPart` section
 
 **CaseStudyView layout (updated Session 39, Session 67, **Session 71** padding):**
@@ -481,14 +481,15 @@ interface CaseStudy {
 - **Desktop:** hero and decision artifact mp4s autoplay muted loop — ambient case-study treatment.
 - **Mobile:** **`autoPlay={false}`** (via `!isMobile`) + **`preload="metadata"`** — avoids jarring autoplay and saves battery; differs from orbital cards (hover/active) and thumbnails (hover only).
 
-**URL wiring (Session 34):**
-- All 10 projects in `projects.ts` now have `url: '/work/[slug]'`
+**URL wiring (Session 34, Session 103):**
+- All 10 projects in `projects.ts` have `url: '/work/[slug]'` (each maps to one primary slug; **`channel-nexus`** / **`channel-prism`** are extra case study routes only)
+- **`CASE_STUDIES`** lists **12** slugs total (**Session 103**)
 - All 4 featured projects in `featured-projects.ts` now have `url: '/work/[slug]'`
 - OrbitalCard click → `router.push()` for internal paths (already implemented in Session 25)
 - CaseStudiesDropdown rows → `router.push()` for internal paths (already implemented in Session 27)
 
-**Next case study chain:**
-waypoint → statespace → channel → seudo → wafer → sherpa → waypoint-sync → kernel → mushroom → cohere-labs → waypoint (loops)
+**Next case study chain (Session 103 — channel-nexus / channel-prism after channel):**
+waypoint → statespace → channel → **channel-nexus** → **channel-prism** → seudo → wafer → sherpa → waypoint-sync → kernel → mushroom → cohere-labs → waypoint (loops)
 
 Card grid. Glance: title + one-line thesis only. Expand: problem, decision, outcome — inline, never navigates away. Immerse: full case study with artifacts, code, process.
 - Key projects: Waypoint design system, Sherpa Figma plugin (RAG-based, Pinecone + Cohere models), waypoint-sync (Figma-to-code token sync, design-map.json, parity tooling), Channel AI (open-source model UX, shipped iOS), Statespace/Aim Lab (training system + Kernel integration).

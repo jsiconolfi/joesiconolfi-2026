@@ -129,6 +129,78 @@ export const CASE_STUDIES: CaseStudy[] = [
     ],
     outcome: 'Channel shipped to production on iOS. The model exploration and switching patterns became the core product interaction model. The work demonstrated what it looks like to design for the open-source AI ecosystem rather than a single hosted model: more complex, more honest, and ultimately more powerful for users who wanted real capability without the developer overhead.',
     heroAsset: '/projects/channelai.mp4',
+    nextSlug: 'channel-nexus',
+  },
+
+  {
+    id: 'channel-nexus',
+    slug: 'channel-nexus',
+    type: 'full',
+    name: 'Channel AI: Nexus',
+    tagline: 'Compare up to four AI models in one conversation',
+    year: '2023–2025',
+    role: 'Design Engineer, Product Design Lead',
+    hook: `Choosing between AI models is hard when you can only talk to one at a time. Nexus was built to solve that: a single interface where you send one prompt and get responses from up to four models simultaneously. Part consumer product, part evaluation tool for companies assessing models against each other. The premise of LLM Arena, but designed as a coherent product rather than a benchmark leaderboard. The question it answered: which model actually gives the best answer for your specific use case?`,
+    hardPart: `Displaying four simultaneous chat conversations without the interface becoming chaotic is harder than it sounds. Each model responds at a different speed, with different formatting tendencies, different response lengths, and different failure modes. A layout that works when all four models respond in two seconds falls apart when one streams for ten seconds and another errors out immediately. The interaction model had to hold together across every combination of response states, and had to make comparison feel natural rather than like reading four documents at once.`,
+    decisions: [
+      {
+        title: 'The comparison layout',
+        body: `Four panels in one viewport could have easily felt like a spreadsheet. The layout was designed to feel like a conversation first and a comparison second. Each model had its own visual lane with a consistent response container, but the prompt input was shared and central. You were talking to four models at once, not running four separate chats.`,
+        artifact: '/projects/channel-nexus/comparison-layout.png',
+      },
+      {
+        title: 'Handling response state divergence',
+        body: `The hardest engineering and design problem was state divergence: one model is still thinking, one has finished streaming, one returned an error, and one gave a two-sentence answer. Each state needed distinct visual language so users could read the status of all four at a glance without hunting for it. Streaming, thinking, complete, and error states were designed to be legible in parallel, not just sequentially.`,
+        artifact: '/projects/channel-nexus/state-divergence.png',
+      },
+      {
+        title: 'Seamless model switching',
+        body: `Beyond side-by-side comparison, users could swap any of the four models mid-conversation. The new model would enter the conversation with the existing context intact. This was both a product feature and a technical challenge: maintaining conversation state across model swaps without the experience feeling like starting over.`,
+      },
+      {
+        title: 'Scalable component architecture',
+        body: `Nexus was built end-to-end in TypeScript, Next.js, and Tailwind with reusability as a first principle. Every panel, input, state indicator, and response container was a composable component built for the flexibility that four simultaneous live data streams require. Complex state logic for auth, content reveals, and modal stacking was handled cleanly so the UI felt light even when a lot was happening underneath.`,
+        artifact: '/projects/channel-nexus/components.png',
+      },
+    ],
+    outcome: `Nexus shipped as both a consumer product and an enterprise model evaluation tool. The multi-model comparison pattern gave companies a practical way to assess open-source models against each other on real prompts, not synthetic benchmarks. The side-by-side format consistently changed how users thought about model selection: once you see four answers to the same question, single-model interfaces feel like a constraint.`,
+    heroAsset: '/projects/channelai.mp4',
+    nextSlug: 'channel-prism',
+  },
+
+  {
+    id: 'channel-prism',
+    slug: 'channel-prism',
+    type: 'full',
+    name: 'Channel AI: Prism',
+    tagline: 'AI image generation that meets you where you are',
+    year: '2023–2025',
+    role: 'Design Engineer, Product Design Lead',
+    hook: `AI image generation is powerful and inaccessible at the same time. The tools that produce the best results require prompt engineering expertise most people don't have and don't want to develop. Prism was built around a different premise: describe what you want in plain language, and let the system handle model selection and prompt crafting automatically. Think Sora from OpenAI, but designed for consumers rather than researchers. The goal was to put the full capability of the open-source image generation ecosystem in front of someone who has never heard of Stable Diffusion.`,
+    hardPart: `Automatic model selection created a context-switching problem that was fundamentally a design challenge. When a user types "a moody portrait of a city at night" and the system selects a model and crafts a prompt on their behalf, the user needs to trust that selection and understand what happened. If the output doesn't match their expectation, they need a clear path to adjust it without learning the underlying model infrastructure. The interaction pattern after the prompt was submitted had to match what the user expected, not what the system actually did internally. Getting that handoff right was the hardest problem on the product.`,
+    decisions: [
+      {
+        title: 'Automatic model selection via internal scoring',
+        body: `Rather than asking users to choose a model, Prism used an internal scoring tool to evaluate the prompt against the available models and select the best fit automatically. The scoring logic weighed prompt type, stylistic signals, and model strengths. Users never saw the selection happen. They described what they wanted and got a result. The complexity was completely abstracted, but the output quality reflected real model intelligence rather than a random assignment.`,
+        artifact: '/projects/channel-prism/model-selection.png',
+      },
+      {
+        title: 'The post-prompt interaction model',
+        body: `The moment after a user submits a prompt is where most image generation tools fail. A spinner, then an image. If it's wrong, start over. Prism was designed with a richer post-prompt experience: real-time loading states with visual feedback on generation progress, smooth image reveal animations that gave the result a sense of arrival, and immediately available remix and refinement options that let users stay in the creative flow rather than restart it.`,
+        artifact: '/projects/channel-prism/post-prompt.png',
+      },
+      {
+        title: 'Searchable gallery with remix',
+        body: `The generated image gallery was not a passive history log. It was a discovery surface. Users could search across the entire gallery of AI-generated images, find work that was close to what they wanted, and remix it directly. This turned the gallery into a creative starting point rather than an archive. The search interface was designed for speed: a dynamic input bar that surfaced results as you typed, with a responsive grid optimized for visual browsing.`,
+        artifact: '/projects/channel-prism/gallery.png',
+      },
+      {
+        title: 'Component system and performance',
+        body: `Prism was built in TypeScript, Next.js, and Tailwind with a fully reusable component system covering search, gallery display, generation states, and content interaction patterns. Mobile-first architecture was not an afterthought: the entire experience was designed for touch from the start, with accessible input patterns and a visual hierarchy that worked at every screen size.`,
+      },
+    ],
+    outcome: `Prism shipped as a consumer image generation product. The automatic model selection removed the biggest barrier to entry for non-technical users without limiting what experienced users could do. The gallery and remix system turned generated content into a creative resource rather than a one-time output. The post-prompt interaction patterns became a reference point for how the team approached AI output states across the rest of the Channel product suite.`,
+    heroAsset: '/projects/channelai.mp4',
     nextSlug: 'seudo',
   },
 

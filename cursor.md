@@ -539,9 +539,9 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 - 4 entries: Waypoint (`waypoint.mp4`), Wafer (`wafer.mp4`), Channel AI (`channelai.mp4`), Seudo AI (`seudo.mp4`)
 - All 4 now have `url` set to `/work/[slug]` — routes are live as of Session 34
 
-## Work index page (Session 40)
+## Work index page (Session 40, **Session 103**)
 
-`/work` renders a grid of all 10 case studies.
+`/work` renders a grid of all entries in **`CASE_STUDIES`** (**12** as of Session 103, including **`channel-nexus`** and **`channel-prism`**).
 
 **Files:**
 - `src/app/work/page.tsx` — thin route, renders `<WorkGrid />`
@@ -551,7 +551,7 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 - **Sticky terminal chrome header:** `position: sticky, top: 0, zIndex: 40`, `rgba(10,12,16,0.98)` + `blur(12px)`, `padding: 10px 20px`. **Session 71:** **colored** traffic lights on sticky bar (red → home); **per-card** rows stay **gray** dots. Window title: `case-studies.exe`.
 - **`useIsMobile()`** — content padding `isMobile ? '100px 20px 80px' : '100px 48px 120px'`; grid `1fr` mobile / `repeat(auto-fill, minmax(280px, 1fr))` desktop; h1 **22** mobile / **28** desktop; card chrome row **`minHeight: 44`** mobile; cards **`touchAction: 'manipulation'`**, **`role="button"`**, **`aria-label`**, keyboard Enter/Space; `<main overflowX: hidden>`.
 - **Grid card chrome:** three 8px dots, all `rgba(255,255,255,0.15)` — decorative only (not closeable windows); do not use colored traffic lights on card rows.
-- **`GridThumbnail` helper** (in `WorkGrid.tsx`): wraps the 16/9 area with `onMouseEnter` / `onMouseLeave`. Mp4: `videoRef`, `preload="metadata"`, `muted` + `playsInline` + `loop`, `onLoadedMetadata` seeks to 0; hover calls `play().catch(() => {})`, leave pauses and resets `currentTime` to 0. Static images: raw `<img>` with `eslint-disable-next-line @next/next/no-img-element`. Placeholder grid when no `heroAsset`.
+- **`GridThumbnail` helper** (in `WorkGrid.tsx`): wraps the 16/9 area with `onMouseEnter` / `onMouseLeave`. Mp4: `videoRef`, `preload="metadata"`, `muted` + `playsInline` + `loop`, `onLoadedMetadata` seeks to 0, **`onError`** → fallback to placeholder; hover calls `play().catch(() => {})`, leave pauses and resets `currentTime` to 0. Static images: raw `<img>` with `eslint-disable-next-line @next/next/no-img-element`, **`onError`** → placeholder. Placeholder grid when no `heroAsset` or failed load (**Session 103**).
 - `gap: 16`
 - No `textTransform: uppercase` on the "case study" label at the bottom of each card
 - PageTransitionWrapper treats `/work` as a content page: dark bg `rgba(14,16,21,0.97)`, z-20, scrollable, `top: 0` (no tab bar offset — tab bar only renders on `/work/*`)
@@ -561,35 +561,35 @@ Homepage is a fixed overlay composition — no scrollable hero section.
 - `isContentPage`, `isCaseStudy`, `isWorkIndex`, `isAbout` all removed. Single `isDeepPage` helper covers all: `/work`, `/work/*`, `/about`, `/timeline`, `/lab`.
 - `top: TAB_BAR_HEIGHT` offset on case study pages removed from wrapper — `top: 0` for all pages now.
 
-## Case study pages (Session 34)
+## Case study pages (Session 34, **Session 103**)
 
-Dynamic pages at `/work/[slug]` for all 10 projects.
+Dynamic pages at `/work/[slug]` for every slug in **`getAllSlugs()`** (**12** entries as of Session 103).
 
-**Canonical copy:** All long-form case study text (tagline, role, hook, hard part, decisions, outcome) lives in **`src/content/case-studies.ts`**. When you change positioning there, also align **`src/app/api/chat/route.ts`** (`SYSTEM_PROMPT` "My projects" + **`CARD_META` descriptions**), **`src/content/projects.ts`** (orbital one-line `role` where it reflects the same story), and **`src/content/featured-projects.ts`** (dropdown descriptions for featured entries). Recent positioning notes: **Channel AI** = consumer UX for open-source models (iOS); **waypoint-sync** case study year **2026** and two-tier token + parity narrative; **Wafer** **2025–present**; **Mushroom** pre-playbook voice LLM work.
+**Canonical copy:** All long-form case study text (tagline, role, hook, hard part, decisions, outcome) lives in **`src/content/case-studies.ts`**. When you change positioning there, also align **`src/app/api/chat/route.ts`** (`SYSTEM_PROMPT` "My projects" + **`CARD_META` descriptions**), **`src/content/projects.ts`** (orbital one-line `role` where it reflects the same story), and **`src/content/featured-projects.ts`** (dropdown descriptions for featured entries). Recent positioning notes: **Channel AI** = consumer UX for open-source models (iOS); **Session 103:** **`channel-nexus`** (Nexus, multi-model comparison) and **`channel-prism`** (Prism, image generation) — **after `channel`** in the next chain; both use **`heroAsset: '/projects/channelai.mp4'`** like the main Channel AI study for work-grid / hero thumbnails; **waypoint-sync** case study year **2026** and two-tier token + parity narrative; **Wafer** **2025–present**; **Mushroom** pre-playbook voice LLM work.
 
 **Files:**
-- `src/content/case-studies.ts` — `CaseStudy` interface, `CASE_STUDIES` array (10 entries), `getCaseStudy(slug)`, `getAllSlugs()`
-- `src/app/work/[slug]/page.tsx` — async server component, `generateStaticParams` for 10 slugs, `notFound()` for unknowns. **Next.js 15+:** `params` is typed as `Promise<{ slug: string }>` and must be `await`ed before use.
-- `src/components/case-study/CaseStudyView.tsx` — `'use client'` view component
+- `src/content/case-studies.ts` — `CaseStudy` interface, `CASE_STUDIES` array (**12 entries**, Session 103), `getCaseStudy(slug)`, `getAllSlugs()`
+- `src/app/work/[slug]/page.tsx` — async server component, `generateStaticParams` from **`getAllSlugs()`**, `notFound()` for unknowns. **Next.js 15+:** `params` is typed as `Promise<{ slug: string }>` and must be `await`ed before use.
+- `src/components/case-study/CaseStudyView.tsx` — `'use client'` view component; **Session 103:** **`CaseStudyHero`**, **`DecisionArtifact`**, **`CaseStudyMediaPlaceholder`** — missing/broken hero or decision **`img`/`video`** → grid placeholder (**`onError`**)
 
 **`CaseStudyType`**: `'full'` | `'quick'` — controls whether `hardPart` section renders
 
 **`CaseStudyDecision`**: `{ title: string, body: string, artifact?: string }` — artifact is image or mp4 path
 
-**Full studies (6)**: waypoint, statespace, channel, seudo, wafer, sherpa — include `hardPart`, section label "key decisions"
+**Full studies (8, Session 103)**: waypoint, statespace, channel, **channel-nexus**, **channel-prism**, seudo, wafer, sherpa — include `hardPart`, section label "key decisions"
 
 **Quick takes (4)**: waypoint-sync, kernel, mushroom, cohere-labs — no `hardPart`, section label "what I did"
 
-**CaseStudyView rules (Session 34, Session 67 mobile, **Session 71**):**
+**CaseStudyView rules (Session 34, Session 67 mobile, **Session 71**, **Session 103**):**
 - Sticky page chrome **removed** (Session 39) — tab bar + nav only; **`TabBar`** carries colored tab metaphor on **`/work/*`**.
 - Role line: `fontSize: 12`, `color: rgba(0,255,159,0.85)`, `fontWeight: 300` — NO `textTransform: uppercase`, NO `letterSpacing`. Sentence case.
 - **`useIsMobile()`** — content: `maxWidth: isMobile ? '100%' : 720`, `padding: isMobile ? '20px 20px 80px' : '120px 24px 120px'`, `width: '100%'`, `boxSizing`. `<main overflowX: hidden>`.
-- Hero + decision **mp4:** `autoPlay={!isMobile}`, `preload="metadata"`, `muted`, `loop`, `playsInline` — **desktop** ambient autoplay; **mobile** no autoplay (Session 67).
+- Hero + decision **mp4:** `autoPlay={!isMobile}`, `preload="metadata"`, `muted`, `loop`, `playsInline` — **desktop** ambient autoplay; **mobile** no autoplay (Session 67). **Session 103:** **`onError`** on media → placeholder.
 - Next CTA: `type="button"`, full width + centered on mobile, `minHeight: 44` mobile, `touchAction: 'manipulation'`. Body copy via `bodyStyle` includes `wordBreak: 'break-word'`.
 - All styling: inline styles only — scrollable document page
 - `eslint-disable-next-line @next/next/no-img-element` on raw `<img>` elements (same exception as OrbitalCard)
 
-**Next case study chain (loops):** waypoint → statespace → channel → seudo → wafer → sherpa → waypoint-sync → kernel → mushroom → cohere-labs → waypoint
+**Next case study chain (loops, Session 103):** waypoint → statespace → channel → **channel-nexus** → **channel-prism** → seudo → wafer → sherpa → waypoint-sync → kernel → mushroom → cohere-labs → waypoint
 
 ## About page (Session 44, bio Session 84, sports widgets Session 82, layout Session 83, last result Session 88, compact last result Session 89, mobile header Session 98)
 
