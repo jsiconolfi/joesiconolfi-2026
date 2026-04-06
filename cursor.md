@@ -173,12 +173,12 @@ Two RAF-loop dot grid components live in `src/components/ui/`:
 - `rafRef` typed as `useRef<number | undefined>(undefined)` — cleanup on unmount
 - `prefers-reduced-motion`: static snapshot state, no animation
 
-## AI / chat panel (Session 7 — updated Session 11, Session 66, Session 68, Session 69, Session 70, **Session 72**, **Session 74**, **Session 75**, **Session 76**, **Session 77**, **Session 78**, **Session 79**, **Session 80**, **Session 85**, **Session 86**, **Session 87**)
+## AI / chat panel (Session 7 — updated Session 11, Session 66, Session 68, Session 69, Session 70, **Session 72**, **Session 74**, **Session 75**, **Session 76**, **Session 77**, **Session 78**, **Session 79**, **Session 80**, **Session 85**, **Session 86**, **Session 87**, **Session 106**)
 
 The prompt bar has been replaced by a full `ChatPanel` component — the primary interface of the homepage. Rules:
 - `src/components/ui/ChatPanel.tsx` — `variant?: 'embedded' | 'overlay'` (default **`embedded`**). Homepage uses embedded; **`ChatOverlay`** passes **`variant="overlay"`**.
 - **Chrome (Session 69, **Session 79**, **Session 81**):** **Embedded** — first two **gray** dots `rgba(255,255,255,0.15)` `10px` (non-interactive); **third gray dot** is a `<button type="button">` — **`useChatMessages().resetConversation()`** (or **`useChatContext()`**), `title` / `aria-label` "New conversation"; **`id="chat-panel"`** on root. **Overlay** — red closes via **`useChatUI().close()`**; **green** — **`resetConversation()`**; **red / yellow / green** hover glyphs (**`×` `−` `+`**) all **`pointerEvents: 'none'`** on inner **`<span>`**s (**Session 81**); **no** `id` on root.
-- **Session 79 — `ChatContext.tsx`:** Exports **`Message`**, **`ChatCard`**, **`INITIAL_MESSAGE`**, **`cloneGreetingMessage()`**. **`ChatProvider`** state: **`messages`**, **`setMessages`**, **`isLoading`**, **`setIsLoading`**, **`streamingGreetingContent`**, plus existing **`isOpen` / `open` / `close` / `toggle`**. **`ChatPanel`** must not keep **`messages`** or **`isLoading`** in component state. Greeting sequence (thinking → stream → commit) runs **once** inside **`ChatProvider`** when **`messages.length === 0`** so embedded + overlay never double-schedule timers. **`resetConversation()`** replaces thread with **`cloneGreetingMessage()`** and clears the greeting stream buffer. No **localStorage** — refresh resets the thread.
+- **Session 79 — `ChatContext.tsx`:** Exports **`Message`**, **`ChatCard`**, **`INITIAL_MESSAGE`**, **`STREAM_SPEED`** (greeting stream only), **`cloneGreetingMessage()`**. **`ChatProvider`** state: **`messages`**, **`setMessages`**, **`isLoading`**, **`setIsLoading`**, **`streamingGreetingContent`**, plus existing **`isOpen` / `open` / `close` / `toggle`**. **`ChatPanel`** must not keep **`messages`** or **`isLoading`** in component state. Greeting sequence (thinking → stream → commit) runs **once** inside **`ChatProvider`** when **`messages.length === 0`** so embedded + overlay never double-schedule timers. **`resetConversation()`** replaces thread with **`cloneGreetingMessage()`** and clears the greeting stream buffer. No **localStorage** — refresh resets the thread.
 - **Session 87 — Context split:** **`ChatUIContext`** / **`useChatUI()`** — **`isOpen`**, **`open`**, **`close`**, **`toggle`**, **`isLimitReached`**, **`messageCount`**, **`incrementMessageCount`**. **`ChatMessagesContext`** / **`useChatMessages()`** — **`messages`**, **`setMessages`**, **`isLoading`**, **`setIsLoading`**, **`streamingGreetingContent`**, **`resetConversation`**. **`Nav`** and **`ChatOverlay`** use **`useChatUI()`** so streaming does not re-render the full tree. **`useChatContext()`** / **`useChat()`** merge both APIs.
 - **Session 80 — Session message cap (`ChatContext.tsx` + `ChatPanel.tsx`):** **`messageCount`** + **`incrementMessageCount()`** + **`isLimitReached`**; **`MESSAGE_LIMIT` = 30** user sends per browser session (chips and typed sends both increment). **Not** cleared by **`resetConversation()`** — only a full page refresh resets the count. When **`isLimitReached`**, **`handleSend`** returns early; the **entire** chips + input footer is replaced by a short mono note to refresh (no disabled input left visible). **`429`** from **`POST /api/chat`**: streaming assistant row is filled with a human-readable cooldown message (**not** a separate error UI); **`finally`** still clears **`isResponseLoading`**.
 - Panel dimensions (**Session 75**): desktop **`width`** = **`desktopNavWidthPx`** from **`NavWidthContext`** (nav pill measured in **`NavWrapper`** via **`ResizeObserver`** on the shrink-wrap div — **Session 91:** observer skips updates while **`document.documentElement.dataset.transitioning`** is set; fallback **`DEFAULT_DESKTOP_NAV_WIDTH_PX` = 560** in `NavWidthContext.tsx`). `maxWidth: 100%`. `height: 75vh`, `maxHeight: 80vh`; mobile `width: calc(100vw - 32px)`, **`height` and `maxHeight: calc(100dvh - 140px)`** — **`dvh` not `vh`** on mobile (Session 68). Outer panel `display: flex; flexDirection: column; minHeight: 0` so the messages region scrolls.
@@ -217,10 +217,11 @@ State shape:
 - **Client payload:** Exclude `id === 'greeting'` and assistant rows with empty `content` so the **first message is always `user`** (Anthropic API rule).
 - **Model / limits:** `claude-sonnet-4-20250514`, **`max_tokens: 250`** (**Session 86**; 150 was too tight for cards JSON) — **do not exceed** without explicit instruction; brevity still enforced by **`RULES`**, not by starving the output budget. **`SYSTEM_PROMPT`** must start with the **`RULES`** block (length + no **`—`**), then persona and reference content; **`How to answer`** reinforces the em-dash rule in prose.
 - **Stream shape:** Anthropic SSE body is piped through a **`TransformStream`** that buffers incomplete lines, forwards **`content_block_delta` / `text_delta`** immediately as NDJSON `{ type: 'text', text }` per token. Cards: on **`message_stop`** and again in **`flush`** via **`trySendCards`** (deduped with `cardsSent`) so trailing `{"cards":[...]}` still emits after the stream. Response headers **`Cache-Control: no-cache, no-transform`** and **`X-Accel-Buffering: no`** (**Session 77**) reduce proxy buffering (e.g. Vercel/Nginx).
-- **Client (`ChatPanel`):** For each parsed NDJSON line in the read loop, **`setMessages`** updates the streaming assistant row immediately (**Session 77** — no debounce). **`{ type: 'cards' }`** lines update **only** the current assistant row’s **`cards`** in state (**Session 78**); stream end sets **`isStreaming: false`** without replacing **`cards`**. No global cards state; new assistants start with **`cards: undefined`**. Strips displayed card JSON via `CARDS_STRIP_REGEX`; failures → `Something went wrong. Try again.` (**Session 78:** error row sets **`cards: undefined`**). **Session 80:** if **`response.status === 429`**, set the current assistant bubble text to the hourly cooldown copy and **`isStreaming: false`** before returning (no NDJSON read).
+- **Client (`ChatPanel`) — Session 106:** NDJSON text deltas are still read line-by-line as they arrive, but **`setMessages`** does **not** update the assistant row once per network chunk. Each **`parsed.text`** string is split into characters and pushed onto **`charQueueRef`**; **`setInterval`** (`API_STREAM_DRAIN_MS` **16** ms, ~60fps) drains up to **`API_STREAM_CHARS_PER_TICK`** (**8** characters per tick; tune **6** / **8** / **12** if the queue lags or feels too fast) so the queue stays shallow vs token delivery while output still advances in small visible steps. **Concatenate** into **`content`** only (**no** **`CARDS_STRIP_REGEX`** / **`trim()`** per tick). **`CARDS_STRIP_REGEX`** + **`trim()`** run in **`flushQueue`** and again at stream completion (**`fullText`** finalization) when **`isStreaming`** flips false. **`startDraining(assistantMessage.id)`** is idempotent (one interval). **`handleSend`** begins with **`stopDraining()`** + empty queue (new send while a reply is draining); **stream end:** **`stopDraining()`**, **`flushQueue`** (apply any remaining chars), then **`isStreaming: false`**. Unmount cleanup clears the interval. **`{ type: 'cards' }`** lines update **only** the current assistant row’s **`cards`** in state (**Session 78**); stream end sets **`isStreaming: false`** without replacing **`cards`**. No global cards state; new assistants start with **`cards: undefined`**. Strips displayed card JSON via `CARDS_STRIP_REGEX` at flush/completion; failures → `Something went wrong. Try again.` (**Session 78:** error row sets **`cards: undefined`**). **Session 80:** if **`response.status === 429`**, set the current assistant bubble text to the hourly cooldown copy and **`isStreaming: false`** before returning (no NDJSON read).
 - **Input gating:** Send, chips, and `handleSend` no-op while `messages.length === 0` so the three-phase greeting is not interrupted and the first API turn always includes thread context after `INITIAL_MESSAGE` exists.
 - **Session 75 — System prompt:** First person throughout. Opening: "You are Joe Siconolfi... Speak in first person as Joe". Sections **Who I am**, **My approach**, **My philosophy**, **My technical approach and hands-on model work**, **My career**, **My projects**, **My beliefs**; **How to answer** ends with first-person instructions. Card rules in prompt use **your** for background / thinking / work.
 - **Session 96 / Session 97 — Card keys (`route.ts`):** **`SYSTEM_PROMPT`** includes a **`CRITICAL CARD RULE`** block immediately **before** "Surfacing contextual cards" (waypoint vs waypoint-sync disambiguation). Surfacing bullets: design system / components / Sherpa → **`waypoint`** + **`sherpa`**; token sync / Figma-to-code / waypoint-sync / token pipelines → **`waypoint-sync` only**, never **`waypoint`**. **`CARD_META`** includes **`waypoint-sync`** with **`href: '/work/waypoint-sync'`**. Parsed trailing **`{"cards":[...]}`** is validated with **exact** key membership: **`.filter((c) => c in CARD_META)`** (not substring match).
+- **Session 105 — `SYSTEM_PROMPT` "My projects" + Channel cards (`route.ts`):** **My projects** block is long-form reference copy (Waypoint through Cohere Labs), aligned with **`src/content/case-studies.ts`** positioning: expanded Statespace training-system vs tool framing, Channel AI consumer open-source + iOS angle, **Channel AI: Nexus** (multi-model comparison, parallel state divergence), **Channel AI: Prism** (consumer image generation, post-prompt context), Seudo/Mushroom/Wafer/waypoint-sync/Cohere Labs detail. **Available card keys** case-study list includes **`"channel-nexus"`** and **`"channel-prism"`** (order: after **`channel`**). Surfacing rules: Nexus / multi-model comparison / side-by-side models → **`channel-nexus`**; Prism / consumer image tools → **`channel-prism`**; general Channel AI → **`channel`**, **`channel-nexus`**, **`channel-prism`** (still max 3 cards per reply). **`CARD_META`** adds **`channel-nexus`** → `/work/channel-nexus`, **`channel-prism`** → `/work/channel-prism` (labels/descriptions match case study names/taglines). **`RULES`**, persona, philosophy, career, education, beliefs, **How to answer**, and **`CRITICAL CARD RULE`** text stay unchanged unless a future session revises them.
 - **Session 74 — Contextual card hover (`ChatPanel.tsx`):** Border and background stay fixed; only `.card-title` and `.card-arrow` colors change via `onMouseEnter` / `onMouseLeave` (`querySelector`), aligned with **Chat with me** (text highlight, not surface highlight).
 - **Session 76 — Contextual cards:** Not `<a href>`. **`useRouter` from `next/navigation`**: internal paths → **`router.push(card.href)`** (preserves **`PageTransitionWrapper` / AnimatePresence**); **`mailto:`** or href ending **`.pdf`** → **`window.open(href, '_blank')`**. **`role="button"`**, **`tabIndex={0}`**, **`Enter`** on `onKeyDown`. Compact single-line rows (label + arrow only); no description in UI; padding `8px 12px`; stack `gap: 6`, `marginTop: 10`; title rest `rgba(255,255,255,0.7)` fontWeight 300.
 
@@ -645,26 +646,29 @@ Live at `/about`. Scrollable content page, same visual system as case study page
 
 **`<video>` rule exception note:** `AboutView.tsx` has no video elements. The "no autoPlay" rule does not apply here (no video at all).
 
-## The Lab page — Session 60, updated Session 61–63
+## The Lab page — Session 60, updated Session 61–63, **Session 107**
 
 Live at `/lab`. Open notebook with beliefs, open questions, experiments, and a chronological feed.
 
 **Files:**
-- `src/content/lab-experiments.ts` — 3 experiments (expanded write-ups, Session 61)
-- `src/content/lab-feed.ts` — 14 entries (5 new prepended in Session 61)
+- `src/content/lab-experiments.ts` — **`ExperimentStatus`**, **`ExperimentStep`** (`label`, `done`), **`LabExperiment`** (optional **`steps?: ExperimentStep[]`**), **`LAB_EXPERIMENTS`** — **6** experiments (**Session 107** full rewrite: waypoint-sync MCP, Swirl / model drift, beyond chat, interrupt model, model-in-the-loop, voice cognitive rhythm). **No em dashes** in lab content strings.
+- `src/content/lab-feed.ts` — **`FeedEntry`** + **`LAB_FEED`** — **11** entries (**Session 107** full rewrite; mini-swe-agent and older feed-only entries removed).
 - `src/app/lab/page.tsx` — thin route
 - `src/components/lab/LabView.tsx` — `'use client'` component
+
+**Experiment progress UI (Session 107):**
+- When **`exp.steps`** is defined and non-empty: after description paragraphs, **before** **`exp.notes`**: horizontal progress bar (track `rgba(255,255,255,0.06)`, fill **`rgba(0,255,159,0.5)`**, width = done/total), step rows with **`✓`** / **`○`**, completed steps strikethrough + brighter label color, footer line **`N / M steps complete`**. Tags stay below notes.
 
 **Page order:**
 1. Terminal chrome (`lab.exe`)
 2. Header (eyebrow + h1 + subtitle + tagline)
-3. "Currently thinking about" (4 questions, green arrow prefix)
+3. "Currently thinking about" (6 questions, green arrow prefix)
 4. Divider
 5. "Things I hold true" (7 beliefs, two-column grid)
 6. Divider
-7. "Experiments" (3 terminal window cards, gray dots)
+7. "Experiments" (6 terminal window cards, gray dots)
 8. Divider
-9. "Feed" label + tag search + active pills + filtered entries (14 entries in data, newest first; client-side only)
+9. "Feed" label + tag search + active pills + filtered entries (11 entries in data; client-side only)
 
 **Feed tag filter (Session 63):**
 - `activeTags` + `filterQuery`. Search input suggests matching tags (case-insensitive substring); max 6 rows in dropdown; click adds tag and clears input.
@@ -673,7 +677,7 @@ Live at `/lab`. Open notebook with beliefs, open questions, experiments, and a c
 - No URL params / no persistence.
 
 **Layout:**
-- Content padding: `120px 48px 160px`. Max-width 760px.
+- Content padding: mobile `140px 20px 80px` / desktop `160px 48px 160px` in **`LabView`** (see file). Max-width 760px.
 - Beliefs grid: `gridTemplateColumns: '1fr 1fr'`, `gap: 32`. Left col: statement `rgba(255,255,255,0.85)` 13px 400. Right col: note `rgba(255,255,255,0.4)` 12px 300. Row `borderBottom: rgba(255,255,255,0.05)`.
 - Experiment description and feed body: `text.split('\n\n').map((para) => <p>)` — renders multi-paragraph content.
 - All styling: inline styles only.
@@ -689,7 +693,7 @@ Live at `/lab`. Open notebook with beliefs, open questions, experiments, and a c
 - `PageTransitionWrapper.tsx`: `isDeepPage` includes `pathname === '/lab'`
 
 **Do NOT:**
-- Rewrite or edit body copy in either data file
+- Rewrite lab content in **`lab-experiments.ts`** / **`lab-feed.ts`** without an explicit content session (copy is authored; **Session 107** established the current set)
 - Use `next/image` in LabView
 - Add colored traffic light dots to non-interactive cards
 

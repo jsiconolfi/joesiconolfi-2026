@@ -57,7 +57,8 @@ export function cloneGreetingMessage(): Message {
   }
 }
 
-const STREAM_SPEED = 28
+/** ms between greeting characters (API reply drain uses separate constants in `ChatPanel.tsx`). */
+export const STREAM_SPEED = 28
 
 /** User sends per browser session; refresh resets. Not reset by `resetConversation()`. */
 const MESSAGE_LIMIT = 30
