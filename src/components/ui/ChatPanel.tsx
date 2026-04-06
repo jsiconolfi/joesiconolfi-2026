@@ -34,6 +34,10 @@ const CHIPS = [
 
 const CARDS_STRIP_REGEX = /\s*\{"cards":\[.*?\]\}\s*$/
 
+/** NDJSON reply drain — independent of greeting `STREAM_SPEED`. Keep queue shallow vs API delivery; tune interval and batch size if output chunks or feels mechanical. */
+const API_STREAM_DRAIN_MS = 16
+const API_STREAM_CHARS_PER_TICK = 8
+
 interface AssistantAvatarProps {
   thinking?: boolean
 }
@@ -129,6 +133,58 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const sendMessageRef = useRef<(content: string) => void>(() => {})
   const scrollRafRef = useRef(0)
+  const charQueueRef = useRef<string[]>([])
+  const drainIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  function stopDraining() {
+    if (drainIntervalRef.current) {
+      clearInterval(drainIntervalRef.current)
+      drainIntervalRef.current = null
+    }
+  }
+
+  function flushQueue(messageId: string) {
+    if (charQueueRef.current.length === 0) return
+    const remaining = charQueueRef.current.splice(0).join('')
+    setMessages(prev =>
+      prev.map(m =>
+        m.id === messageId
+          ? {
+              ...m,
+              content: (m.content + remaining).replace(CARDS_STRIP_REGEX, '').trim(),
+            }
+          : m
+      )
+    )
+  }
+
+  function startDraining(messageId: string) {
+    if (drainIntervalRef.current) return
+
+    drainIntervalRef.current = setInterval(() => {
+      if (charQueueRef.current.length === 0) return
+
+      const next = charQueueRef.current.splice(0, API_STREAM_CHARS_PER_TICK).join('')
+
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === messageId
+            ? { ...m, content: m.content + next, isStreaming: true }
+            : m
+        )
+      )
+    }, API_STREAM_DRAIN_MS)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (drainIntervalRef.current) {
+        clearInterval(drainIntervalRef.current)
+        drainIntervalRef.current = null
+      }
+      charQueueRef.current = []
+    }
+  }, [])
 
   function scrollToBottom() {
     if (scrollRafRef.current) return
@@ -163,6 +219,9 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
     const trimmed = text.trim()
     if (!trimmed || isResponseLoading || isLoading || messages.length === 0 || isLimitReached)
       return
+
+    stopDraining()
+    charQueueRef.current = []
 
     incrementMessageCount()
 
@@ -210,6 +269,8 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
       })
 
       if (response.status === 429) {
+        stopDraining()
+        charQueueRef.current = []
         setMessages(prev =>
           prev.map(m =>
             m.id === assistantMessage.id
@@ -235,21 +296,6 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
       let buffer = ''
       let fullText = ''
 
-      // RAF-batch streaming text renders — at most 1 React update per display frame.
-      // Tokens arrive faster than 60fps can display; accumulate in a plain ref and
-      // flush via requestAnimationFrame so the render scheduler is not saturated.
-      const msgId = assistantMessage.id
-      let streamRafId = 0
-      let pendingDisplayText = ''
-
-      function flushStreamText() {
-        streamRafId = 0
-        const t = pendingDisplayText
-        setMessages(prev =>
-          prev.map(m => (m.id === msgId ? { ...m, content: t, isStreaming: true } : m))
-        )
-      }
-
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
@@ -269,10 +315,10 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
 
             if (parsed.type === 'text' && typeof parsed.text === 'string') {
               fullText += parsed.text
-              pendingDisplayText = fullText.replace(CARDS_STRIP_REGEX, '').trim()
-              if (!streamRafId) {
-                streamRafId = requestAnimationFrame(flushStreamText)
+              for (const char of parsed.text) {
+                charQueueRef.current.push(char)
               }
+              startDraining(assistantMessage.id)
             }
 
             if (parsed.type === 'cards' && Array.isArray(parsed.cards)) {
@@ -290,8 +336,8 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
         }
       }
 
-      // Cancel any pending RAF flush and commit the final text synchronously
-      if (streamRafId) cancelAnimationFrame(streamRafId)
+      stopDraining()
+      flushQueue(assistantMessage.id)
 
       const displayText = fullText.replace(CARDS_STRIP_REGEX, '').trim()
       // Cards already merged on this message from `cards` NDJSON lines — do not overwrite here
@@ -305,6 +351,8 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
       notifyChatResponseComplete()
     } catch (err) {
       console.error('Chat error:', err)
+      stopDraining()
+      charQueueRef.current = []
       setMessages(prev =>
         prev.map(m =>
           m.id === assistantMessage.id

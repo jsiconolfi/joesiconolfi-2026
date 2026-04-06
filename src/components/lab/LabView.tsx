@@ -228,16 +228,83 @@ export default function LabView() {
                   <h3 style={{ fontSize: 13, fontWeight: 400, color: 'rgba(255,255,255,0.9)', margin: '0 0 12px', wordBreak: 'break-word' }}>
                     {exp.title}
                   </h3>
-                  {exp.description.split('\n\n').map((para, i, arr) => (
+                  {exp.description.split('\n\n').map((para, i, arr) => {
+                    const isLastPara = i === arr.length - 1
+                    const hasSteps = Boolean(exp.steps && exp.steps.length > 0)
+                    const marginBottom = !isLastPara
+                      ? '0 0 12px'
+                      : hasSteps
+                        ? '0 0 12px'
+                        : '0 0 14px'
+                    return (
                     <p key={i} style={{
                       fontSize: 12, fontWeight: 300, lineHeight: 1.75,
                       color: 'rgba(255,255,255,0.55)',
-                      margin: i < arr.length - 1 ? '0 0 12px' : '0 0 14px',
+                      margin: marginBottom,
                       wordBreak: 'break-word',
                     }}>
                       {para}
                     </p>
-                  ))}
+                    )
+                  })}
+                  {/* Progress steps (only shown if experiment has steps) */}
+                  {exp.steps && exp.steps.length > 0 && (
+                    <div style={{ marginBottom: 14 }}>
+                      {/* Progress bar */}
+                      <div style={{
+                        height: 2,
+                        backgroundColor: 'rgba(255,255,255,0.06)',
+                        borderRadius: 1,
+                        marginBottom: 10,
+                        overflow: 'hidden',
+                      }}>
+                        <div style={{
+                          height: '100%',
+                          width: `${(exp.steps.filter(s => s.done).length / exp.steps.length) * 100}%`,
+                          backgroundColor: 'rgba(0,255,159,0.5)',
+                          borderRadius: 1,
+                          transition: 'width 0.3s ease',
+                        }} />
+                      </div>
+
+                      {/* Step list */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                        {exp.steps.map((step, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                            <span style={{
+                              fontSize: 9,
+                              color: step.done ? 'rgba(0,255,159,0.6)' : 'rgba(255,255,255,0.15)',
+                              flexShrink: 0,
+                              fontFamily: 'var(--font-mono)',
+                            }}>
+                              {step.done ? '✓' : '○'}
+                            </span>
+                            <span style={{
+                              fontSize: 11,
+                              fontWeight: 300,
+                              color: step.done ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.2)',
+                              lineHeight: 1.5,
+                              fontFamily: 'var(--font-mono)',
+                              textDecoration: step.done ? 'line-through' : 'none',
+                              textDecorationColor: 'rgba(255,255,255,0.15)',
+                            }}>
+                              {step.label}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Step count */}
+                      <p style={{
+                        fontSize: 9,
+                        color: 'rgba(255,255,255,0.2)',
+                        margin: '8px 0 0',
+                        fontFamily: 'var(--font-mono)',
+                      }}>
+                        {exp.steps.filter(s => s.done).length} / {exp.steps.length} steps complete
+                      </p>
+                    </div>
+                  )}
                   {exp.notes && (
                     <p style={{
                       fontSize: 11, fontWeight: 300, lineHeight: 1.6,

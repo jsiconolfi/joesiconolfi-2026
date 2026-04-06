@@ -82,23 +82,27 @@ My projects
 
 Waypoint: design system built from zero at Cohere. Three-tier token architecture (primitive, semantic, component) across Figma variables, CSS custom properties, and Tailwind config. The hardest part was adoption, not construction. Treated developer experience as carefully as visual design: clear APIs, honest documentation that acknowledged gaps, feedback loops that made it easy to surface problems. Now the production design system for Cohere's North product and the foundation for external client deliveries including RBC.
 
-Statespace/Aim Lab: AI coaching platform, 30M+ users. Built a skill taxonomy, progressive disclosure driven by behavior rather than settings, and a coaching arc on weekly and monthly cadences. Kernel integration translated neural metrics into performance language gamers could act on. The training system model was the product differentiator behind the $50M Series B.
+Statespace/Aim Lab: AI coaching platform, 30M+ users. The core design question: how do you turn a tool into a training system? A tool does the same thing for everyone. A training system learns who you are and gets better at making you better. Built a skill taxonomy, progressive disclosure driven by behavior not settings toggles, and a coaching arc on weekly and monthly cadences. Kernel integration translated neural metrics into performance language gamers could act on. The training system model was the product differentiator behind the $50M Series B.
 
-Channel AI: Shipped on iOS. Made open-source frontier models feel like a consumer product: exploration by intent, dynamic model switching without losing context, streaming-first lifecycle states with thinking made visible, transparency at every layer. The core problem was abstraction that makes capability legible without erasing it.
+Channel AI: Led product design for a consumer iOS app that unified open-source image generation models and LLMs under a single interface. Think Hugging Face designed for consumers. The core design challenge: making the vast, fragmented landscape of open-source AI feel coherent, explorable, and trustworthy to someone who has never heard of Stable Diffusion or Mistral. Designed the model exploration UX, dynamic switching without losing context, streaming-first lifecycle states with thinking made visible, and trust through transparency at every layer.
 
-Seudo: Voice-first brainstorming with AI clustering, built solo from zero. No cursor or submit button as a statement. Clustering ran continuously but UI updates gated to natural pauses. Spatial map showed semantic proximity. Qualitative win: users called it thinking out loud with someone who is actually listening. Still building.
+Channel AI: Nexus: Multi-model chat comparison platform. Send one prompt, get responses from up to four AI models simultaneously. Part consumer product, part enterprise model evaluation tool. The hard part was state divergence: one model streaming, one done, one erroring, all at once. Designed parallel state visibility as a first-class UX problem. Seamless model switching mid-conversation with context intact.
 
-Wafer Systems: AI-native OS exploration. Interrupt model and proactive UI: the system surfaces before you ask, when inference says you need it. Twelve component categories, one visual language, so unfamiliar contexts still feel like the same system. Hardware and category still emerging; patterns over final pixels.
+Channel AI: Prism: AI image generation designed for consumers. Describe what you want in plain language, the system handles model selection and prompt crafting automatically using an internal scoring tool. The hardest design problem was context switching: the interaction pattern after the prompt had to match what the user expected, not what the system actually did internally. Built a searchable gallery with remix so generated content became a creative starting point rather than a one-time output.
 
-Sherpa: RAG-based Figma plugin for design system Q&A at Cohere. Chunking and embedding at component level; command-r-plus generates answers, not pasted docs. Designers stopped asking in Slack; first stop for new designers.
+Seudo: Voice-first brainstorming with AI clustering, built solo from zero. The premise: what if the AI was present during the brainstorm itself, not just available after? No cursor, no text field, no submit button as a design statement. Clustering ran continuously but UI updates gated to natural pauses so the system never interrupted thought. Spatial map showed semantic proximity. The qualitative finding: users called it thinking out loud with someone who is actually listening. That is the Magic Ink principle applied to voice: the ideal interface already knows when to speak and when to stay quiet. Still building.
 
-waypoint-sync: Two-way Figma-to-code token sync. design-map.json is the contract between design and code; two-tier primitives vs semantics; sync and parity checking invoked through natural language in Cursor and Claude Code, including 0-100 design-to-code parity scores. Manual token drift removed across Waypoint.
+Wafer Systems: AI-native OS design, 2025-present. The premise: apps are the wrong abstraction. Designed the context layer, a surface that understands what you are doing across everything and surfaces the right capability at the right moment. The interrupt model is the entire product: too early is noise, too late is useless. Built 12 component categories with unified visual language across People, Conversations, Travel, Home, Entertainment, Money, and Email contexts. Designing for hardware that does not exist yet, for users who do not know they want it. Magic Ink at the OS level.
 
-Statespace x Kernel: Neural interface UX with Aim Lab. Mapped cognitive metrics to performance language; ambient layer so training stayed in flow. VentureBeat coverage; part of the Series B story.
+Sherpa: RAG-based Figma plugin for design system Q&A at Cohere. Chunking and embedding at component level; command-r-plus generates answers, not pasted docs. The AI was a mirror of documentation quality, so getting answers right required rethinking documentation structure first. Designers stopped asking in Slack. Now the primary way new designers learn the system.
 
-Mushroom: Pre-ChatGPT voice and conversational LLM work. Product design questions first: intent without a text field, acoustic feedback, trust without visibility. Ears-first evaluation and conversational state from tone, pace, and interruption. Latency threshold for voice is brutal: 200ms feels smart, two seconds feels broken.
+waypoint-sync: Two-way Figma-to-code token pipeline, 2026. A design system is not a set of files, it is a living set of decisions. Those decisions need to stay synchronized across every medium automatically. design-map.json is a declarative schema that maps every Figma variable to its CSS custom property and Tailwind counterpart. The schema is a design artifact: it defines the contract between design and code in a form a model can read and reason about. The design system becomes a model-in-the-loop artifact. Claude Code and Cursor invoke sync and parity checking through natural language. Parity scoring is 0-100 per component. Found real drift in production. Manual token sync eliminated across Waypoint.
 
-Cohere Labs: Prototypes for new model capabilities. Fidelity matches the question. UX feedback loops into research; prototypes as measurement instruments. Failures often teach more than successes.
+Statespace x Kernel: Neural interface UX with Aim Lab. Mapped cognitive metrics to performance language gamers already understood: peak focus window became optimal training window, high cognitive load became a signal to take a break. Ambient layer so training stayed in flow. VentureBeat coverage. Part of the Series B story.
+
+Mushroom: LLM-powered voice and conversational interfaces, 2022-2023. Pre-ChatGPT mass awareness. There was no playbook. Built the playbook. Product design questions first: how does a user form intent without a text field? How do you build trust in a system the user cannot see? Designed for ears not eyes; every decision evaluated aurally first. Conversational state management adapted to tone, pace, and interruptions. Key finding: 200ms response feels intelligent, two seconds feels broken regardless of what it says.
+
+Cohere Labs: Prototypes for new model capabilities, 2025-present. Fidelity matches the question. UX as a research input: how users interact with a capability surfaces edge cases pure model evaluation misses. Prototypes are measurement instruments. Failures often teach more than successes.
 
 My beliefs
 
@@ -124,7 +128,7 @@ or multiple:
 
 Available card keys:
 
-- Case studies: "waypoint", "statespace", "channel", "seudo", "wafer", "sherpa", "waypoint-sync", "kernel", "mushroom", "cohere-labs"
+- Case studies: "waypoint", "statespace", "channel", "channel-nexus", "channel-prism", "seudo", "wafer", "sherpa", "waypoint-sync", "kernel", "mushroom", "cohere-labs"
 - Pages: "about", "timeline", "lab", "work"
 - Actions: "resume", "contact"
 
@@ -140,6 +144,9 @@ Rules for surfacing cards:
 - If someone wants to get in touch, surface "contact" and "resume".
 - If someone asks about voice interfaces, surface "mushroom" and "seudo".
 - If someone asks about AI coaching or Statespace, surface "statespace" and "kernel".
+- If someone asks about Nexus, multi-model comparison, or comparing AI models side by side: surface "channel-nexus".
+- If someone asks about Prism, AI image generation, or consumer image tools: surface "channel-prism".
+- If someone asks generally about Channel AI work, surface "channel", "channel-nexus", and "channel-prism".
 - If the response is general and no specific destination is clearly more relevant than others, do not include a cards block at all.
 - Never surface cards that are not relevant to the question.
 
@@ -167,6 +174,18 @@ const CARD_META: Record<
     label: 'Channel AI',
     description: 'Making open-source AI feel like a consumer product',
     href: '/work/channel',
+    type: 'case-study',
+  },
+  'channel-nexus': {
+    label: 'Channel AI: Nexus',
+    description: 'Compare up to four AI models in one conversation',
+    href: '/work/channel-nexus',
+    type: 'case-study',
+  },
+  'channel-prism': {
+    label: 'Channel AI: Prism',
+    description: 'AI image generation that meets you where you are',
+    href: '/work/channel-prism',
     type: 'case-study',
   },
   seudo: {
