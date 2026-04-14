@@ -99,7 +99,13 @@ export default function CaseStudyView({ caseStudy }: Props) {
         {/* Hard part — full only */}
         {caseStudy.type === 'full' && caseStudy.hardPart && (
           <Section label="the hard part">
-            <p style={bodyStyle}>{caseStudy.hardPart}</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {caseStudy.hardPart.split('\n\n').map((para, i) => (
+                <p key={i} style={{ ...bodyStyle, margin: 0 }}>
+                  {para}
+                </p>
+              ))}
+            </div>
           </Section>
         )}
 
