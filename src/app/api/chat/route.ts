@@ -270,6 +270,95 @@ const CARD_META: Record<
 
 type ClientMessage = { role: string; content: string }
 
+type ChatErrorCode =
+  | 'rate_limit'
+  | 'config_error'
+  | 'invalid_request'
+  | 'upstream_error'
+  | 'upstream_overloaded'
+  | 'upstream_rate_limit'
+  | 'network_error'
+
+type ChatErrorBody = {
+  error: string
+  code?: ChatErrorCode
+}
+
+function chatError(
+  status: number,
+  error: string,
+  code?: ChatErrorCode,
+  logDetail?: string
+): Response {
+  if (logDetail) {
+    console.error(`[chat] ${code ?? status}:`, logDetail)
+  }
+  return new Response(JSON.stringify({ error, code } satisfies ChatErrorBody), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
+
+async function mapAnthropicFailure(response: Response): Promise<{
+  status: number
+  error: string
+  code: ChatErrorCode
+  logDetail: string
+}> {
+  const raw = await response.text()
+  const logDetail = `[${response.status}] ${raw}`
+
+  try {
+    const parsed = JSON.parse(raw) as {
+      error?: { type?: string; message?: string }
+    }
+    const type = parsed.error?.type ?? 'unknown'
+    const message = parsed.error?.message ?? raw
+    const detail = `${logDetail} (${type}: ${message})`
+
+    switch (type) {
+      case 'overloaded_error':
+        return {
+          status: 503,
+          error: 'Chat is busy right now. Try again in a moment.',
+          code: 'upstream_overloaded',
+          logDetail: detail,
+        }
+      case 'rate_limit_error':
+        return {
+          status: 429,
+          error:
+            "You've sent a lot of messages. Take a break and try again in an hour.",
+          code: 'upstream_rate_limit',
+          logDetail: detail,
+        }
+      case 'authentication_error':
+      case 'permission_error':
+      case 'not_found_error':
+        return {
+          status: 503,
+          error: 'Chat is temporarily unavailable. Try again later.',
+          code: 'config_error',
+          logDetail: detail,
+        }
+      default:
+        return {
+          status: 502,
+          error: 'Something went wrong. Try again.',
+          code: 'upstream_error',
+          logDetail: detail,
+        }
+    }
+  } catch {
+    return {
+      status: 502,
+      error: 'Something went wrong. Try again.',
+      code: 'upstream_error',
+      logDetail,
+    }
+  }
+}
+
 export async function POST(req: NextRequest) {
   const ip =
     req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
@@ -277,30 +366,38 @@ export async function POST(req: NextRequest) {
     'unknown'
 
   if (!checkRateLimit(ip)) {
-    return new Response(
-      JSON.stringify({ error: 'Rate limit exceeded. Try again later.' }),
-      {
-        status: 429,
-        headers: { 'Content-Type': 'application/json' },
-      }
+    return chatError(
+      429,
+      "You've sent a lot of messages. Take a break and try again in an hour.",
+      'rate_limit'
     )
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
-    return new Response('Missing ANTHROPIC_API_KEY', { status: 500 })
+    return chatError(
+      503,
+      'Chat is temporarily unavailable. Try again later.',
+      'config_error',
+      'Missing ANTHROPIC_API_KEY'
+    )
   }
 
   let body: { messages?: ClientMessage[] }
   try {
     body = await req.json()
   } catch {
-    return new Response('Invalid JSON', { status: 400 })
+    return chatError(400, 'Invalid request.', 'invalid_request', 'Invalid JSON body')
   }
 
   const { messages } = body
   if (!Array.isArray(messages)) {
-    return new Response('messages must be an array', { status: 400 })
+    return chatError(
+      400,
+      'Invalid request.',
+      'invalid_request',
+      'messages must be an array'
+    )
   }
 
   const anthropicMessages = messages
@@ -318,27 +415,53 @@ export async function POST(req: NextRequest) {
     }))
 
   if (anthropicMessages.length === 0 || anthropicMessages[0].role !== 'user') {
-    return new Response('First message must be from user', { status: 400 })
+    return chatError(
+      400,
+      'Invalid request.',
+      'invalid_request',
+      'First message must be from user'
+    )
   }
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 250,
-      system: SYSTEM_PROMPT,
-      stream: true,
-      messages: anthropicMessages,
-    }),
-  })
+  let response: Response
+  try {
+    response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 250,
+        system: SYSTEM_PROMPT,
+        stream: true,
+        messages: anthropicMessages,
+      }),
+    })
+  } catch (err) {
+    const logDetail = err instanceof Error ? err.message : String(err)
+    return chatError(
+      503,
+      'Could not reach the chat service. Check your connection and try again.',
+      'network_error',
+      logDetail
+    )
+  }
 
-  if (!response.ok || !response.body) {
-    return new Response('API error', { status: 500 })
+  if (!response.ok) {
+    const mapped = await mapAnthropicFailure(response)
+    return chatError(mapped.status, mapped.error, mapped.code, mapped.logDetail)
+  }
+
+  if (!response.body) {
+    return chatError(
+      502,
+      'Something went wrong. Try again.',
+      'upstream_error',
+      'Anthropic response had no body'
+    )
   }
 
   const encoder = new TextEncoder()

@@ -53,13 +53,26 @@ const BELIEFS = [
   },
 ]
 
-const THINKING = [
-  'What does an interface look like when the model already knows the answer before you ask?',
-  'How do you design a feedback loop that makes the model better without making the user feel like a trainer?',
-  'At what point does a design system become self-modifying, where usage patterns inform what components should exist?',
-  'If voice is the most natural input, why does every AI product still default to text?',
-  'What does the next evolution of the AI interface look like?',
-  'Can the Knicks really win the championship this year?',
+type ThinkingEntry =
+  | { text: string }
+  | {
+      crossedOut: string
+      link: { label: string; href: string }
+    }
+
+const THINKING: ThinkingEntry[] = [
+  { text: 'What does an interface look like when the model already knows the answer before you ask?' },
+  { text: 'How do you design a feedback loop that makes the model better without making the user feel like a trainer?' },
+  { text: 'At what point does a design system become self-modifying, where usage patterns inform what components should exist?' },
+  { text: 'If voice is the most natural input, why does every AI product still default to text?' },
+  { text: 'What does the next evolution of the AI interface look like?' },
+  {
+    crossedOut: 'Can the Knicks really win the championship this year?',
+    link: {
+      label: 'Knicks in 5',
+      href: 'https://www.youtube.com/watch?v=sOQKRjP3ZJk',
+    },
+  },
 ]
 
 export default function LabView() {
@@ -119,7 +132,7 @@ export default function LabView() {
             currently thinking about
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {THINKING.map((question, i) => (
+            {THINKING.map((entry, i) => (
               <div key={i} style={{ display: 'flex', gap: 16, alignItems: 'baseline' }}>
                 <span style={{ fontSize: 10, color: 'rgba(0,255,159,0.4)', flexShrink: 0 }}>{'→'}</span>
                 <p style={{
@@ -131,7 +144,35 @@ export default function LabView() {
                   wordBreak: 'break-word',
                   minWidth: 0,
                 }}>
-                  {question}
+                  {'text' in entry ? (
+                    entry.text
+                  ) : (
+                    <>
+                      <span style={{ textDecoration: 'line-through', color: 'rgba(255,255,255,0.35)' }}>
+                        {entry.crossedOut}
+                      </span>
+                      {' '}
+                      <a
+                        href={entry.link.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          color: '#00ff9f',
+                          textDecoration: 'none',
+                          minHeight: isMobile ? 44 : undefined,
+                          touchAction: 'manipulation',
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.textDecoration = 'underline'
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.textDecoration = 'none'
+                        }}
+                      >
+                        {entry.link.label}
+                      </a>
+                    </>
+                  )}
                 </p>
               </div>
             ))}

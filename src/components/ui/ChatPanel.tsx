@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, type Dispatch, type SetStateAction } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import SwirlDotGrid from '@/components/ui/SwirlDotGrid'
@@ -33,6 +33,39 @@ const CHIPS = [
 ] as const
 
 const CARDS_STRIP_REGEX = /\s*\{"cards":\[.*?\]\}\s*$/
+
+const DEFAULT_CHAT_ERROR = 'Something went wrong. Try again.'
+
+async function readChatError(response: Response): Promise<string> {
+  try {
+    const data = (await response.json()) as { error?: string }
+    if (typeof data.error === 'string' && data.error.trim()) {
+      return data.error
+    }
+  } catch {
+    // response was not JSON
+  }
+  return DEFAULT_CHAT_ERROR
+}
+
+function setAssistantError(
+  assistantId: string,
+  content: string,
+  setMessages: Dispatch<SetStateAction<Message[]>>
+) {
+  setMessages(prev =>
+    prev.map(m =>
+      m.id === assistantId
+        ? {
+            ...m,
+            content,
+            cards: undefined,
+            isStreaming: false,
+          }
+        : m
+    )
+  )
+}
 
 /** NDJSON reply drain — independent of greeting `STREAM_SPEED`. Keep queue shallow vs API delivery; tune interval and batch size if output chunks or feels mechanical. */
 const API_STREAM_DRAIN_MS = 16
@@ -268,28 +301,22 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
         body: JSON.stringify({ messages: apiMessages }),
       })
 
-      if (response.status === 429) {
+      if (!response.ok) {
+        const errorMessage = await readChatError(response)
         stopDraining()
         charQueueRef.current = []
-        setMessages(prev =>
-          prev.map(m =>
-            m.id === assistantMessage.id
-              ? {
-                  ...m,
-                  content:
-                    "You've sent a lot of messages. Take a break and try again in an hour.",
-                  isStreaming: false,
-                }
-              : m
-          )
-        )
+        setAssistantError(assistantMessage.id, errorMessage, setMessages)
         notifyChatResponseComplete()
         return
       }
 
-      if (!response.ok) throw new Error('Chat request failed')
-
-      if (!response.body) throw new Error('No response body')
+      if (!response.body) {
+        stopDraining()
+        charQueueRef.current = []
+        setAssistantError(assistantMessage.id, DEFAULT_CHAT_ERROR, setMessages)
+        notifyChatResponseComplete()
+        return
+      }
 
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
@@ -353,18 +380,11 @@ export default function ChatPanel({ variant = 'embedded' }: ChatPanelProps) {
       console.error('Chat error:', err)
       stopDraining()
       charQueueRef.current = []
-      setMessages(prev =>
-        prev.map(m =>
-          m.id === assistantMessage.id
-            ? {
-                ...m,
-                content: 'Something went wrong. Try again.',
-                cards: undefined,
-                isStreaming: false,
-              }
-            : m
-        )
-      )
+      const networkMessage =
+        err instanceof TypeError
+          ? 'Could not reach the chat service. Check your connection and try again.'
+          : DEFAULT_CHAT_ERROR
+      setAssistantError(assistantMessage.id, networkMessage, setMessages)
       notifyChatResponseComplete()
     } finally {
       setIsResponseLoading(false)
